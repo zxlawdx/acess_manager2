@@ -87,14 +87,20 @@ class ZTEProvider:
         from apps.access_manager.domain.clients import merge_clients
         return merge_clients(self._need().lan_clients(), self._need().wifi_clients())
     def get_wifi(self, reveal_password=False):
+        return {'networks':self.get_wifi_networks(reveal_password),'radios':self.get_wifi_radios()}
+    def get_wifi_networks(self, reveal_password=False):
         from apps.access_manager.infrastructure.radio_options import radio_options
         c=self._need()
         networks=self._f6201b_wifi.list_ssids(c) if self._is_f6201b() and not reveal_password else (c.wifi_networks(reveal_password=True) if reveal_password else c.wifi_networks())
+        return networks
+    def get_wifi_radios(self):
+        from apps.access_manager.infrastructure.radio_options import radio_options
+        c=self._need()
         radios=c.channel_status()
+        try: observed_options=radio_options(c.get_view('wlanBasic',Menu3Location=0))
+        except Exception: observed_options={}
         for r in radios if isinstance(radios,list) else []:
-            options={}
-            try: options.update(radio_options(c.get_view('wlanBasic',Menu3Location=0)))
-            except Exception: pass
+            options=dict(observed_options)
             try:
                 channels=c.available_channels(band=r.get('banda'),country=r.get('pais'))
                 current_width=str(r.get('largura') or '')
@@ -103,7 +109,7 @@ class ZTEProvider:
                 if widths:options.setdefault('bandwidth',[{'value':w,'label':w} for w in widths])
             except Exception: pass
             r['options']=options
-        return {'networks':networks,'radios':radios}
+        return radios
     def get_wan(self): return self._read('wan_status')
     def get_lan(self): return self._read('lan_ports')
     def get_dhcp(self): return self._read('dhcp_status')

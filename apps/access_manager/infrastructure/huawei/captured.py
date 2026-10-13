@@ -5,6 +5,8 @@ import logging
 import os
 import re
 import time
+import threading
+from contextlib import contextmanager
 from typing import Any, Callable, Iterable
 
 from apps.access_manager.infrastructure.huawei.protocol import (
@@ -391,8 +393,25 @@ class HuaweiCapturedFeatureService:
         self.sleep = sleep
         self.readback_tries = max(1, int(readback_tries))
 
+    @contextmanager
+    def read_snapshot(self):
+        if not hasattr(self, '_read_local'):
+            self._read_local = threading.local()
+        previous = getattr(self._read_local, 'pages', None)
+        self._read_local.pages = {} if previous is None else previous
+        try:
+            yield
+        finally:
+            self._read_local.pages = previous
+
     def _page(self, path: str) -> str:
-        return self.client.get_page(path)
+        pages = getattr(getattr(self, '_read_local', None), 'pages', None)
+        if pages is not None and path in pages:
+            return pages[path]
+        value = self.client.get_page(path)
+        if pages is not None:
+            pages[path] = value
+        return value
 
     def _records(self, *pages: str) -> tuple[str, list[dict[str, Any]]]:
         chunks: list[str] = []

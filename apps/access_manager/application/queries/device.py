@@ -10,14 +10,21 @@ class DeviceQueryBus:
     sessions: object
     sampler: TrafficSampler = field(default_factory=TrafficSampler)
     def execute(self, feature, method, *args, **kwargs):
-        with getattr(self.sessions, 'operation_lock', nullcontext()):
-            p=self.sessions.provider
-            p.capabilities.require_read(feature)
-            return getattr(p,method)(*args,**kwargs)
+        started=time.perf_counter()
+        try:
+            with getattr(self.sessions, 'operation_lock', nullcontext()):
+                acquired=time.perf_counter()
+                p=self.sessions.provider
+                p.capabilities.require_read(feature)
+                return getattr(p,method)(*args,**kwargs)
+        finally:
+            logging.getLogger(__name__).debug("read.%s.%s total_ms=%.1f lock_wait_ms=%.1f",feature,method,(time.perf_counter()-started)*1000,(locals().get('acquired',time.perf_counter())-started)*1000)
     def device(self): return device_view(self.execute('device','get_device_info'))
     def clients(self): return normalize_clients(self.execute('clients','get_clients'))
     def wifi(self): return self.execute('wifi','get_wifi')
-    def wifi_reveal(self): return self.execute('wifi','get_wifi',reveal_password=True)
+    def wifi_ssids(self): return self.execute('wifi','get_wifi_networks')
+    def wifi_radios(self): return self.execute('wifi_radio','get_wifi_radios')
+    def wifi_reveal(self): return {'networks':self.execute('wifi','get_wifi_networks',reveal_password=True)}
     def wan(self):
         data=self.execute('wan','get_wan')
         return [wan_view(r) for r in (data if isinstance(data,list) else [data])]

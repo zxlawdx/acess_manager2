@@ -57,3 +57,15 @@ def test_vela_http_does_not_enable_unknown_dns_writer(monkeypatch):
     app,_=server(monkeypatch)
     _,result=http(app,'POST','/api/device/dns',{'ipv4_1':'1.1.1.1'})
     assert result['success'] is False and result['error']['code']
+
+
+def test_vela_http_split_wifi_read_does_not_fetch_the_other_component(monkeypatch):
+    calls=[]
+    provider=SimpleNamespace(capabilities=CapabilitySet([Capability('wifi',S.SUPPORTED),Capability('wifi_radio',S.SUPPORTED)]),get_wifi_networks=lambda:(calls.append('ssids') or [{'id':'1','ssid':'Home'}]),get_wifi_radios=lambda:(calls.append('radios') or [{'banda':'5GHz','options':{}}]))
+    monkeypatch.setattr(endpoints,'queries',DeviceQueryBus(SimpleNamespace(provider=provider,operation_lock=RLock())))
+    router=ApiRouter();router.get('/device/wifi/ssids')(endpoints.wifi_ssids);router.get('/device/wifi/radios')(endpoints.wifi_radios)
+    server=ApiServer(router,port=0,docs_enabled=False);server.register_routes()
+    _,ssids=http(server.app,'GET','/api/device/wifi/ssids')
+    assert ssids[0]['ssid']=='Home' and calls==['ssids']
+    _,radios=http(server.app,'GET','/api/device/wifi/radios')
+    assert radios[0]['banda']=='5GHz' and calls==['ssids','radios']

@@ -272,12 +272,24 @@ class HuaweiProvider:
         return merge_clients(self.captured.lan_clients(), self.captured.wifi_clients())
 
     def get_wifi(self, reveal_password: bool = False):
+        return {'networks':self.get_wifi_networks(reveal_password), 'radios':self.get_wifi_radios()}
+
+    def get_wifi_networks(self, reveal_password: bool = False):
         self._need()
         networks = (
             self.runtime.wifi_networks(reveal_password=reveal_password)
             if self.runtime is not None
             else self.captured.wifi_networks(reveal_password=reveal_password)
         )
+        return networks
+
+    def get_wifi_radios(self):
+        self._need()
+        with self.captured.read_snapshot():
+            return self._read_wifi_radios()
+
+    def _read_wifi_radios(self):
+        self._need()
         from apps.access_manager.infrastructure.radio_options import radio_options
         radios=self.captured.wifi_radios()
         for r in radios:
@@ -291,7 +303,7 @@ class HuaweiProvider:
             except Exception: pass
             r['options']=options
             r['sgi_write']=False
-        return {'networks':networks,'radios':radios}
+        return radios
 
     def get_wan(self):
         self._need()

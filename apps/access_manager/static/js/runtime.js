@@ -15,25 +15,117 @@
     }
   }
   async function request(path, options = {}) {
-    const url = new URL(path, window.location.origin);
-    const res = await fetch(url, {
-      credentials: "same-origin",
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers || {}
+    const { scope = defaultScope(path, options), forceRefresh = false, ...fetchOptions } = options;
+    const method = String(options.method || "GET").toUpperCase(), read = method === "GET";
+    if (!scopeActive(scope)) throw cancelled();
+    const canCache = read && cachedPaths.has(path);
+    sessionKey();
+    const entry = canCache ? snapshots.get(path) : null;
+    if (!forceRefresh && entry && Date.now() - entry.time < 15e3) {
+      if (Date.now() - entry.time > 3e3) request(path, { ...options, scope, forceRefresh: true }).then(() => {
+        if (scopeActive(scope)) document.dispatchEvent(new CustomEvent("snapshot-updated", { detail: { path, generation: scope?.generation } }));
+      }).catch(() => {
+      });
+      return clone(entry.data);
+    }
+    const key2 = cacheSession + ":" + (scope?.identity ?? "global") + ":" + path;
+    if (canCache && pending.has(key2)) return pending.get(key2);
+    const start = performance.now(), epoch = revision;
+    const work = (async () => {
+      const url = new URL(path, window.location.origin);
+      const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
+      const text = await res.text(), data = parseResponseBody(text);
+      if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute"].includes(path)) clearSnapshots();
+      if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
+      if (!res.ok) throw new Error(data?.error?.message || data?.message || `HTTP ${res.status} ao acessar ${url.pathname}`);
+      if (data?.success === false) throw new Error(data?.error?.message || "Falha na operação");
+      if (canCache) {
+        const safe = clean(data);
+        snapshots.set(path, { time: Date.now(), data: safe });
+        return clone(safe);
       }
+      return data;
+    })().catch((e) => {
+      if (!scopeActive(scope) || isCancelled(e)) throw cancelled();
+      throw e;
+    }).finally(() => {
+      if (pending.get(key2) === work) pending.delete(key2);
+      timing(path.startsWith("/api/device/wifi") ? "wifi.load." + (path.split("/").at(-1) === "wifi" ? "total" : path.split("/").at(-1)) : path + ".load", start);
     });
-    const text = await res.text();
-    const data = parseResponseBody(text);
-    if (!res.ok) {
-      const message = data?.error?.message || data?.message || `HTTP ${res.status} ao acessar ${url.pathname}`;
-      throw new Error(message);
+    if (canCache) pending.set(key2, work);
+    return work;
+  }
+  var generation = 0;
+  var active = null;
+  var cacheSession = null;
+  var revision = 0;
+  var scopeId = 0;
+  var clone = (value) => JSON.parse(JSON.stringify(value));
+  var snapshots = /* @__PURE__ */ new Map();
+  var pending = /* @__PURE__ */ new Map();
+  var cachedPaths = /* @__PURE__ */ new Set(["/api/device", "/api/device/wifi", "/api/device/wifi/ssids", "/api/device/wifi/radios", "/api/device/wan", "/api/device/lan", "/api/device/dhcp", "/api/device/dns", "/api/profiles", "/api/device/dmz", "/api/device/upnp", "/api/device/tr069", "/api/device/firewall"]);
+  var cancelled = () => Object.assign(new Error(""), { name: "AbortError" });
+  var isCancelled = (e) => e?.name === "AbortError";
+  function beginView(name) {
+    active?.controller.abort();
+    active = { name, generation: ++generation, identity: ++scopeId, controller: new AbortController() };
+    return active;
+  }
+  function currentScope() {
+    return active;
+  }
+  function defaultScope(path, options) {
+    if (path === "/api/session") return null;
+    const dialog2 = document.querySelector("#action-dialog");
+    return String(options.method || "GET").toUpperCase() !== "GET" && dialog2?.open ? dialog2._requestScope : currentScope();
+  }
+  function scopeActive(scope) {
+    return !scope || !scope.controller.signal.aborted && scope.generation === generation;
+  }
+  function childScope() {
+    const parent = active, scope = { generation: parent?.generation ?? generation, identity: ++scopeId, controller: new AbortController() };
+    parent?.controller.signal.addEventListener("abort", () => scope.controller.abort(), { once: true });
+    return scope;
+  }
+  function clearSnapshots() {
+    revision++;
+    snapshots.clear();
+    pending.clear();
+  }
+  function sessionKey() {
+    const key2 = window.__amStore?.session?.session?.session_id ?? "disconnected";
+    if (cacheSession !== key2) {
+      clearSnapshots();
+      cacheSession = key2;
     }
-    if (data?.success === false) {
-      throw new Error(data?.error?.message || "Falha na operação");
+    return key2;
+  }
+  function clean(value) {
+    if (Array.isArray(value)) return value.map(clean);
+    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).filter(([k]) => !/(password|passwd|senha|secret|token|authorization)/i.test(k)).map(([k, v]) => [k, clean(v)]));
+    return value;
+  }
+  function cached(path) {
+    sessionKey();
+    const entry = snapshots.get(path);
+    return entry && Date.now() - entry.time < 15e3 ? clone(entry.data) : null;
+  }
+  function timing(label, start) {
+    const duration = performance.now() - start;
+    if (window.__AM_DEBUG__) {
+      performance.measure?.(label, { start, end: performance.now() });
+      console.debug("[Access Manager timing]", label, duration.toFixed(1) + " ms");
     }
-    return data;
+    return duration;
+  }
+  function loadResource(path, { scope = currentScope(), data, error, refresh = false } = {}) {
+    const entry = cached(path);
+    if (entry !== null && scopeActive(scope)) data(entry);
+    return request(path, { scope, forceRefresh: refresh || entry === null || Date.now() - (snapshots.get(path)?.time || 0) > 3e3 }).then((value) => {
+      if (scopeActive(scope)) data(value);
+    }).catch((e) => {
+      if (scopeActive(scope) && !isCancelled(e)) error?.(e);
+    });
   }
 
   // apps/access_manager/static/js/core/store.js
@@ -75,16 +167,28 @@
   function badge(value, kind = "info") {
     return `<span class="badge ${kind}">${esc(value)}</span>`;
   }
+  var technicalLabel = (label) => /IP|MAC|DNS|VLAN|MTU|Mbps|latência|perda|enviados|recebidos|mínimo|médio|máximo|RX|TX|RSSI|SNR|banda|canal|largura|padrão|potência|país|velocidade|bytes|lease|uptime|tempo|memória|CPU|RAM|temperatura|máscara|pool|gateway|prefixo|firmware|hardware|serial|clientes|óptico/i.test(label);
+  function valueClass(value, technical = true) {
+    const text = String(value ?? "");
+    if (!text || /^(—|Não disponível|Aguardando|Sem dados|Não configurado)/i.test(text)) return "muted";
+    if (/^(online|ativo|conectado|connected|up|associado|associated|habilitado|saudável|verificado)$/i.test(text)) return "value-success";
+    if (/^(offline|erro|falha|desconectado|disconnected|down|sem link)$/i.test(text)) return "value-danger";
+    return technical ? "tech-value" : "";
+  }
+  function valueMarkup(value, label = "") {
+    const v = Array.isArray(value) ? value.join(", ") || "Não disponível" : value ?? "Não disponível";
+    return `<span class="${valueClass(v, technicalLabel(label))}">${esc(v)}</span>`;
+  }
   function metric(label, value, detail = "") {
-    return `<article class="metric"><label>${esc(label)}</label><strong>${esc(value)}</strong>${detail ? `<small>${esc(detail)}</small>` : ""}</article>`;
+    return `<article class="metric"><label>${esc(label)}</label><strong class="${valueClass(value)}">${esc(value)}</strong>${detail ? `<small>${esc(detail)}</small>` : ""}</article>`;
   }
   function kv(data) {
     const items = Object.entries(data || {}).filter(([, v]) => v !== void 0 && v !== null && typeof v !== "object");
-    return `<div class="kv-grid">${items.map(([k, v]) => `<div class="kv"><label>${esc(k.replaceAll("_", " "))}</label><span>${esc(typeof v === "boolean" ? v ? "Sim" : "Não" : v)}</span></div>`).join("")}</div>`;
+    return `<div class="kv-grid">${items.map(([k, v]) => `<div class="kv"><label>${esc(k.replaceAll("_", " "))}</label><span>${valueMarkup(typeof v === "boolean" ? v ? "Ativo" : "Inativo" : v, k)}</span></div>`).join("")}</div>`;
   }
   function table(columns2, rows2, empty = "Nenhum registro encontrado") {
     if (!Array.isArray(rows2) || !rows2.length) return `<div class="empty-state"><span>${esc(empty)}</span></div>`;
-    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows2.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? c.render(r) : esc(pick(r, ...c.keys || [c.key]))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows2.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
   function cap(feature) {
     return window.__amStore?.capabilities?.[feature] || { read: "UNKNOWN", write: "UNKNOWN", enabled: { read: false, write: false }, evidence: "UNKNOWN" };
@@ -94,6 +198,7 @@
     return badge(state, kind);
   }
   function toast(message) {
+    if (!message) return;
     const host = document.querySelector("#toast-region");
     const el = document.createElement("div");
     el.className = "toast";
@@ -103,11 +208,23 @@
   }
   function dialog(title, content, actions = "") {
     const d = document.querySelector("#action-dialog");
+    d._requestScope?.controller.abort();
+    if (d.open) d.close();
+    d.classList.remove("drawer", "profile-dialog");
+    const scope = childScope();
+    d._requestScope = scope;
     document.querySelector("#dialog-body").innerHTML = `<div class="dialog-inner"><div class="dialog-header"><h2 id="dialog-title">${esc(title)}</h2><button class="icon-button" data-close-dialog aria-label="Fechar">×</button></div>${content}${actions ? `<div class="dialog-footer">${actions}</div>` : ""}</div>`;
     d.querySelector("[data-close-dialog]").onclick = () => d.close();
-    d.addEventListener("close", () => {
+    d.onclose = () => {
+      if (d.open || d._requestScope !== scope) return;
+      scope.controller.abort();
       document.querySelector("#dialog-body").replaceChildren();
-    }, { once: true });
+    };
+    d.addEventListener("input", (e) => {
+      e.target.dataset.dirty = "true";
+      const form = e.target.closest("form");
+      if (form) form.dataset.dirty = "true";
+    }, { signal: d._requestScope.controller.signal });
     d.showModal();
     return d;
   }
@@ -127,7 +244,7 @@
     return `${x.toFixed(i ? 2 : 0)} ${units[i]}`;
   }
   function fields(items) {
-    return `<div class="human-fields">${items.map(([label, value]) => `<div class="human-field"><span class="muted">${esc(label)}</span><strong>${esc(Array.isArray(value) ? value.join(", ") || unavailable : value ?? unavailable)}</strong></div>`).join("")}</div>`;
+    return `<div class="human-fields">${items.map(([label, value]) => `<div class="human-field"><span class="muted">${esc(label)}</span><strong>${valueMarkup(value, label)}</strong></div>`).join("")}</div>`;
   }
   function uptime(v) {
     if (v == null || v === "") return "—";
@@ -151,14 +268,14 @@
     const v = pick(r, "status", "estado", "online");
     if (v === "—") return badge("Não disponível");
     if (v === false || /^(offline|disconnected|false|0)$/i.test(String(v))) return badge("Offline", "bad");
-    if (v === true || /^(online|connected|true|1)$/i.test(String(v))) return badge("Online", "ok");
+    if (v === true || /^(online|connected|associated|up|true|1)$/i.test(String(v))) return badge("Online", "ok");
     return badge(linkStatus(v));
   };
   var connection = (r) => pick(r, "connection_type", "tipo", "interface");
   var band = (r) => pick(r, "band", "banda");
   var columns = [{ label: "Status", render: status }, { label: "Hostname", render: (r) => `<button class="icon-button" data-client="${rows.indexOf(r)}">${esc(pick(r, "hostname", "nome"))}</button>` }, { label: "IP", keys: ["ip"] }, { label: "MAC", keys: ["mac"] }, { label: "Conexão", render: connection }, { label: "SSID / porta", keys: ["ssid", "port", "interface"] }, { label: "Banda", render: band }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }, { label: "RX / TX", render: (r) => `${esc(pick(r, "rx_rate"))} / ${esc(pick(r, "tx_rate"))}` }];
   function cards(data) {
-    return `<div class="client-cards">${data.map((r) => `<button class="client-card" data-client="${rows.indexOf(r)}"><strong>${esc(pick(r, "hostname", "nome"))}</strong><span class="mono">${esc(pick(r, "ip"))}</span><small>${esc(connection(r))} · ${esc(band(r))}</small>${status(r)}</button>`).join("")}</div>`;
+    return `<div class="client-cards">${data.map((r) => `<button class="client-card" data-client="${rows.indexOf(r)}"><strong>${esc(pick(r, "hostname", "nome"))}</strong><span class="mono tech-address">${esc(pick(r, "ip"))}</span><small>${esc(connection(r))} · ${esc(band(r))}</small>${status(r)}</button>`).join("")}</div>`;
   }
   function topology(data, device = "Equipamento", register = true) {
     if (register) rows = data;
@@ -180,8 +297,7 @@
       const d = dialog("Detalhes do cliente", kv(data));
       d.classList.add("drawer");
       d.addEventListener("close", () => {
-        d.classList.remove("drawer");
-        document.querySelector("#dialog-body").replaceChildren();
+        if (!d.open) d.classList.remove("drawer");
       }, { once: true });
     });
   }
@@ -206,8 +322,10 @@
 
   // apps/access_manager/static/js/workspaces/views/overview.js
   async function render2() {
+    const scope = currentScope();
     const endpoints = ["/api/device", "/api/device/wan", "/api/device/optical", "/api/device/clients", "/api/device/traffic"];
     const results = await Promise.allSettled(endpoints.map((p) => request(p)));
+    if (!scopeActive(scope)) throw cancelled();
     const [device, wan2, optical, clients, traffic] = results.map((r) => r.status === "fulfilled" ? r.value : null);
     const w = Array.isArray(wan2) ? wan2[0] || {} : wan2 || {}, o = optical || {}, d = device || {};
     const failed = results.map((r, i) => r.status === "rejected" ? `<div class="notice warning">${esc(["Equipamento", "WAN", "Óptica", "Clientes", "Tráfego"][i])}: ${esc(r.reason.message)}</div>` : "").join("");
@@ -227,6 +345,45 @@
     render: () => render3
   });
 
+  // apps/access_manager/static/js/shared/patch.js
+  function patchHTML(host, html) {
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const patch = (parent, next) => {
+      for (let i = 0; i < next.childNodes.length || i < parent.childNodes.length; i++) {
+        const a = parent.childNodes[i], b = next.childNodes[i];
+        if (!b) {
+          a.remove();
+          i--;
+          continue;
+        }
+        if (!a) {
+          parent.append(b.cloneNode(true));
+          continue;
+        }
+        if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) {
+          a.replaceWith(b.cloneNode(true));
+          continue;
+        }
+        if (a.nodeType === 3) {
+          if (a.textContent !== b.textContent) a.textContent = b.textContent;
+          continue;
+        }
+        if (a.nodeType !== 1) continue;
+        const input = a.matches("input,select,textarea"), dirty = input && (a.dataset.dirty === "true" || a === document.activeElement), value = a.value, checked = a.checked;
+        if (a.matches("form") && a.dataset.dirty === "true") continue;
+        for (const attr of [...a.attributes]) if (!b.hasAttribute(attr.name) && attr.name !== "data-dirty") a.removeAttribute(attr.name);
+        for (const attr of b.attributes) if (a.getAttribute(attr.name) !== attr.value) a.setAttribute(attr.name, attr.value);
+        patch(a, b);
+        if (dirty) {
+          a.value = value;
+          a.checked = checked;
+        }
+      }
+    };
+    patch(host, template.content);
+  }
+
   // apps/access_manager/static/js/shared/forms.js
   function editConfig(title, path, fields2, extra = {}) {
     const supported = fields2.filter((f) => f.value !== void 0 && f.value !== null && f.value !== "—");
@@ -239,7 +396,7 @@
       for (const f of supported) {
         if (values.get(f.key) !== original.get(f.key)) {
           const v = values.get(f.key);
-          config[f.key] = f.options ? `<select name="${esc(f.key)}" ${f.options.length ? "" : "disabled"}><option value="${esc(f.value)}">${esc(f.value)}</option>${f.options.filter((o) => String(o.value) !== String(f.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select>` : f.type === "bool" ? v === "true" : f.type === "number" ? Number(v) : String(v);
+          config[f.key] = f.options ? String(v) : f.type === "bool" ? v === "true" : f.type === "number" ? Number(v) : String(v);
         }
       }
       if (!Object.keys(config).length) {
@@ -250,7 +407,7 @@
       const b = form.querySelector("button");
       b.disabled = true;
       try {
-        const result = await request(path, { method: "POST", body: JSON.stringify(payload) });
+        const result = await request(path, { method: "POST", scope: d._requestScope, body: JSON.stringify(payload) });
         toast(result?.verified === true ? "Alteração confirmada por leitura do equipamento." : "Comando enviado; consulte o estado atualizado.");
         d.close();
         document.dispatchEvent(new CustomEvent("refresh-view"));
@@ -265,13 +422,10 @@
   // apps/access_manager/static/js/workspaces/views/wifi.js
   var networks = [];
   var radios = [];
-  async function render3() {
-    const d = await request("/api/device/wifi");
-    networks = Array.isArray(d) ? d : d?.networks || [];
-    radios = Array.isArray(d?.radios) ? d.radios : [];
+  function contents() {
     return `<section class="panel"><h2>Redes Wi-Fi</h2></section>${table([{ label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band", "banda"] }, { label: "Ativo", render: (r) => esc(bool(r.enabled ?? r.ativo)) }, { label: "Broadcast", render: (r) => esc(bool(r.broadcast)) }, { label: "Segurança", keys: ["security", "seguranca"] }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-reveal-wifi="${esc(r.id)}">Ver senha</button><button class="button" data-edit-ssid="${networks.indexOf(r)}" ${cap("wifi").enabled?.write ? "" : "disabled"}>Editar</button></div>` }], networks)}<section class="panel"><h2>Rádios</h2>${radios.map((r, i) => `<article class="panel"><h3>${esc(pick(r, "band", "banda"))}</h3>${fields([["Estado", bool(r.enabled ?? r.radio_ativo)], ["Canal", r.channel ?? r.canal], ["Automático", bool(r.auto_channel ?? r.canal_automatico)], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais], ["SGI", bool(r.sgi)]])}<details><summary>Avançado</summary>${kv(r)}</details><button class="button" data-edit-radio="${i}" ${cap("wifi_radio").enabled?.write ? "" : "disabled"}>Editar rádio</button></article>`).join("") || '<p class="muted">Sem dados de rádio.</p>'}</section>`;
   }
-  function mount3() {
+  function wire() {
     document.querySelectorAll("[data-reveal-wifi]").forEach((b) => b.onclick = async () => {
       b.disabled = true;
       try {
@@ -294,6 +448,31 @@
       editConfig("Editar rádio", "/api/device/wifi/radio", [{ key: "channel", options: r.options?.channel || [], label: "Canal", value: r.channel ?? r.canal }, { key: "auto_channel", label: "Canal automático", value: r.auto_channel ?? r.canal_automatico, type: "bool" }, { key: "bandwidth", options: r.options?.bandwidth || [], label: "Largura", value: r.bandwidth ?? r.largura }, { key: "standard", options: r.options?.standard || [], label: "Padrão", value: r.standard ?? r.padrao }, { key: "tx_power", options: r.options?.tx_power || [], label: "Potência", value: r.tx_power ?? r.potencia }, { key: "country", options: r.options?.country || [], label: "País", value: r.country ?? r.pais }, { key: "sgi", label: "SGI", value: r.sgi_write === false ? void 0 : r.sgi, type: "bool" }], { band: r.band ?? r.banda });
     });
   }
+  function render3() {
+    networks = [];
+    radios = [];
+    return `<section class="panel"><div class="panel-header"><h2>Redes Wi-Fi</h2><button class="button" id="wifi-refresh">Atualizar</button></div><div id="wifi-ssids" role="status"><p class="muted">Carregando SSIDs…</p><div class="skeleton"></div></div></section><section class="panel"><h2>Rádios</h2><div id="wifi-radios" role="status"><p class="muted">Carregando opções de rádio…</p><div class="skeleton"></div></div></section>`;
+  }
+  function mount3() {
+    const scope = currentScope(), start = performance.now();
+    const boundary = '<section class="panel"><h2>Rádios</h2>';
+    const paint2 = (part, value) => {
+      if (part === "ssids") networks = Array.isArray(value) ? value : value?.networks || [];
+      else radios = Array.isArray(value) ? value : value?.radios || [];
+      const html = contents(), split = html.indexOf(boundary), host = document.querySelector("#wifi-" + part);
+      if (!host) return;
+      patchHTML(host, part === "ssids" ? html.slice(html.indexOf("</section>") + 10, split) : html.slice(split + boundary.length, -10));
+      host.removeAttribute("role");
+      wire();
+      timing("wifi.load." + part, start);
+    };
+    const load = (part, refresh = false) => loadResource("/api/device/wifi/" + part, { scope, refresh, data: (d) => paint2(part, d), error: (e) => {
+      const host = document.querySelector("#wifi-" + part);
+      if (host) host.innerHTML = `<div class="notice warning">${esc(e.message)}</div>`;
+    } });
+    document.querySelector("#wifi-refresh").onclick = () => Promise.allSettled([load("ssids", true), load("radios", true)]);
+    Promise.allSettled([load("ssids"), load("radios")]).then(() => timing("wifi.load.total", start));
+  }
 
   // apps/access_manager/static/js/workspaces/views/network.js
   var dhcpData;
@@ -311,7 +490,9 @@
     } }, { label: "Velocidade", keys: ["speed", "velocidade"] }, { label: "Duplex", render: (r) => esc({ full: "Full duplex", half: "Half duplex", auto: "Automático" }[String(r.duplex || "").toLowerCase()] || r.duplex || "Não disponível") }, { label: "Negociação", keys: ["autonegotiation", "negotiation"] }, { label: "Cliente / MAC", keys: ["client", "mac"] }, { label: "RX bytes", keys: ["rx_bytes"] }, { label: "TX bytes", keys: ["tx_bytes"] }, { label: "Erros RX/TX", render: (r) => `${esc(pick(r, "rx_errors"))}/${esc(pick(r, "tx_errors"))}` }], Array.isArray(d) ? d : d?.ports || []);
   }
   async function dhcpdns() {
+    const scope = currentScope();
     const results = await Promise.allSettled([request("/api/device/dhcp"), request("/api/device/dns")]);
+    if (!scopeActive(scope)) throw cancelled();
     dhcpData = results[0].status === "fulfilled" ? results[0].value : null;
     dnsData = results[1].status === "fulfilled" ? results[1].value : null;
     return `<div class="split">${dhcpData ? `<section class="panel"><h2>DHCP</h2>${fields([["Servidor", bool(dhcpData.enabled)], ["IP da LAN", dhcpData.lan_ip], ["Máscara", dhcpData.mask], ["Início do pool", dhcpData.pool_start], ["Fim do pool", dhcpData.pool_end], ["Lease (segundos)", dhcpData.lease_seconds], ["DNS primário", dhcpData.dns1], ["DNS secundário", dhcpData.dns2]])}</section>` : '<section class="panel">DHCP não disponível nesta sessão.</section>'}${dnsData ? `<section class="panel"><h2>DNS</h2>${fields([["Domínio", dnsData.domain_name], ["DNS IPv4 primário", dnsData.ipv4_1], ["DNS IPv4 secundário", dnsData.ipv4_2], ["DNS IPv6 primário", dnsData.ipv6_1], ["DNS IPv6 secundário", dnsData.ipv6_2]])}</section>` : '<section class="panel">DNS não disponível nesta sessão.</section>'}</div><div class="toolbar"><button class="button" id="edit-dhcp" ${dhcpData && cap("dhcp").enabled?.write ? "" : "disabled"}>Editar DHCP</button><button class="button" id="edit-dns" ${dnsData && cap("dns").enabled?.write ? "" : "disabled"}>Editar DNS</button></div>${table([{ label: "Hostname", keys: ["hostname", "Name", "name"] }, { label: "IP", keys: ["ip", "IPAddr", "IPAddress"] }, { label: "MAC", keys: ["mac", "MACAddr", "MACAddress"] }], dhcpData?.leases || [], "Nenhum lease retornado.")}<section class="panel"><div class="panel-header"><h2>Reservas DHCP</h2><button id="new-reservation" class="button" ${cap("dhcp_reservations").enabled?.write ? "" : "disabled"}>Adicionar</button></div></section>${table([{ label: "Reserva", keys: ["name", "Name"] }, { label: "IP", keys: ["ip", "IPAddr"] }, { label: "MAC", keys: ["mac", "MACAddr"] }, { label: "Ações", render: (r) => cap("dhcp_reservations").enabled?.write ? `<div class="inline-actions"><button class="button" data-edit-reservation="${esc(r.id)}">Editar</button><button class="button danger" data-delete-reservation="${esc(r.id)}">Excluir</button></div>` : "Somente leitura" }], dhcpData?.reservations || [], "Nenhuma reserva retornada.")}${dnsHosts()}`;
@@ -348,7 +529,10 @@
         }
       };
     };
-    document.querySelector("#new-reservation")?.addEventListener("click", () => edit2());
+    {
+      const b = document.querySelector("#new-reservation");
+      if (b) b.onclick = () => edit2();
+    }
     document.querySelectorAll("[data-edit-reservation]").forEach((b) => b.onclick = () => edit2(dhcpData.reservations.find((r) => String(r.id) === b.dataset.editReservation)));
     document.querySelectorAll("[data-delete-reservation]").forEach((b) => b.onclick = () => {
       const d = dialog("Excluir reserva?", `<p>O endereço reservado será removido.</p>`, `<button class="button danger" data-confirm>Excluir</button>`);
@@ -389,7 +573,10 @@
         }
       };
     };
-    document.querySelector("#new-dns-host")?.addEventListener("click", () => edit2());
+    {
+      const b = document.querySelector("#new-dns-host");
+      if (b) b.onclick = () => edit2();
+    }
     document.querySelectorAll("[data-edit-host]").forEach((b) => b.onclick = () => edit2(dnsData.hosts.find((r) => String(r.id) === b.dataset.editHost)));
     document.querySelectorAll("[data-delete-host]").forEach((b) => b.onclick = () => {
       const d = dialog("Excluir host DNS?", `<p>O registro local será removido.</p>`, `<button class="button danger" data-confirm>Excluir</button>`);
@@ -413,8 +600,7 @@
     render: () => render4
   });
   var profiles = [];
-  async function render4() {
-    profiles = await request("/api/profiles");
+  function contents2() {
     return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section>${table([{ label: "Nome", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Rádios", render: (r) => esc((r.wifi?.radios || (r.wifi?.radio ? [r.wifi.radio] : [])).map((r2) => r2.band).join(", ") || "—") }, { label: "DNS", render: (r) => Object.keys(r.dns || {}).length ? "Configurado" : "—" }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-edit-profile="${esc(r.name)}">Editar</button><button class="button" data-preview-profile="${esc(r.name)}">Preview / aplicar</button><button class="button danger" data-delete-profile="${esc(r.name)}">Excluir</button></div>` }], profiles, "Nenhum perfil salvo.")}`;
   }
   var field = (label, name, value = "") => `<div class="field"><label>${label}</label><input name="${name}" value="${esc(value ?? "")}"></div>`;
@@ -422,21 +608,42 @@
     return `<div class="field"><label>${label}</label><select name="${name}" ${options?.length ? "" : "disabled"}><option value="${esc(value ?? "")}">${esc((options || []).find((o) => String(o.value) === String(value))?.label ?? value ?? "Não disponível")}</option>${(options || []).filter((o) => String(o.value) !== String(value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select></div>`;
   }
   async function edit(profile = {}) {
-    const live = await request("/api/device/wifi").catch(() => ({ radios: [] }));
+    const opened = performance.now();
+    let radiosReady = false;
     const savedRadios = profile.wifi?.radios || (profile.wifi?.radio ? [profile.wifi.radio] : []);
-    const radios2 = [...Array.isArray(live.radios) ? live.radios : []];
-    for (const saved of savedRadios) if (!radios2.some((r) => (r.band ?? r.banda) === saved.band)) radios2.push({ ...saved, options: {} });
+    let radios2 = [];
     const dns = profile.dns || {}, servers = dns.servers || [dns.ipv4_1 || dns.primary, dns.ipv4_2 || dns.secondary, dns.ipv6_1, dns.ipv6_2].filter(Boolean);
     const dhcpWritable = Boolean(cap("dhcp").enabled?.write);
-    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><section class="profile-section"><h3>DNS estáticos</h3><p class="muted">Até dois endereços IPv4 e dois IPv6, conforme o contrato do provider.</p><div id="profile-dns-list">${(servers.length ? servers : [""]).map((s) => `<div class="toolbar"><input name="dns-server" value="${esc(s)}" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>`).join("")}</div><button class="button" type="button" id="add-profile-dns">Adicionar DNS</button></section>${radios2.map((r, i) => {
-      const band2 = r.band ?? r.banda, stored = savedRadios.find((s) => s.band === band2);
-      return `<section class="profile-section"><h3>Rádio ${esc(band2)}</h3><label class="profile-include"><input type="checkbox" name="include-radio-${i}" ${stored ? "checked" : ""}> Incluir no perfil</label><div class="form-grid">${[["Canal", "channel", r.channel ?? r.canal], ["Largura", "bandwidth", r.bandwidth ?? r.largura], ["Padrão", "standard", r.standard ?? r.padrao], ["Potência", "tx_power", r.tx_power ?? r.potencia], ["País", "country", r.country ?? r.pais]].map(([label, key2, current]) => choice(label, `${key2}-${i}`, stored?.[key2] ?? current, r.options?.[key2] || [])).join("")}${choice("Canal automático", `auto_channel-${i}`, stored?.auto_channel ?? r.auto_channel ?? r.canal_automatico, [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}</div></section>`;
-    }).join("") || '<section class="profile-section"><p class="muted">Conecte um equipamento para carregar os rádios e suas opções.</p></section>'}${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time)}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">Salvar perfil</button>`);
+    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><section class="profile-section"><h3>DNS estáticos</h3><p class="muted">Até dois endereços IPv4 e dois IPv6, conforme o contrato do provider.</p><div id="profile-dns-list">${(servers.length ? servers : [""]).map((s) => `<div class="toolbar"><input name="dns-server" value="${esc(s)}" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>`).join("")}</div><button class="button" type="button" id="add-profile-dns">Adicionar DNS</button></section><div id="profile-radios"><section class="profile-section" role="status"><h3>Rádios</h3><p class="muted">Carregando canal, largura, padrão, potência e país…</p><div class="skeleton"></div></section></div>${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time)}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">Salvar perfil</button>`);
     d.classList.add("profile-dialog");
-    d.addEventListener("close", () => d.classList.remove("profile-dialog"), { once: true });
+    d.addEventListener("close", () => {
+      if (!d.open) d.classList.remove("profile-dialog");
+    }, { once: true });
     d.querySelector("[data-cancel-profile]").onclick = () => d.close();
     const form = d.querySelector("form");
     if (profile.name) form.querySelector('[name="name"]').readOnly = true;
+    timing("profiles.modal.open", opened);
+    const paintRadios = (value) => {
+      if (!d.open) return;
+      const host = d.querySelector("#profile-radios");
+      if (host.querySelector('[data-dirty="true"]')) return;
+      radios2 = Array.isArray(value) ? [...value] : value?.radios || [];
+      for (const saved of savedRadios) if (!radios2.some((r) => (r.band ?? r.banda) === saved.band)) radios2.push({ ...saved, options: {} });
+      radiosReady = true;
+      patchHTML(host, ` ${radios2.map((r, i) => {
+        const band2 = r.band ?? r.banda, stored = savedRadios.find((s) => s.band === band2);
+        return `<section class="profile-section"><h3>Rádio ${esc(band2)}</h3><label class="profile-include"><input type="checkbox" name="include-radio-${i}" ${stored ? "checked" : ""}> Incluir no perfil</label><div class="form-grid">${[["Canal", "channel", r.channel ?? r.canal], ["Largura", "bandwidth", r.bandwidth ?? r.largura], ["Padrão", "standard", r.standard ?? r.padrao], ["Potência", "tx_power", r.tx_power ?? r.potencia], ["País", "country", r.country ?? r.pais]].map(([label, key2, current]) => choice(label, `${key2}-${i}`, stored?.[key2] ?? current, r.options?.[key2] || [])).join("")}${choice("Canal automático", `auto_channel-${i}`, stored?.auto_channel ?? r.auto_channel ?? r.canal_automatico, [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}</div></section>`;
+      }).join("") || '<section class="profile-section"><p class="muted">Conecte um equipamento para carregar os rádios e suas opções.</p></section>'}`);
+      timing("profiles.options.ready", opened);
+    };
+    loadResource("/api/device/wifi/radios", { scope: d._requestScope, data: paintRadios, error: (e) => {
+      if (!d.open) return;
+      paintRadios(savedRadios);
+      const note = document.createElement("p");
+      note.className = "notice warning";
+      note.textContent = e.message;
+      d.querySelector("#profile-radios").prepend(note);
+    } });
     const wireRemove = () => d.querySelectorAll("[data-remove-dns]").forEach((b) => b.onclick = () => b.parentElement.remove());
     wireRemove();
     d.querySelector("#add-profile-dns").onclick = () => {
@@ -450,18 +657,20 @@
     form.onsubmit = async (e) => {
       e.preventDefault();
       const fd = new FormData(form), wifi = { ...profile.wifi }, dhcp = { ...profile.dhcp };
-      wifi.radios = radios2.flatMap((r, i) => {
-        if (!fd.get(`include-radio-${i}`)) return [];
-        const band2 = r.band ?? r.banda, out = { ...savedRadios.find((s) => s.band === band2) || {}, band: band2 };
-        for (const k of ["channel", "bandwidth", "standard", "tx_power", "country"]) {
-          const v = fd.get(`${k}-${i}`);
-          if (v != null && v !== "") out[k] = String(v);
-        }
-        const auto = fd.get(`auto_channel-${i}`);
-        if (auto === "true" || auto === "false") out.auto_channel = auto === "true";
-        return [out];
-      });
-      delete wifi.radio;
+      if (radiosReady) {
+        wifi.radios = radios2.flatMap((r, i) => {
+          if (!fd.get(`include-radio-${i}`)) return [];
+          const band2 = r.band ?? r.banda, out = { ...savedRadios.find((s) => s.band === band2) || {}, band: band2 };
+          for (const k of ["channel", "bandwidth", "standard", "tx_power", "country"]) {
+            const v = fd.get(`${k}-${i}`);
+            if (v != null && v !== "") out[k] = String(v);
+          }
+          const auto = fd.get(`auto_channel-${i}`);
+          if (auto === "true" || auto === "false") out.auto_channel = auto === "true";
+          return [out];
+        });
+        delete wifi.radio;
+      }
       if (dhcpWritable) for (const [input, key2] of [["pool-start", "min_address"], ["pool-end", "max_address"], ["lease", "lease_time"], ["dhcp-dns1", "dns1"], ["dhcp-dns2", "dns2"]]) {
         const v = String(fd.get(input) || "").trim();
         if (v) dhcp[key2] = v;
@@ -476,7 +685,7 @@
       const payload = { ...profile, name: String(fd.get("name") || "").trim(), description: fd.get("description"), wifi, dns: nextDns, dhcp }, b = d.querySelector("#save-profile");
       b.disabled = true;
       try {
-        await request("/api/profiles", { method: "POST", body: JSON.stringify(payload) });
+        await request("/api/profiles", { method: "POST", scope: d._requestScope, body: JSON.stringify(payload) });
         d.close();
         toast("Perfil salvo.");
         document.dispatchEvent(new CustomEvent("refresh-view"));
@@ -487,7 +696,7 @@
       }
     };
   }
-  function mount4() {
+  function wire2() {
     document.querySelector("#new-profile").onclick = () => edit();
     document.querySelectorAll("[data-edit-profile]").forEach((b) => b.onclick = () => edit(profiles.find((p) => p.name === b.dataset.editProfile)));
     document.querySelectorAll("[data-delete-profile]").forEach((b) => b.onclick = () => {
@@ -525,6 +734,25 @@
       }
     });
   }
+  function render4() {
+    profiles = [];
+    return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section><div id="profile-list" role="status"><div class="panel"><p class="muted">Carregando perfis…</p><div class="skeleton"></div></div></div>`;
+  }
+  function mount4() {
+    wire2();
+    loadResource("/api/profiles", { data: (value) => {
+      profiles = Array.isArray(value) ? value : [];
+      const host = document.querySelector("#profile-list");
+      if (!host) return;
+      const html = contents2();
+      patchHTML(host, html.slice(html.indexOf("</section>") + 10));
+      host.removeAttribute("role");
+      wire2();
+    }, error: (e) => {
+      const host = document.querySelector("#profile-list");
+      if (host) host.innerHTML = `<div class="notice warning">${esc(e.message)}</div>`;
+    } });
+  }
 
   // apps/access_manager/static/js/workspaces/views/management.js
   var management_exports = {};
@@ -540,11 +768,14 @@
   }
   var featureCap = (f) => f === "firewall" && (cap("firewall_level").enabled?.read || cap("firewall_level").enabled?.write) ? cap("firewall_level") : cap(f);
   async function render5() {
+    const scope = currentScope();
     loaded = {};
     const results = await Promise.allSettled(definitions.map((d) => featureCap(d.feature).enabled?.read ? request("/api/device/" + d.feature) : Promise.resolve(null)));
     const history = await request("/api/device/history").catch(() => null);
+    if (!scopeActive(scope)) throw cancelled();
     const reboot = cap("reboot");
     const device = await request("/api/device").catch(() => null);
+    if (!scopeActive(scope)) throw cancelled();
     return `<section class="panel"><h2>Telemetria do equipamento</h2>${device ? fields([["Tempo ligado", uptime(device.uptime_seconds)], ["CPU", device.cpu_percent == null ? null : device.cpu_percent + " %"], ["Memória", device.memory_percent == null ? null : device.memory_percent + " %"], ["Temperatura", device.temperature_c == null ? null : device.temperature_c + " °C"]]) : '<p class="muted">Telemetria não disponível.</p>'}</section><section class="panel"><h2>Manutenção</h2><div class="capability-row"><strong>Reiniciar equipamento</strong>${capBadge(reboot.read)}${capBadge(reboot.write)}<button id="reboot-button" class="button danger" ${reboot.enabled?.write ? "" : "disabled"}>Reiniciar</button></div></section><div class="split">${definitions.map((d, i) => {
       const result = results[i];
       const value = result.status === "fulfilled" ? result.value : null;
@@ -596,7 +827,7 @@
   var histories = /* @__PURE__ */ new Map();
   var session = null;
   var timer = null;
-  var generation = 0;
+  var generation2 = 0;
   var seconds = 300;
   var key = (s) => s.source + ":" + s.identity;
   var rate = (v) => v == null ? "Aguardando amostra" : `${Number(v).toFixed(2)} Mbps`;
@@ -606,19 +837,22 @@
     histories.set(k, h.slice(-2e3));
   }
   function card(s) {
-    return `<section class="panel" data-stream="${esc(key(s))}"><h3>${esc({ wan: "WAN", lan: "LAN", wifi: "Wi-Fi", wifi_client: "Cliente Wi-Fi" }[s.source] || s.source)}</h3><p class="muted mono">${esc(s.identity)}</p><div class="grid">${[["Taxa RX", "rx_mbps"], ["Taxa TX", "tx_mbps"], ["Recebido", "rx_bytes"], ["Enviado", "tx_bytes"]].map(([label, k]) => `<article class="metric"><label>${label}</label><strong data-value="${k}"></strong></article>`).join("")}</div><p data-sample-status class="muted"></p><svg class="sparkline" viewBox="0 0 600 140" role="img" aria-label="Taxas RX e TX"><polyline data-rx></polyline><polyline data-tx class="upload"></polyline></svg><p class="muted" data-chart-label></p><div class="human-fields">${["rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"].map((k) => `<div class="human-field"><span>${{ rx_packets: "Pacotes RX", tx_packets: "Pacotes TX", rx_errors: "Erros RX", tx_errors: "Erros TX", rx_discard: "Descartes RX", tx_discard: "Descartes TX" }[k]}</span><strong data-value="${k}"></strong></div>`).join("")}</div></section>`;
+    return `<section class="panel" data-stream="${esc(key(s))}"><h3>${esc({ wan: "WAN", lan: "LAN", wifi: "Wi-Fi", wifi_client: "Cliente Wi-Fi" }[s.source] || s.source)}</h3><p class="muted mono">${esc(s.identity)}</p><div class="grid">${[["Taxa RX", "rx_mbps"], ["Taxa TX", "tx_mbps"], ["Recebido", "rx_bytes"], ["Enviado", "tx_bytes"]].map(([label, k]) => `<article class="metric"><label>${label}</label><strong class="tech-value" data-value="${k}"></strong></article>`).join("")}</div><p data-sample-status class="muted"></p><svg class="sparkline" viewBox="0 0 600 140" role="img" aria-label="Taxas RX e TX"><polyline data-rx></polyline><polyline data-tx class="upload"></polyline></svg><p class="muted" data-chart-label></p><div class="human-fields">${["rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"].map((k) => `<div class="human-field"><span>${{ rx_packets: "Pacotes RX", tx_packets: "Pacotes TX", rx_errors: "Erros RX", tx_errors: "Erros TX", rx_discard: "Descartes RX", tx_discard: "Descartes TX" }[k]}</span><strong class="tech-value" data-value="${k}"></strong></div>`).join("")}</div></section>`;
   }
   function setText(el, value) {
-    if (el && el.textContent !== value) el.textContent = value;
+    if (el) {
+      if (el.textContent !== value) el.textContent = value;
+      if (el.matches("[data-value]")) el.classList.toggle("muted", /^(Não disponível|Aguardando)/.test(value));
+    }
   }
   function paint(d) {
     const host = document.querySelector("#traffic-streams");
     if (!host) return;
     const sources = d?.sources || [];
     setText(document.querySelector("#traffic-status"), sources.length ? "Amostras atualizadas." : "Nenhum contador ativo observado nesta sessão.");
-    const active = new Set(sources.map(key));
+    const active2 = new Set(sources.map(key));
     for (const el of host.children) {
-      if (!active.has(el.dataset.stream)) setText(el.querySelector("[data-sample-status]"), "Fonte não observada na última leitura; valores anteriores.");
+      if (!active2.has(el.dataset.stream)) setText(el.querySelector("[data-sample-status]"), "Fonte não observada na última leitura; valores anteriores.");
     }
     for (const s of sources) {
       remember(s);
@@ -655,19 +889,19 @@
     return `<section class="panel"><div class="panel-header"><h2>Tráfego</h2><div class="toolbar"><select id="traffic-period" aria-label="Período"><option value="300">Últimos minutos</option><option value="3600">1 hora</option><option value="86400">24 horas</option></select><button class="button" id="traffic-refresh">Atualizar amostra</button></div></div><p class="muted" id="traffic-status">Aguardando leitura.</p><p class="muted">Contadores por interface; WAN/LAN/Wi-Fi não são somados.</p></section><div id="traffic-streams"></div><section class="panel"><h3>Consumo acumulado por cliente</h3><p id="traffic-ranking" class="muted"></p></section>`;
   }
   function mount6() {
-    const token = ++generation;
+    const token = ++generation2;
     let busy = false;
     const poll = async () => {
-      if (token !== generation || busy) return;
+      if (token !== generation2 || busy) return;
       busy = true;
       try {
         const d = await request("/api/device/traffic");
-        if (token === generation) paint(d);
+        if (token === generation2) paint(d);
       } catch (err) {
-        if (token === generation) setText(document.querySelector("#traffic-status"), err.message);
+        if (token === generation2) setText(document.querySelector("#traffic-status"), err.message);
       } finally {
         busy = false;
-        if (token === generation) {
+        if (token === generation2) {
           clearTimeout(timer);
           timer = setTimeout(poll, 5e3);
         }
@@ -680,7 +914,7 @@
       seconds = Number(period.value);
       try {
         const rows2 = await request("/api/device/traffic/history", { method: "POST", body: JSON.stringify({ seconds }) });
-        if (token !== generation) return;
+        if (token !== generation2) return;
         histories.clear();
         for (const r of rows2) remember(r);
         for (const el of document.querySelector("#traffic-streams").children) {
@@ -694,7 +928,7 @@
     poll();
   }
   function unmount() {
-    generation++;
+    generation2++;
     clearTimeout(timer);
   }
 
@@ -720,7 +954,7 @@
   }
   function mountDiagnostics() {
     const out = document.querySelector("#diagnostic-result");
-    const wire = (selector, path) => {
+    const wire3 = (selector, path) => {
       const form = document.querySelector(selector);
       if (!form || !out) return;
       form.onsubmit = async (e) => {
@@ -738,8 +972,8 @@
         }
       };
     };
-    wire("#ping-form", "/api/device/diagnostics/ping");
-    wire("#trace-form", "/api/device/diagnostics/traceroute");
+    wire3("#ping-form", "/api/device/diagnostics/ping");
+    wire3("#trace-form", "/api/device/diagnostics/traceroute");
   }
   async function deployment() {
     return `<section class="panel"><div class="panel-header"><h2>Implantação</h2></div><div class="notice warning">Workspace destinado a modelo/firmware desconhecido ou capability candidata. Ele não é uma autorização de escrita para operações já suportadas.</div></section>`;
@@ -748,6 +982,7 @@
   // apps/access_manager/static/js/workspaces/app.js
   var mountedRoot = null;
   var workspace = null;
+  var viewStates = /* @__PURE__ */ new Map();
   var meta = {
     overview: ["VISÃO OPERACIONAL", "Visão geral"],
     clients: ["VISÃO OPERACIONAL", "Clientes"],
@@ -783,8 +1018,18 @@
     if (disconnect) disconnect.disabled = !s;
     if (updated) updated.textContent = s?.updated_at ? `Atualizado ${new Date(s.updated_at).toLocaleTimeString()}` : "—";
   }
-  async function render8(name = store.view) {
-    views[store.view]?.unmount?.();
+  async function render8(name = store.view, background = false) {
+    const scope = background ? currentScope() : beginView(name);
+    if (!background) {
+      views[store.view]?.unmount?.();
+      const d = document.querySelector("#action-dialog");
+      if (d?.open) d.close();
+    }
+    const state = { generation: scope.generation, loading: true, error: null };
+    viewStates.set(name, state);
+    scope.controller.signal.addEventListener("abort", () => {
+      state.loading = false;
+    }, { once: true });
     store.view = name;
     document.querySelectorAll(".nav").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
     const [kicker, title] = meta[name] || meta.overview;
@@ -793,15 +1038,23 @@
     if (kickerEl) kickerEl.textContent = kicker;
     if (titleEl) titleEl.textContent = title;
     if (!store.session?.connected && name !== "profiles") {
+      state.loading = false;
       workspace.innerHTML = '<div class="empty-state"><strong>Nenhum equipamento conectado</strong><span>Conecte-se para carregar este workspace.</span></div>';
       return;
     }
-    workspace.innerHTML = '<div class="panel muted">Carregando…</div>';
+    if (!background) workspace.innerHTML = '<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
     try {
       const view = views[name] || views.overview;
-      workspace.innerHTML = await view.render();
+      const html = await view.render();
+      if (!scopeActive(scope)) return;
+      state.loading = false;
+      if (background) patchHTML(workspace, html);
+      else workspace.innerHTML = html;
       view.mount?.();
     } catch (e) {
+      if (!scopeActive(scope) || isCancelled(e)) return;
+      state.loading = false;
+      state.error = e.message;
       workspace.innerHTML = `<div class="notice danger" role="alert">${esc(e.message)}</div>`;
     }
   }
@@ -886,12 +1139,21 @@
       };
     }
     document.addEventListener("refresh-view", () => render8(store.view));
+    let refreshTimer;
+    document.addEventListener("snapshot-updated", (event) => {
+      if (event.detail.generation !== currentScope()?.generation || ["wifi", "profiles", "traffic"].includes(store.view)) return;
+      clearTimeout(refreshTimer);
+      const scope = currentScope();
+      refreshTimer = setTimeout(() => {
+        if (scopeActive(scope)) render8(store.view, true);
+      }, 16);
+    });
     try {
       const s = await request("/api/session");
       store.setSession(s);
       store.setCapabilities(s.session?.capabilities || {});
       syncContext();
-      await render8(s.connected ? "overview" : store.view);
+      await render8(s.connected ? currentScope() ? store.view : "overview" : store.view);
     } catch (error) {
       console.error("[Access Manager] Falha ao consultar sessão inicial:", error);
       await render8(store.view);

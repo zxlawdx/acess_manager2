@@ -77,3 +77,11 @@ dialog.drawer{position:fixed;inset:0 0 0 auto;margin:0;height:100vh;max-height:1
 .profile-include{display:flex;gap:8px;align-items:center;color:var(--text-secondary)}
 .profile-content .toolbar{display:flex;flex-wrap:nowrap;margin-bottom:8px}
 .profile-content .toolbar input{flex:1;min-width:0}
+
+.tech-value,.tech-rate,.tech-address,.tech-radio-value{color:var(--technical-value)}
+.value-success{color:var(--success)}.value-danger{color:var(--danger)}
+.tech-value.muted{color:var(--text-muted)}
+.skeleton{height:18px;margin:12px 0;border-radius:6px;background:linear-gradient(90deg,var(--surface-raised),var(--border),var(--surface-raised));background-size:200% 100%;animation:skeleton-pulse 1.4s ease infinite}
+@keyframes skeleton-pulse{to{background-position:-200% 0}}
+@media(prefers-reduced-motion:reduce){.skeleton{animation:none}}
+.field input:not([name="name"]):not([name="description"]):not([type="password"]),.field select{color:var(--technical-value)}
