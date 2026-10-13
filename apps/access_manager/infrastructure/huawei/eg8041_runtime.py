@@ -488,6 +488,10 @@ class HuaweiEG8041FamilyRuntime:
                 counters = {k: row.get(k) for k in counter_keys if row.get(k) not in (None, "")}
                 if counters:
                     observed.append({"source": source, "identity": row.get("id") or row.get("port") or row.get("nome") or "", "counters": counters})
+        from apps.access_manager.infrastructure.huawei.telemetry import HuaweiTelemetryReader
+        observed.extend(HuaweiTelemetryReader(self.captured).traffic())
+        # One identity/source represents one counter stream, not two totals.
+        observed = list({(r['source'],str(r['identity'])):r for r in observed}.values())
         return {
             "supported": bool(observed),
             "partial": not bool(observed),

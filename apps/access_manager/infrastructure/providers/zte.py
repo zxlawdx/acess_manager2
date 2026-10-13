@@ -66,6 +66,7 @@ class ZTEProvider:
             'reboot',S.SUPPORTED,S.SUPPORTED if is_native else S.UNKNOWN,ev,
             destructive=True,source='zte_device_management.reboot' if is_native else 'writer_not_proven_for_active_model'
         ))
+        items.extend([Capability('dns_hosts',S.SUPPORTED if is_native else S.UNKNOWN,S.SUPPORTED if is_native else S.UNKNOWN,E.IMPLEMENTED,source='legacy_dns_host_upsert_readback'),Capability('dns_hosts_delete',S.UNKNOWN,S.UNKNOWN,E.UNKNOWN,source='delete_writer_not_proven')])
         return CapabilitySet(items)
     def _need(self):
         if self.client is None: raise RuntimeError('ZTE session is not connected')
@@ -86,7 +87,23 @@ class ZTEProvider:
         from apps.access_manager.domain.clients import merge_clients
         return merge_clients(self._need().lan_clients(), self._need().wifi_clients())
     def get_wifi(self, reveal_password=False):
-        c=self._need(); return {'networks':self._f6201b_wifi.list_ssids(c) if self._is_f6201b() and not reveal_password else (c.wifi_networks(reveal_password=True) if reveal_password else c.wifi_networks()), 'radios':c.channel_status()}
+        from apps.access_manager.infrastructure.radio_options import radio_options
+        c=self._need()
+        networks=self._f6201b_wifi.list_ssids(c) if self._is_f6201b() and not reveal_password else (c.wifi_networks(reveal_password=True) if reveal_password else c.wifi_networks())
+        radios=c.channel_status()
+        for r in radios if isinstance(radios,list) else []:
+            options={}
+            try: options.update(radio_options(c.get_view('wlanBasic',Menu3Location=0)))
+            except Exception: pass
+            try:
+                channels=c.available_channels(band=r.get('banda'),country=r.get('pais'))
+                current_width=str(r.get('largura') or '')
+                options['channel']=[{'value':str(n),'label':str(n)} for group in channels if not current_width or str(group.get('largura'))==current_width for n in group.get('canais',[])]
+                widths=list(dict.fromkeys(str(g.get('largura')) for g in channels if g.get('largura') is not None))
+                if widths:options.setdefault('bandwidth',[{'value':w,'label':w} for w in widths])
+            except Exception: pass
+            r['options']=options
+        return {'networks':networks,'radios':radios}
     def get_wan(self): return self._read('wan_status')
     def get_lan(self): return self._read('lan_ports')
     def get_dhcp(self): return self._read('dhcp_status')
@@ -168,3 +185,21 @@ class ZTEProvider:
     def get_firewall(self): return self._need().firewall_management_status()
     def set_firewall(self, config):
         self.capabilities.require_write('firewall'); return self._need().set_firewall_management(config)
+
+    reservation_fields=('name','ip','mac')
+    def save_dhcp_reservation(self, config):
+        self.capabilities.require_write('dhcp_reservations'); return self._need().save_dhcp_reservation(config)
+    def delete_dhcp_reservation(self, identifier):
+        self.capabilities.require_write('dhcp_reservations'); return self._need().delete_dhcp_reservation(identifier)
+
+    dns_host_rename=False
+    def save_dns_host(self, config):
+        self.capabilities.require_write('dns_hosts')
+        from apps.access_manager.infrastructure.zte.protocol.zte_configuration import zte_dns
+        if config.get('id'):
+            row=next((r for r in self.get_dns().get('hosts',[]) if str(r.get('id'))==str(config['id'])),None)
+            if not row: raise ValueError('Host DNS não encontrado')
+            if row.get('nome')!=config['name']: raise ValueError('Renomear exige remover o host antigo; remoção não foi comprovada neste contrato')
+        result=zte_dns._upsert_host(self._need(),{'nome':config['name'],'ip':config['ip']})
+        actual=zte_dns._wait_host_applied(self._need(),config['name'],config['ip'])
+        return {**result,'verified':True,'after':actual}

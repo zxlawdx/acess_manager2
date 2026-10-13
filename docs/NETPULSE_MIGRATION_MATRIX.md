@@ -1,4 +1,4 @@
-# Matriz de migração — baseline
+# Access Manager — matriz de migração
 
 Origem: zxlawdx/acess_manager; destino: zxlawdx/acess_manager2. Cada endpoint abaixo é evidência de uma superfície no legado, não de validação física.
 Origem fixada em `1623bce8717b9b92683cd3904f9c2bd378da400c`; destino baseline `2ddeadf6a340ec574eae9616eb0d0654e44959e4`.
@@ -7,15 +7,15 @@ Esta matriz registra 177 rotas do SOURCE. Rotas sem mapeamento revisado ficam PE
 
 | Comportamento | Origem | Destino | Evidência nesta execução |
 |---|---|---|---|
-| Identidade NetPulse | HTML anexado | tokens.css/app.css, fontes locais e template Vela | DOM; sem inspeção visual de navegador |
+| Identidade Access Manager | referência visual anexada | tokens.css/app.css, fontes locais e template Vela | Chromium real em três resoluções, screenshots |
 | Senha Wi-Fi ZTE | model/zte_configuration/zte_wifi.py | providers/zte.py + query wifi_reveal | regressão de argumento e teste DOM sob demanda |
 | Clientes Huawei/ZTE | runtimes e leitores existentes | adapters, normalização, filtros e drawer | fixtures existentes, dedup MAC e teste DOM |
 | Topologia | clientes reais | overview.js/clients.js | DOM; Mesh por nós ainda pendente |
-| Tráfego | contadores WAN/LAN/clientes já portados | TrafficSampler + traffic.js | taxa, reset, isolamento entre sessões |
+| Tráfego | contadores WAN/LAN/clientes já portados | TrafficSampler + traffic.js | taxa, reset, SQLite/agregação por sessão; polling sem remoção de cards/gráficos/scroll |
 | Diagnósticos | resultados nativos Huawei/ZTE | domain/diagnostics.py + shared/diagnostics.js | estatísticas, timeout, DOM |
 | Sessão ZTE / views | ThinkLua menuView/menuData | operation_lock e retry de leitura | retry único; sem repetição de escrita |
 | Histórico | repositories/history_repository.py, operations/redaction.py | infrastructure/history.py, domain/redaction.py | teste do SOURCE portado; regressão de segredos/outcome |
-| Perfis | serviços provider-neutral existentes | formulário editar/excluir/preview/aplicar | testes backend existentes; cobertura DOM adicional pendente |
+| Perfis | serviços provider-neutral existentes | formulário editar/excluir/preview/aplicar | múltiplos rádios/DNS/DHCP, preview, segredos transitórios e testes DOM/backend |
 
 
 
@@ -153,8 +153,8 @@ Esta matriz registra 177 rotas do SOURCE. Rotas sem mapeamento revisado ficam PE
 | post | /dns/update | presentation/api/network.py | set_dns | /device/dns — writer existente; formulário de alterações parciais |
 | get | /network/dhcp | presentation/api/network.py | dhcp_status | /device/dhcp — reader existente; leases/reservas exibidos |
 | post | /network/dhcp/update | presentation/api/network.py | update_dhcp | /device/dhcp — writer existente; capability preservada |
-| post | /network/dhcp/reservation/save | presentation/api/network.py | save_dhcp_reservation | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
-| post | /network/dhcp/reservation/delete | presentation/api/network.py | delete_dhcp_reservation | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
+| post | /network/dhcp/reservation/save | presentation/api/network.py | save_dhcp_reservation | /device/dhcp/reservations POST — create/update dos writers legados Huawei/ZTE; validação e testes HTTP/DOM; X6 UNKNOWN |
+| post | /network/dhcp/reservation/delete | presentation/api/network.py | delete_dhcp_reservation | /device/dhcp/reservations DELETE — writers legados, confirmação e capability; X6 UNKNOWN |
 | get | /network/port-forwarding | presentation/api/network.py | port_forwarding_status | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | post | /network/port-forwarding/save | presentation/api/network.py | save_port_forward | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | post | /network/port-forwarding/delete | presentation/api/network.py | delete_port_forward | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
@@ -170,7 +170,7 @@ Esta matriz registra 177 rotas do SOURCE. Rotas sem mapeamento revisado ficam PE
 | post | /profiles/named/delete | presentation/api/profiles.py | delete_named_preset | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | post | /profiles/named/apply | presentation/api/profiles.py | apply_named_preset | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | post | /profiles/capture | presentation/api/profiles.py | capture_profile | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
-| post | /profiles/apply | presentation/api/profiles.py | apply_profile | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
+| post | /profiles/apply | presentation/api/profiles.py | apply_profile | /profiles/apply — preview, capability, segredos transitórios e resultados incertos; formato legado ainda parcial |
 | get | /health | presentation/api/system.py | health | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | get | /desktop/capabilities | presentation/api/system.py | desktop_capabilities | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | post | /desktop/clipboard | presentation/api/system.py | desktop_clipboard | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
@@ -178,16 +178,16 @@ Esta matriz registra 177 rotas do SOURCE. Rotas sem mapeamento revisado ficam PE
 | post | /disconnect | presentation/api/system.py | disconnect | /session DELETE — sessão existente preservada |
 | get | /connection/status | presentation/api/system.py | connection_status | /session GET — contrato de sessão existente |
 | get | /debug/security | presentation/api/system.py | security_status | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
-| get | /wan/status | presentation/api/wan.py | wan_status | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
-| get | /wan/pppoe | presentation/api/wan.py | pppoe_status | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
-| get | /clients/wifi | presentation/api/wan.py | wifi_clients | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
-| get | /clients/lan | presentation/api/wan.py | lan_clients | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
-| get | /clients/telemetry | presentation/api/wan.py | client_telemetry | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
-| get | /lan/ports | presentation/api/wan.py | lan_ports | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
+| get | /wan/status | presentation/api/wan.py | wan_status | /device/wan — leitura normalizada Huawei/ZTE, campos humanos e Avançado; CRUD WAN pendente |
+| get | /wan/pppoe | presentation/api/wan.py | pppoe_status | /device/wan — leitura da conexão PPPoE; alterações completas pendentes |
+| get | /clients/wifi | presentation/api/wan.py | wifi_clients | /device/clients — dedup e SSID/banda/hostname/RSSI/SNR quando reconhecidos |
+| get | /clients/lan | presentation/api/wan.py | lan_clients | /device/clients — clientes LAN observados, sem inventar porta/pai |
+| get | /clients/telemetry | presentation/api/wan.py | client_telemetry | PARCIAL: /device/clients e /device/traffic — somente métricas presentes no firmware |
+| get | /lan/ports | presentation/api/wan.py | lan_ports | /device/lan — leitura/link/duplex/negociação; UI e fixtures |
 | get | /wifi/networks | presentation/api/wifi.py | wifi_networks | /device/wifi — leitura existente; revelação sob demanda via POST dedicado |
 | post | /wifi/network/update | presentation/api/wifi.py | set_wifi_network | /device/wifi/ssid — writer existente; envio só de campos alterados; DOM |
 | get | /wifi/radios | presentation/api/wifi.py | get_radios | /device/wifi — seção radios do contrato existente |
-| get | /wifi/channels | presentation/api/wifi.py | get_channels | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
+| get | /wifi/channels | presentation/api/wifi.py | get_channels | /device/wifi — options por rádio a partir do HTML/metadados existentes, sem fallback inventado |
 | post | /wifi/radio/update | presentation/api/wifi.py | set_radio | /device/wifi/radio — writer existente e controles na UI |
 | get | /wifi/power | presentation/api/wifi.py | wifi_power_status | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | post | /wifi/power/update | presentation/api/wifi.py | set_wifi_power | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
@@ -198,3 +198,16 @@ Esta matriz registra 177 rotas do SOURCE. Rotas sem mapeamento revisado ficam PE
 | get | /wifi/band-steering | presentation/api/wifi.py | band_steering_status | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | post | /wifi/band-steering/update | presentation/api/wifi.py | set_band_steering | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
 | post | /wifi/band-steering/configure | presentation/api/wifi.py | configure_band_steering | PENDENTE — exige adaptar serviço/contrato, UI e testes; presença de protocolo no destino não é paridade operacional |
+
+## Superfícies adicionadas na rodada 2
+
+| Superfície | Contrato destino | Estado/evidência |
+|---|---|---|
+| Hosts DNS Huawei | /device/dns/hosts POST/DELETE | Writers capturados create/update/delete; validação, capability, API e testes; X6 bloqueado |
+| Hosts DNS ZTE | /device/dns/hosts POST | F670L/F6600P upsert e readback; renomear/excluir bloqueado sem writer comprovado |
+| Tráfego histórico | /device/traffic/history POST | SQLite por sessão, retenção/agregação e testes de isolamento |
+| Huawei stPacketInfo/WaninfoStats | /device/traffic | Contadores reconhecidos, RX/TX Mbps; fixtures derivadas das referências |
+| Gerenciamento | endpoints /device existentes | Campos humanos, telemetria e histórico; sem ampliar capabilities |
+| Navegação operacional | sidebar | Capabilities/Implantação internas, ocultas; testes DOM |
+
+A tabela das rotas históricas preserva pendências fora deste escopo. Leitura suportada não implica escrita ou validação física. Ver NETPULSE_EXECUTION_REPORT.md para bloqueios por firmware.

@@ -1,0 +1,1 @@
+Fixtures sintéticas de regressão reproduzindo o shape do teste test_huawei_hg8145x6_ontwatch.py do SOURCE; não são captura física nova. Schemas cruzados com EnochT14/ontwatch router.py e siedgustavo/huawei-ont-stats routerstats/router_info.py.

@@ -19,6 +19,7 @@ commands=DeviceCommandBus(sessions); queries=DeviceQueryBus(sessions)
 profiles=ProfileService(
     sessions=sessions,
     commands=commands,
+    queries=queries,
     repository=JsonProfileRepository(data_dir()/"profiles.json"),
     translators={"huawei": HuaweiProfileTranslator(), "zte": ZTEProfileTranslator()},
 )

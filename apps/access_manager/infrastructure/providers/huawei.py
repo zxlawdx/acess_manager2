@@ -181,10 +181,12 @@ class HuaweiProvider:
                     "wifi_basic": "wifi",
                     "wifi_radio": "wifi_radio",
                     "tr069_url": "tr069",
+                    "dhcp_static": "dhcp_reservations",
+                    "dns_host": "dns_hosts",
                 }.get(name, name)
                 wired = {
                     "wifi", "wifi_radio", "dns", "dhcp", "dmz", "tr069",
-                    "firewall_level",
+                    "firewall_level", "dhcp_reservations", "dns_hosts",
                 }
                 write = (
                     S.SUPPORTED
@@ -207,6 +209,9 @@ class HuaweiProvider:
                         source=f"huawei_profile:{profile.key}",
                     )
                 )
+
+            host_spec=profile.captured_features.get('dns_host') or {}
+            items.append(Capability('dns_hosts_delete',S.SUPPORTED if host_spec.get('read') else S.UNKNOWN,S.SUPPORTED if host_spec.get('delete') and host_spec.get('verified') else S.UNKNOWN,E.AUTOMATED_TESTED,source='captured_dns_host_delete_writer'))
 
             ipv = profile.ipv4_filter
             items.append(
@@ -273,10 +278,20 @@ class HuaweiProvider:
             if self.runtime is not None
             else self.captured.wifi_networks(reveal_password=reveal_password)
         )
-        return {
-            "networks": networks,
-            "radios": self.captured.wifi_radios(),
-        }
+        from apps.access_manager.infrastructure.radio_options import radio_options
+        radios=self.captured.wifi_radios()
+        for r in radios:
+            options={}
+            band=r.get('banda') or r.get('band')
+            try:
+                page='/html/amp/wlanadv/WlanAdvance.asp?'+('5G' if '5' in str(band) else '2G')
+                options.update(radio_options(self.captured._page(page)))
+                choices=self.captured.wifi_channels(band=band,bandwidth=r.get('largura'),country=r.get('pais') or 'BR')
+                options['channel']=[{'value':str(n),'label':str(n)} for group in choices if group.get('source')=='firmware' for n in group.get('canais',[])]
+            except Exception: pass
+            r['options']=options
+            r['sgi_write']=False
+        return {'networks':networks,'radios':radios}
 
     def get_wan(self):
         self._need()
@@ -304,12 +319,9 @@ class HuaweiProvider:
         self._need()
         if self.runtime is not None:
             return self.runtime.traffic()
-        return {
-            "supported": False,
-            "partial": True,
-            "sources": [],
-            "reason": "no_counter_source_proven_for_active_huawei_runtime",
-        }
+        from apps.access_manager.infrastructure.huawei.telemetry import HuaweiTelemetryReader
+        sources = HuaweiTelemetryReader(self.captured).traffic()
+        return {'supported':bool(sources),'partial':not bool(sources),'sources':sources}
 
     def set_ssid_config(self, ssid_id, config):
         self.capabilities.require_write("wifi")
@@ -374,3 +386,24 @@ class HuaweiProvider:
         firewall = result.get('firewall') or {}
         enabled = firewall.get('Enable')
         return {'enabled': None if enabled in (None, '') else str(enabled) == '1', 'level': firewall.get('AdvancedLevel'), 'advanced': result}
+
+    reservation_fields=('ip','mac')
+    def save_dhcp_reservation(self, config):
+        self.capabilities.require_write('dhcp_reservations')
+        if config.get('name'): raise ValueError('Nome não é gravável no formulário DHCP Static Huawei capturado')
+        values={'ip':config['ip'],'mac':config['mac']}
+        if config.get('id'): return self.captured.update_dhcp_reservation(config['id'],**values)
+        return self.captured.create_dhcp_reservation(**values)
+    def delete_dhcp_reservation(self, identifier):
+        self.capabilities.require_write('dhcp_reservations')
+        return self.captured.delete_dhcp_reservation(identifier)
+
+    dns_host_rename=True
+    def save_dns_host(self, config):
+        self.capabilities.require_write('dns_hosts')
+        values={'ip':config['ip'],'domain_name':config['name']}
+        if config.get('id'): return self.captured.update_dns_host(config['id'],**values)
+        return self.captured.create_dns_host(**values)
+    def delete_dns_host(self, identifier):
+        self.capabilities.require_write('dns_hosts_delete')
+        return self.captured.delete_dns_host(identifier)

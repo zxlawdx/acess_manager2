@@ -1,4 +1,5 @@
 from .common import *
+from apps.access_manager.domain.redaction import redact_sensitive
 from apps.access_manager.composition import profiles
 
 
@@ -22,11 +23,11 @@ def profile_delete(context=None):
 def profile_preview(context=None):
     data = body(context)
     value = data.get("profile") if "profile" in data else data.get("name")
-    return safe(lambda: profiles.preview(value))
+    return safe(lambda: redact_sensitive(profiles.preview(value)))
 
 
 @api.post("/profiles/apply")
 def profile_apply(context=None):
     data = body(context)
     value = data.get("profile") if "profile" in data else data.get("name")
-    return safe(lambda: profiles.apply(value))
+    return safe(lambda: redact_sensitive(profiles.apply(value,secrets=data.get('secrets'))))
