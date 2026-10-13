@@ -1,0 +1,14 @@
+# Regressions from Legacy
+
+| Feature | Legacy behavior | Next behavior before | Root cause | Fix in this pass | Tests | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Huawei X6 capability routing | AMP/BBSP family selected from authenticated evidence | X6 fell through unknown profile; reads became UNSUPPORTED | capability derived from sparse profile rather than selected runtime | added evidence-driven `HuaweiEG8041FamilyRuntime` and `UNKNOWN` state | `tests/regression/huawei/eg8041x6_10/*` | FIXED |
+| HTTPS on port 80 | explicit `https://host:80` is valid | risk of default HTTPS/443 normalization | transport assumptions | preserved explicit endpoint and regression tests | `test_auth.py` | FIXED |
+| Clients | LAN/WLAN knowledge available from multiple surfaces | concatenation produced duplicates and lost Wi-Fi metadata | no identity merge | MAC-first dedup + partial fallback merge preserving SSID/band/RSSI/SNR/rates/counters | `test_clients.py`, `test_runtime_parity.py` | FIXED |
+| LAN duplex | physical fields distinct from Layer3 admin state | Layer3 fallback emitted `duplex = L3 admin` | column/semantic conflation | separate `admin_state`; unknown physical fields remain empty/unknown | `test_lan.py` | FIXED |
+| Traffic | legacy has WAN/LAN/client counters | hard-coded provider-neutral placeholder | counter sources were not wired | Huawei and ZTE providers now read real legacy counter surfaces | `test_traffic.py` + ZTE code audit | FIXED/PARTIAL WHEN DEVICE RETURNS NO COUNTERS |
+| Diagnostics | native ping/traceroute exist | UI had no executable actions; ZTE write capability blocked commands | provider command surface/capability mismatch | provider-neutral API routes + active frontend forms + known-ZTE write capability | `test_diagnostics.py`, `test_zte_provider.py` | FIXED |
+| Wi-Fi password read | legacy EG8041 family can reveal cleartext when authenticated firmware exposes it | normalized reader always hid it | secret read path was omitted | explicit on-demand endpoint; cleartext not stored in normal snapshot | `test_wifi_read.py` | FIXED |
+| Capability honesty | absence frequently mapped to UNSUPPORTED | false negative capability claims | enum lacked UNKNOWN/defaults were negative | introduced `UNKNOWN`; PARTIAL no longer grants mutation | full suite | FIXED |
+| Huawei X6 reboot | page is known; production writer not proven | UNSUPPORTED/blocked wording implied negative proof | read surface conflated with writer evidence | write remains `UNKNOWN`; no invented mutation | `test_reboot.py` | HONEST GAP |
+| X6 DHCP/DNS/optical | generic legacy readers exist but no X6 fixture in supplied legacy | could be falsely UNSUPPORTED | missing family-specific evidence | runtime probes + UNKNOWN when unproven | `test_dhcp.py`, `test_dns.py`, `test_optical.py` | HONEST GAP |

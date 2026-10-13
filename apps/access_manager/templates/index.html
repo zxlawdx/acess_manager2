@@ -1,0 +1,66 @@
+<!-- Access Manager renderizado dentro do shell Vela (layout blank). -->
+<link rel="stylesheet" href="{{ static('access_manager/css/tokens.css') }}">
+<link rel="stylesheet" href="{{ static('access_manager/css/app.css') }}">
+
+<div class="app-shell">
+  <header class="context-bar" aria-label="Contexto do equipamento">
+    <button id="mobile-nav" class="icon-button mobile-only" aria-label="Abrir navegação">☰</button>
+    <div class="brand">ACCESS <b>MANAGER</b></div>
+    <span class="vendor-badge" id="ctx-vendor">—</span>
+    <div class="device-title"><strong id="ctx-model">Sem equipamento</strong><small id="ctx-host">—</small></div>
+    <span class="status-badge" id="ctx-status">○ Desconectado</span>
+    <small class="context-meta" id="ctx-updated">—</small>
+  </header>
+
+  <div class="layout">
+    <aside id="sidebar" aria-label="Navegação principal">
+      <div class="nav-group">VISÃO OPERACIONAL</div>
+      <button class="nav active" data-view="overview">01 <span>Visão geral</span></button>
+      <button class="nav" data-view="clients">02 <span>Clientes</span></button>
+      <button class="nav" data-view="traffic">03 <span>Tráfego</span></button>
+      <div class="nav-group">REDE</div>
+      <button class="nav" data-view="wifi">04 <span>Wi-Fi e SSIDs</span></button>
+      <button class="nav" data-view="wan">05 <span>WAN</span></button>
+      <button class="nav" data-view="lan">06 <span>LAN</span></button>
+      <button class="nav" data-view="dhcpdns">07 <span>DHCP e DNS</span></button>
+      <div class="nav-group">OPERAÇÕES</div>
+      <button class="nav" data-view="diagnostics">08 <span>Diagnóstico</span></button>
+      <button class="nav" data-view="profiles">09 <span>Perfis</span></button>
+      <button class="nav" data-view="management">10 <span>Gerenciamento</span></button>
+      <div class="nav-group">AVANÇADO</div>
+      <button class="nav" data-view="capabilities"><span>Capabilities</span></button>
+      <button class="nav" data-view="deployment"><span>Implantação</span></button>
+    </aside>
+
+    <main>
+      <section class="connect-strip" aria-label="Conexão">
+        <form id="connect-form" class="connect-form" novalidate>
+          <input name="host" autocomplete="off" placeholder="IP / host[:porta]" aria-label="IP ou host" required>
+          <input name="username" autocomplete="username" placeholder="Usuário" aria-label="Usuário" required>
+          <input name="password" autocomplete="current-password" placeholder="Senha" aria-label="Senha" type="password" required>
+          <input name="model_hint" autocomplete="off" placeholder="Modelo (opcional)" aria-label="Modelo opcional">
+          <label class="transport-toggle" title="Usar HTTPS para acessar a WebUI deste equipamento">
+            <input name="https" type="checkbox" value="true">
+            <span class="transport-toggle-track" aria-hidden="true"><i></i></span>
+            <span>HTTPS</span>
+          </label>
+          <button class="button primary" id="connect-button" type="submit">Conectar</button>
+        </form>
+        <button class="button secondary" id="disconnect-button" type="button" disabled>Desconectar</button>
+      </section>
+
+      <div class="page-heading">
+        <div><small id="page-kicker">VISÃO OPERACIONAL</small><h1 id="page-title">Visão geral</h1></div>
+        <div id="page-actions"></div>
+      </div>
+      <section id="workspace" aria-live="polite">
+        <div class="empty-state"><strong>Nenhum equipamento conectado</strong><span>Informe IP, usuário e senha para iniciar uma sessão.</span></div>
+      </section>
+    </main>
+  </div>
+</div>
+<dialog id="action-dialog" aria-labelledby="dialog-title"><div id="dialog-body"></div></dialog>
+<div id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Runtime clássico único: sem import(), sem ES modules dinâmicos. -->
+<script src="{{ static('access_manager/js/runtime.js') }}"></script>

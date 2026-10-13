@@ -1,0 +1,136 @@
+from __future__ import annotations
+import re
+from apps.access_manager.domain.capabilities import Capability, CapabilitySet, EvidenceLevel as E, SupportStatus as S
+from apps.access_manager.infrastructure.zte.protocol.device import ZTE
+from apps.access_manager.infrastructure.zte.f6201b.f6201b_writes import F6201BWrites
+from apps.access_manager.infrastructure.zte.f6201b.f6201b_dns_writes import F6201BDNS
+from apps.access_manager.infrastructure.zte.f6201b.f6201b_diagnostics import F6201BDiagnostics
+
+class ZTEProvider:
+    vendor='zte'
+    def __init__(self, client_factory=ZTE):
+        self.client_factory=client_factory; self.client=None; self.host=None; self.model=None; self.firmware=None; self._caps=CapabilitySet(); self._f6201b_wifi=F6201BWrites(); self._f6201b_dns=F6201BDNS(); self._f6201b_diag=F6201BDiagnostics()
+    @property
+    def connected(self): return self.client is not None
+    @property
+    def capabilities(self): return self._caps
+    @staticmethod
+    def _compact(x): return re.sub(r'[^A-Z0-9]+','',str(x or '').upper())
+    def connect(self, host, username, password, *, https=False, model_hint=None, **_):
+        self.disconnect(); c=self.client_factory(host,username,password,https=https); c.login(); info=c.device_status(); self.client=c; self.host=host; self.model=info.get('modelo') or model_hint or 'ZTE'; self.firmware=info.get('firmware') or info.get('firmware_extendido'); self._caps=self._build_caps(); known=any(x in self._compact(self.model) for x in ('F670L','F6600P','F6201B')); return {'vendor':'zte','model':self.model,'firmware':self.firmware,'protocol_family':'thinklua','capabilities':self._caps.public(),'mode':'supported' if known else 'deployment'}
+    def disconnect(self):
+        if self.client is not None:
+            try: self.client.logout()
+            except Exception: pass
+        self.client=None; self.host=None; self.model=None; self.firmware=None; self._caps=CapabilitySet(); self._f6201b_wifi.clear(); self._f6201b_dns.clear()
+    def _build_caps(self):
+        compact=self._compact(self.model)
+        is_f6201b='F6201B' in compact
+        is_native=any(x in compact for x in ('F670L','F6600P'))
+        known=is_f6201b or is_native
+        ev=E.AUTOMATED_TESTED if known else E.IMPLEMENTED
+
+        items=[
+            Capability('device',S.SUPPORTED,S.UNKNOWN,ev),
+            Capability('wan',S.SUPPORTED,S.UNKNOWN,ev),
+            Capability('clients',S.SUPPORTED,S.UNKNOWN,ev),
+            Capability('traffic',S.PARTIAL,S.UNKNOWN,E.FIXTURE_VALIDATED,source='zte_wan_lan_client_counters'),
+            Capability('diagnostics',S.SUPPORTED,S.SUPPORTED if known else S.UNKNOWN,ev,source='legacy_ping_traceroute_runtime'),
+            Capability('lan',S.SUPPORTED,S.UNKNOWN,ev),
+            Capability('optical',S.SUPPORTED,S.UNKNOWN,ev),
+        ]
+
+        generic=['wifi','wifi_radio','wifi_power','wifi_schedule','wps','upnp',
+                 'band_steering','dhcp','dhcp_reservations','dns','dmz',
+                 'port_forwarding','mesh','wan_config','firewall','qos','sntp','tr069']
+        if is_native:
+            for name in generic:
+                items.append(Capability(name,S.SUPPORTED,S.SUPPORTED,ev,source='legacy_thinklua_protocol'))
+        elif is_f6201b:
+            # Only the writers actually wired through captured, guarded forms
+            # are promoted. Other captured surfaces remain PARTIAL until their
+            # provider command/read-back path is integrated and tested.
+            items.extend([
+                Capability('wifi',S.SUPPORTED,S.SUPPORTED,E.AUTOMATED_TESTED,source='f6201b_captured_ssid_writer'),
+                Capability('dns',S.SUPPORTED,S.SUPPORTED,E.AUTOMATED_TESTED,source='f6201b_captured_dns_writer'),
+            ])
+            for name in [x for x in generic if x not in {'wifi','dns'}]:
+                items.append(Capability(name,S.SUPPORTED,S.PARTIAL,E.FIXTURE_VALIDATED,source='f6201b_captured_surface_not_yet_wired'))
+        else:
+            for name in generic:
+                items.append(Capability(name,S.SUPPORTED,S.UNKNOWN,E.IMPLEMENTED,source='unidentified_zte_runtime_no_negative_proof'))
+
+        # Reboot is a normal command only for model families whose native
+        # writer is already mapped. F6201B captured reboot is not proven here.
+        items.append(Capability(
+            'reboot',S.SUPPORTED,S.SUPPORTED if is_native else S.UNKNOWN,ev,
+            destructive=True,source='zte_device_management.reboot' if is_native else 'writer_not_proven_for_active_model'
+        ))
+        return CapabilitySet(items)
+    def _need(self):
+        if self.client is None: raise RuntimeError('ZTE session is not connected')
+        return self.client
+    def _is_f6201b(self): return 'F6201B' in self._compact(self.model)
+    def get_device_info(self): return self._need().device_status()
+    def get_clients(self): return list(self._need().wifi_clients())+list(self._need().lan_clients())
+    def get_wifi(self):
+        c=self._need(); return {'networks':self._f6201b_wifi.list_ssids(c) if self._is_f6201b() else c.wifi_networks(), 'radios':c.channel_status()}
+    def get_wan(self): return self._need().wan_status()
+    def get_lan(self): return self._need().lan_ports()
+    def get_dhcp(self): return self._need().dhcp_status()
+    def get_dns(self): return self._f6201b_dns.read(self._need()) if self._is_f6201b() else self._need().dns_status()
+    def get_optical(self): return self._need().optical_status()
+    def get_traffic(self):
+        c=self._need()
+        wan=list(c.wan_status() or [])
+        lan=list(c.lan_ports() or [])
+        wifi=list(c.wifi_clients() or [])
+        sources=[]
+        keys=('rx_bytes','tx_bytes','rx_packets','tx_packets')
+        for source, rows in (('wan',wan),('lan',lan),('wifi_client',wifi)):
+            for row in rows:
+                counters={k:row.get(k) for k in keys if row.get(k) not in (None,'')}
+                if counters:
+                    sources.append({'source':source,'identity':row.get('id') or row.get('port') or row.get('mac') or row.get('nome') or '', 'counters':counters})
+        return {
+            'supported':bool(sources),
+            'partial':not bool(sources),
+            'sources':sources,
+            'wan':wan,
+            'lan':lan,
+            'wifi_clients':wifi,
+            'reason':None if sources else 'legacy_zte_counter_surfaces_returned_no_active_counters',
+        }
+    def set_ssid_config(self, ssid_id, config):
+        self.capabilities.require_write('wifi'); c=self._need()
+        if self._is_f6201b(): return self._f6201b_wifi.apply_changes(c,host=self.host,firmware=self.firmware or '',ssid_id=ssid_id,config=config,original_post=c.session.post)
+        return c.set_ssid_config(ssid_id, config)
+    def set_wifi_radio(self, config):
+        self.capabilities.require_write('wifi_radio'); values=dict(config or {}); band=values.pop('band', values.pop('banda', None))
+        if not band: raise ValueError('band is required for Wi-Fi radio configuration')
+        return self._need().set_radio_config(band, values)
+    def set_dns(self, config):
+        self.capabilities.require_write('dns'); c=self._need()
+        if self._is_f6201b(): return self._f6201b_dns.apply_changes(c,host=self.host,firmware=self.firmware or '',changes=config,original_post=c.session.post)
+        return c.set_dns(config)
+    def set_dhcp(self, config): self.capabilities.require_write('dhcp'); return self._need().set_dhcp_basic(config)
+    def set_wps(self, config):
+        self.capabilities.require_write('wps'); values=dict(config or {}); band=values.get('band') or values.get('banda'); mode=values.get('mode')
+        if band is None or mode is None: raise ValueError('band and mode are required for WPS')
+        return self._need().set_wps(band, mode)
+    def set_upnp(self, config): self.capabilities.require_write('upnp'); return self._need().set_upnp(config)
+    def set_radio_power(self, config):
+        self.capabilities.require_write('wifi_power'); values=dict(config or {}); band=values.get('band') or values.get('banda'); enabled=values.get('enabled')
+        if band is None or enabled is None: raise ValueError('band and enabled are required for radio power')
+        return self._need().set_radio_power(band, bool(enabled))
+    def set_wifi_schedule(self, config): self.capabilities.require_write('wifi_schedule'); return self._need().set_wifi_schedule(config)
+    def set_band_steering(self, config): self.capabilities.require_write('band_steering'); return self._need().set_band_steering(config)
+    def set_dmz(self, config): self.capabilities.require_write('dmz'); return self._need().set_dmz(config)
+    def set_tr069(self, config): self.capabilities.require_write('tr069'); return self._need().set_tr069_management(config)
+    def reboot(self): self.capabilities.require_write('reboot'); return self._need().reboot()
+    def ping(self, config):
+        if self._is_f6201b(): return self._f6201b_diag.execute(self._need(), kind='ping', config=config, original_post=self._need().session.post)
+        return self._need().ping(config)
+    def traceroute(self, config):
+        if self._is_f6201b(): return self._f6201b_diag.execute(self._need(), kind='traceroute', config=config, original_post=self._need().session.post)
+        return self._need().traceroute(config)

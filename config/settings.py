@@ -1,0 +1,9 @@
+APP_TITLE="Access Manager"
+ENTRY_ROUTE="/"
+WINDOW_WIDTH=1480
+WINDOW_HEIGHT=920
+LAYOUT={"sidebar":False,"topbar":False,"theme":"dark"}
+DEBUG=False
+API={"enabled":True,"host":"127.0.0.1","port":8765,"auto_port":True}
+SHELL_MODE="http"
+STATIC_ROOT="staticfiles"

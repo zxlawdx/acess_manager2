@@ -1,0 +1,3794 @@
+[
+  {
+    "model": "EG8010H",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 120
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 171
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 178
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 179
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 179
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 188
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 41
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 41
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 46
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 169
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 63
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 68
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 103
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 124
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 124
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 10
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 43
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 8
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 13
+      }
+    ],
+    "count": 19
+  },
+  {
+    "model": "EG8021",
+    "occurrences": [
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 18
+      }
+    ],
+    "count": 1
+  },
+  {
+    "model": "EG8021V5",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_multirepo_foundation.py",
+        "line": 111
+      },
+      {
+        "file": "tests/test_huawei_multirepo_foundation.py",
+        "line": 147
+      },
+      {
+        "file": "tests/test_huawei_multirepo_foundation.py",
+        "line": 213
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_wifi_domain_runtime.py",
+        "line": 96
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_pon.py",
+        "line": 35
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_pon.py",
+        "line": 79
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 193
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 194
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 24
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 8
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 98
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 85
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 170
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 23
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 35
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 105
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 11
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 37
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 43
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 10
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 11
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 12
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 13
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 15
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 17
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 23
+      }
+    ],
+    "count": 26
+  },
+  {
+    "model": "EG8041",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+        "line": 91
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 44
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 172
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 298
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 318
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_provider.py",
+        "line": 67
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_provider.py",
+        "line": 135
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 50
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 223
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 31
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 83
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 702
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/diagnostic_result.py",
+        "line": 20
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/wifi.py",
+        "line": 76
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/wifi.py",
+        "line": 178
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/wifi.py",
+        "line": 345
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 58
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 61
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 77
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 45
+      },
+      {
+        "file": "docs/huawei/eg8041_https80_auth_hotfix.md",
+        "line": 20
+      },
+      {
+        "file": "docs/huawei/eg8041_https80_auth_hotfix.md",
+        "line": 42
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 1
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 7
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 20
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 40
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 46
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 73
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 31
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 150
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 174
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 43
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 44
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 12
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 14
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 16
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 29
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 31
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 58
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 13
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 16
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 18
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 19
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 20
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 22
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 33
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 34
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 35
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 41
+      }
+    ],
+    "count": 49
+  },
+  {
+    "model": "EG8041X6",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 56
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 87
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/negotiating_client.py",
+        "line": 208
+      },
+      {
+        "file": "tests/fixtures/huawei/eg8041x6_10_local/auth_root_login_rndsecurityformat.html",
+        "line": 4
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 12
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 21
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 27
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 28
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 29
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 30
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 31
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 32
+      }
+    ],
+    "count": 12
+  },
+  {
+    "model": "EG8041X6-10",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_eg8041_family_runtime.py",
+        "line": 152
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_runtime.py",
+        "line": 154
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_runtime.py",
+        "line": 158
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_runtime.py",
+        "line": 162
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_runtime.py",
+        "line": 185
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_runtime.py",
+        "line": 250
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_runtime.py",
+        "line": 325
+      },
+      {
+        "file": "tests/test_f6201b_cross_vendor_probe.py",
+        "line": 14
+      },
+      {
+        "file": "tests/test_f6201b_cross_vendor_probe.py",
+        "line": 32
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_provider.py",
+        "line": 91
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_provider.py",
+        "line": 120
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_provider.py",
+        "line": 233
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_provider.py",
+        "line": 325
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 61
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 230
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 261
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 264
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 309
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 86
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/diagnostic_result.py",
+        "line": 39
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/diagnostic_result.py",
+        "line": 61
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/wifi.py",
+        "line": 79
+      },
+      {
+        "file": "tests/fixtures/huawei/eg8041x6_10_local/device_brebg2.asp",
+        "line": 4
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 22
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 22
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 23
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 23
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 60
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 63
+      },
+      {
+        "file": "docs/huawei/eg8041_https80_auth_hotfix.md",
+        "line": 1
+      },
+      {
+        "file": "docs/huawei/eg8041_https80_auth_hotfix.md",
+        "line": 5
+      },
+      {
+        "file": "docs/huawei/eg8041_https80_auth_hotfix.md",
+        "line": 72
+      },
+      {
+        "file": "docs/huawei/eg8041_https80_auth_hotfix.md",
+        "line": 74
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 7
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 79
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 23
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 33
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 45
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 166
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 7
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 33
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 42
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 7
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 8
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 19
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 20
+      }
+    ],
+    "count": 46
+  },
+  {
+    "model": "EG8041X610",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 87
+      }
+    ],
+    "count": 1
+  },
+  {
+    "model": "EG8041X7",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_captured_features.py",
+        "line": 141
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 171
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 238
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+        "line": 55
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8041x7_runtime.py",
+        "line": 146
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_captured_features.py",
+        "line": 1848
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 125
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei.py",
+        "line": 54
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/detector.py",
+        "line": 59
+      },
+      {
+        "file": "tests/fixtures/huawei_deviceinfo_eg8041x7.html",
+        "line": 6
+      },
+      {
+        "file": "tests/fixtures/huawei_deviceinfo_eg8041x7.html",
+        "line": 10
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 20
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 57
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 97
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 98
+      },
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 3
+      },
+      {
+        "file": ".github/workflows/huawei-session-validation.yml",
+        "line": 7
+      }
+    ],
+    "count": 17
+  },
+  {
+    "model": "EG8041X7-10",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_eg8041x7_runtime.py",
+        "line": 176
+      },
+      {
+        "file": "tests/test_huawei_eg8041x7_runtime.py",
+        "line": 369
+      },
+      {
+        "file": "tests/test_huawei_eg8041x7_runtime.py",
+        "line": 391
+      },
+      {
+        "file": "tests/test_huawei_eg8041x7_runtime.py",
+        "line": 412
+      },
+      {
+        "file": "tests/test_frontend_core.mjs",
+        "line": 248
+      },
+      {
+        "file": "tests/test_frontend_core.mjs",
+        "line": 286
+      },
+      {
+        "file": "tests/test_frontend_core.mjs",
+        "line": 296
+      },
+      {
+        "file": "tests/test_profile_repository.py",
+        "line": 49
+      },
+      {
+        "file": "tests/test_profile_repository.py",
+        "line": 105
+      },
+      {
+        "file": "tests/test_profile_repository.py",
+        "line": 117
+      },
+      {
+        "file": "tests/test_profile_repository.py",
+        "line": 126
+      },
+      {
+        "file": "tests/test_profile_repository.py",
+        "line": 139
+      },
+      {
+        "file": "tests/test_profile_repository.py",
+        "line": 158
+      },
+      {
+        "file": "tests/test_profile_repository.py",
+        "line": 175
+      },
+      {
+        "file": "tests/test_profile_repository.py",
+        "line": 188
+      },
+      {
+        "file": "tests/test_huawei_session_snapshot.py",
+        "line": 38
+      },
+      {
+        "file": "tests/test_huawei_session_snapshot.py",
+        "line": 207
+      },
+      {
+        "file": "tests/test_huawei_mapped_surface.py",
+        "line": 74
+      },
+      {
+        "file": "tests/test_huawei_hg8145x6_ontwatch.py",
+        "line": 144
+      },
+      {
+        "file": "tests/test_huawei_diagnostics.py",
+        "line": 66
+      },
+      {
+        "file": "tests/test_huawei_diagnostics.py",
+        "line": 72
+      },
+      {
+        "file": "tests/test_huawei_ipv4_filter.py",
+        "line": 266
+      },
+      {
+        "file": "tests/test_huawei_captured_features.py",
+        "line": 347
+      },
+      {
+        "file": "tests/test_huawei_captured_features.py",
+        "line": 471
+      },
+      {
+        "file": "tests/test_multivendor_runtime_regressions.py",
+        "line": 36
+      },
+      {
+        "file": "tests/test_multivendor_runtime_regressions.py",
+        "line": 119
+      },
+      {
+        "file": "tests/test_multivendor_runtime_regressions.py",
+        "line": 127
+      },
+      {
+        "file": "tests/test_multivendor_runtime_regressions.py",
+        "line": 161
+      },
+      {
+        "file": "tests/test_multivendor_runtime_regressions.py",
+        "line": 284
+      },
+      {
+        "file": "tests/test_huawei_multirepo_foundation.py",
+        "line": 228
+      },
+      {
+        "file": "tests/test_huawei_eg8041_capture_contract.py",
+        "line": 112
+      },
+      {
+        "file": "tests/test_huawei_eg8041_capture_contract.py",
+        "line": 172
+      },
+      {
+        "file": "tests/test_huawei_eg8041_capture_contract.py",
+        "line": 173
+      },
+      {
+        "file": "tests/test_huawei_dns_physical_state.py",
+        "line": 85
+      },
+      {
+        "file": "tests/test_huawei_dns_physical_state.py",
+        "line": 111
+      },
+      {
+        "file": "tests/test_frontend_capability_policy.mjs",
+        "line": 19
+      },
+      {
+        "file": "tests/test_huawei_response_protocol.py",
+        "line": 191
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 169
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 170
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 178
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 205
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 217
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 225
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 257
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 308
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 386
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 410
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 426
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 445
+      },
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 461
+      }
+    ],
+    "count": 102
+  },
+  {
+    "model": "EG8041X710",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_provider_architecture.py",
+        "line": 173
+      },
+      {
+        "file": "apps/zte_manager/services/profile_service.py",
+        "line": 141
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 125
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei.py",
+        "line": 56
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/detector.py",
+        "line": 224
+      }
+    ],
+    "count": 5
+  },
+  {
+    "model": "EG8141A5",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 304
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 25
+      }
+    ],
+    "count": 2
+  },
+  {
+    "model": "EG8145",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 280
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 27
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 20
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 43
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 13
+      }
+    ],
+    "count": 5
+  },
+  {
+    "model": "EG8145V5",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 27
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 55
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 61
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 69
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 70
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 85
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 123
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 126
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 137
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 140
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 146
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 148
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 149
+      },
+      {
+        "file": "tests/test_huawei_multirepo_foundation.py",
+        "line": 67
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 68
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 69
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 70
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 71
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 74
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 93
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 119
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 153
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 32
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 283
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 687
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 712
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 209
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 210
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 224
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 225
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 232
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 233
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 233
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 243
+      },
+      {
+        "file": "tests/fixtures/huawei/phase2/eg8145v5_deviceinfo.asp",
+        "line": 5
+      },
+      {
+        "file": "tests/fixtures/huawei/phase2/eg8145v5_deviceinfo.asp",
+        "line": 5
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 27
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 29
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 30
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 30
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 31
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 31
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 34
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 34
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 73
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 64
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 76
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 98
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 37
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 48
+      }
+    ],
+    "count": 69
+  },
+  {
+    "model": "EG8145X6",
+    "occurrences": [
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 96
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 107
+      }
+    ],
+    "count": 2
+  },
+  {
+    "model": "EG8145X6-10",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 249
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 257
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 28
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 28
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 79
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 81
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 82
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 97
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 49
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 49
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 174
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 14
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 7
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 8
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 26
+      }
+    ],
+    "count": 15
+  },
+  {
+    "model": "F401",
+    "occurrences": [
+      {
+        "file": "launcher.py",
+        "line": 119
+      },
+      {
+        "file": "launcher.py",
+        "line": 120
+      },
+      {
+        "file": "launcher.py",
+        "line": 121
+      },
+      {
+        "file": "launcher.py",
+        "line": 122
+      },
+      {
+        "file": "launcher.py",
+        "line": 123
+      },
+      {
+        "file": "launcher.py",
+        "line": 124
+      },
+      {
+        "file": "launcher.py",
+        "line": 148
+      },
+      {
+        "file": "launcher.py",
+        "line": 149
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 14
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 15
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 16
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 17
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 18
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 19
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 20
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 21
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 22
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 23
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 24
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 25
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 26
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 27
+      },
+      {
+        "file": "apps/zte_manager/schemas.py",
+        "line": 8
+      }
+    ],
+    "count": 23
+  },
+  {
+    "model": "F403",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 14
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 15
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 16
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 17
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 18
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 19
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 20
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 21
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 22
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 23
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 24
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 25
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 26
+      },
+      {
+        "file": "apps/zte_manager/api.py",
+        "line": 27
+      },
+      {
+        "file": "apps/zte_manager/schemas.py",
+        "line": 8
+      }
+    ],
+    "count": 15
+  },
+  {
+    "model": "F6107A",
+    "occurrences": [
+      {
+        "file": "README.md",
+        "line": 380
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 364
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 365
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 366
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 367
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 368
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 369
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 370
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 371
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 372
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 373
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 374
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 375
+      }
+    ],
+    "count": 13
+  },
+  {
+    "model": "F6201B",
+    "occurrences": [
+      {
+        "file": "tools/f6201b_apply_capture.js",
+        "line": 2
+      },
+      {
+        "file": "tools/f6201b_apply_capture.js",
+        "line": 108
+      },
+      {
+        "file": "tools/f6201b_apply_capture.js",
+        "line": 165
+      },
+      {
+        "file": "tools/f6201b_apply_capture.js",
+        "line": 187
+      },
+      {
+        "file": "tools/f6201b_apply_capture.js",
+        "line": 189
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 6
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 52
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 74
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 112
+      },
+      {
+        "file": "docs/F6201B_EXPERIMENTAL_WRITES.md",
+        "line": 1
+      },
+      {
+        "file": "docs/F6201B_EXPERIMENTAL_WRITES.md",
+        "line": 48
+      },
+      {
+        "file": "docs/F6201B_EXPERIMENTAL_WRITES.md",
+        "line": 52
+      },
+      {
+        "file": "docs/F6201B_EXPERIMENTAL_WRITES.md",
+        "line": 58
+      },
+      {
+        "file": "docs/F6201B_EXPERIMENTAL_WRITES.md",
+        "line": 83
+      },
+      {
+        "file": "docs/F6201B_EXPERIMENTAL_WRITES.md",
+        "line": 98
+      },
+      {
+        "file": "docs/frontend-css-architecture.md",
+        "line": 21
+      },
+      {
+        "file": "docs/frontend-css-architecture.md",
+        "line": 24
+      },
+      {
+        "file": "docs/frontend-css-architecture.md",
+        "line": 175
+      },
+      {
+        "file": "docs/F6600P_LIVE_DIAGNOSTIC_LIGHT_MODE_FIX.md",
+        "line": 45
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 4
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 38
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 39
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 41
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 62
+      },
+      {
+        "file": "docs/F6600P_DHCP_TR069_PROVIDER_NAMED_PRESETS.md",
+        "line": 70
+      },
+      {
+        "file": "docs/F6201B_WORKBENCH_STATUS.md",
+        "line": 1
+      },
+      {
+        "file": "docs/F6201B_WORKBENCH_STATUS.md",
+        "line": 90
+      },
+      {
+        "file": "docs/ACCESS_MANAGER_CAPABILITY_AUDIT.md",
+        "line": 15
+      },
+      {
+        "file": "docs/ACCESS_MANAGER_CAPABILITY_AUDIT.md",
+        "line": 29
+      },
+      {
+        "file": "docs/ACCESS_MANAGER_CAPABILITY_AUDIT.md",
+        "line": 47
+      },
+      {
+        "file": "docs/ACCESS_MANAGER_CAPABILITY_AUDIT.md",
+        "line": 60
+      },
+      {
+        "file": "docs/ACCESS_MANAGER_CAPABILITY_AUDIT.md",
+        "line": 63
+      },
+      {
+        "file": "docs/ACCESS_MANAGER_CAPABILITY_AUDIT.md",
+        "line": 66
+      },
+      {
+        "file": "docs/ACCESS_MANAGER_CAPABILITY_AUDIT.md",
+        "line": 83
+      },
+      {
+        "file": "tests/test_f6201b_operator_reads.py",
+        "line": 1
+      },
+      {
+        "file": "tests/test_session_restore.cjs",
+        "line": 66
+      },
+      {
+        "file": "tests/test_readonly_profile_regression.cjs",
+        "line": 1
+      },
+      {
+        "file": "tests/test_readonly_profile_regression.cjs",
+        "line": 108
+      },
+      {
+        "file": "tests/test_f6201b_writes.py",
+        "line": 1
+      },
+      {
+        "file": "tests/test_f6201b_writes.py",
+        "line": 122
+      },
+      {
+        "file": "tests/test_f6201b_writes.py",
+        "line": 132
+      },
+      {
+        "file": "tests/test_f6201b_writes.py",
+        "line": 147
+      },
+      {
+        "file": "tests/test_f6201b_profile_ui.cjs",
+        "line": 1
+      },
+      {
+        "file": "tests/test_f6201b_profile_ui.cjs",
+        "line": 16
+      },
+      {
+        "file": "tests/test_f6201b_profile_ui.cjs",
+        "line": 18
+      },
+      {
+        "file": "tests/test_f6201b_profile_ui.cjs",
+        "line": 19
+      },
+      {
+        "file": "tests/test_f6201b_profile_ui.cjs",
+        "line": 38
+      },
+      {
+        "file": "tests/test_f6201b_profile_ui.cjs",
+        "line": 40
+      },
+      {
+        "file": "tests/test_f6201b_workbench.py",
+        "line": 71
+      },
+      {
+        "file": "tests/test_light_mode_refine.cjs",
+        "line": 48
+      }
+    ],
+    "count": 487
+  },
+  {
+    "model": "F660",
+    "occurrences": [
+      {
+        "file": "README.md",
+        "line": 379
+      }
+    ],
+    "count": 1
+  },
+  {
+    "model": "F6600",
+    "occurrences": [
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 66
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 69
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 70
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 71
+      }
+    ],
+    "count": 4
+  },
+  {
+    "model": "F6600P",
+    "occurrences": [
+      {
+        "file": "CHANGELOG.md",
+        "line": 49
+      },
+      {
+        "file": "README.md",
+        "line": 3
+      },
+      {
+        "file": "README.md",
+        "line": 43
+      },
+      {
+        "file": "README.md",
+        "line": 383
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 18
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 37
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 59
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 111
+      },
+      {
+        "file": "docs/F6201B_EXPERIMENTAL_WRITES.md",
+        "line": 84
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 16
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 27
+      },
+      {
+        "file": "docs/F6600P_LIVE_DIAGNOSTIC_LIGHT_MODE_FIX.md",
+        "line": 1
+      },
+      {
+        "file": "docs/F6600P_LIVE_DIAGNOSTIC_LIGHT_MODE_FIX.md",
+        "line": 5
+      },
+      {
+        "file": "docs/F6600P_LIVE_DIAGNOSTIC_LIGHT_MODE_FIX.md",
+        "line": 10
+      },
+      {
+        "file": "docs/F6600P_LIVE_DIAGNOSTIC_LIGHT_MODE_FIX.md",
+        "line": 28
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 6
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 19
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 36
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 53
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 37
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 95
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 28
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 43
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 60
+      },
+      {
+        "file": "docs/F6600P_DHCP_TR069_PROVIDER_NAMED_PRESETS.md",
+        "line": 1
+      },
+      {
+        "file": "docs/F6600P_DHCP_TR069_PROVIDER_NAMED_PRESETS.md",
+        "line": 5
+      },
+      {
+        "file": "docs/F6600P_DHCP_TR069_PROVIDER_NAMED_PRESETS.md",
+        "line": 85
+      },
+      {
+        "file": "docs/UI_LAYOUT_FIX_2026-09-29.md",
+        "line": 70
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 3
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 35
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 90
+      },
+      {
+        "file": "docs/F6201B_WORKBENCH_STATUS.md",
+        "line": 6
+      },
+      {
+        "file": "tests/test_provider_diagnostics_ui.cjs",
+        "line": 101
+      },
+      {
+        "file": "tests/test_session_restore.cjs",
+        "line": 55
+      },
+      {
+        "file": "tests/test_session_restore.cjs",
+        "line": 60
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 66
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 67
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 82
+      },
+      {
+        "file": "tests/test_f6600p_support_progress.py",
+        "line": 1
+      },
+      {
+        "file": "tests/test_frontend_core.mjs",
+        "line": 63
+      },
+      {
+        "file": "tests/test_frontend_core.mjs",
+        "line": 64
+      },
+      {
+        "file": "tests/test_frontend_core.mjs",
+        "line": 68
+      },
+      {
+        "file": "tests/test_connection_inventory.cjs",
+        "line": 51
+      },
+      {
+        "file": "tests/test_connection_inventory.cjs",
+        "line": 52
+      },
+      {
+        "file": "tests/test_f6201b_candidate.py",
+        "line": 49
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 53
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 66
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 77
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 83
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 84
+      }
+    ],
+    "count": 158
+  },
+  {
+    "model": "F6600R",
+    "occurrences": [
+      {
+        "file": "README.md",
+        "line": 379
+      }
+    ],
+    "count": 1
+  },
+  {
+    "model": "F6640",
+    "occurrences": [
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 19
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 26
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 26
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 27
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 6
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 6
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 18
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 42
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 61
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 27
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 27
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 28
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 29
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 42
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 53
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 68
+      },
+      {
+        "file": "tests/test_model_diagnostics.py",
+        "line": 129
+      },
+      {
+        "file": "tests/test_multimodel_discovery.py",
+        "line": 40
+      },
+      {
+        "file": "tests/test_multimodel_discovery.py",
+        "line": 76
+      },
+      {
+        "file": "tests/test_discovery_bootstrap.cjs",
+        "line": 51
+      },
+      {
+        "file": "tests/test_f6600p_advanced_ui.cjs",
+        "line": 45
+      },
+      {
+        "file": "tests/test_f6201b_view_binding.py",
+        "line": 14
+      },
+      {
+        "file": "apps/zte_manager/services/zte_service.py",
+        "line": 818
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 29
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 75
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 75
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 75
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 75
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 76
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 76
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 88
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 91
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 232
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 424
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 428
+      },
+      {
+        "file": "apps/zte_manager/services/model_diagnostic_service.py",
+        "line": 273
+      },
+      {
+        "file": "apps/zte_manager/templates/index.html",
+        "line": 288
+      },
+      {
+        "file": "apps/zte_manager/templates/index.html",
+        "line": 288
+      },
+      {
+        "file": "apps/zte_manager/static/js/advanced.js",
+        "line": 1097
+      },
+      {
+        "file": "apps/zte_manager/static/js/advanced.js",
+        "line": 1113
+      },
+      {
+        "file": "apps/zte_manager/templates/source/pages/connection.html",
+        "line": 68
+      },
+      {
+        "file": "apps/zte_manager/templates/source/pages/connection.html",
+        "line": 68
+      }
+    ],
+    "count": 42
+  },
+  {
+    "model": "F6645P",
+    "occurrences": [
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 26
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 6
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 18
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 27
+      },
+      {
+        "file": "tests/test_device_tr069_workflow.cjs",
+        "line": 23
+      },
+      {
+        "file": "tests/test_device_tr069_workflow.cjs",
+        "line": 36
+      },
+      {
+        "file": "tests/test_device_tr069_workflow.cjs",
+        "line": 41
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 53
+      },
+      {
+        "file": "tests/test_multimodel_discovery.py",
+        "line": 40
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 75
+      },
+      {
+        "file": "apps/zte_manager/templates/index.html",
+        "line": 289
+      },
+      {
+        "file": "apps/zte_manager/templates/index.html",
+        "line": 289
+      },
+      {
+        "file": "apps/zte_manager/templates/source/pages/connection.html",
+        "line": 69
+      },
+      {
+        "file": "apps/zte_manager/templates/source/pages/connection.html",
+        "line": 69
+      }
+    ],
+    "count": 14
+  },
+  {
+    "model": "F670",
+    "occurrences": [
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 73
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 74
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 75
+      }
+    ],
+    "count": 3
+  },
+  {
+    "model": "F670L",
+    "occurrences": [
+      {
+        "file": "CHANGELOG.md",
+        "line": 9
+      },
+      {
+        "file": "CHANGELOG.md",
+        "line": 47
+      },
+      {
+        "file": "CHANGELOG.md",
+        "line": 49
+      },
+      {
+        "file": "README.md",
+        "line": 3
+      },
+      {
+        "file": "README.md",
+        "line": 43
+      },
+      {
+        "file": "README.md",
+        "line": 110
+      },
+      {
+        "file": "README.md",
+        "line": 114
+      },
+      {
+        "file": "README.md",
+        "line": 381
+      },
+      {
+        "file": "README.md",
+        "line": 381
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 18
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 37
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 59
+      },
+      {
+        "file": "docs/PHASE2_RUNTIME_REGISTRAR_CLIPBOARD.md",
+        "line": 111
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 16
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 19
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 32
+      },
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 32
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 12
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 24
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 36
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 38
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 53
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 37
+      },
+      {
+        "file": "docs/DEVICE_ADAPTER_PHASE1.md",
+        "line": 95
+      },
+      {
+        "file": "docs/F670L-WINDOWS-COMPAT.md",
+        "line": 1
+      },
+      {
+        "file": "docs/F670L-WINDOWS-COMPAT.md",
+        "line": 15
+      },
+      {
+        "file": "docs/F670L-WINDOWS-COMPAT.md",
+        "line": 15
+      },
+      {
+        "file": "docs/F670L-WINDOWS-COMPAT.md",
+        "line": 17
+      },
+      {
+        "file": "docs/F670L-WINDOWS-COMPAT.md",
+        "line": 29
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 35
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 3
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 132
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 134
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 301
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 360
+      },
+      {
+        "file": "docs/PROTOCOL.md",
+        "line": 377
+      },
+      {
+        "file": "docs/F6201B_WORKBENCH_STATUS.md",
+        "line": 6
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 73
+      },
+      {
+        "file": "tests/test_native_readonly_diagnostics.cjs",
+        "line": 82
+      },
+      {
+        "file": "tests/test_f6201b_candidate.py",
+        "line": 49
+      },
+      {
+        "file": "tests/test_cpe_management.py",
+        "line": 37
+      },
+      {
+        "file": "tests/test_cpe_management.py",
+        "line": 56
+      },
+      {
+        "file": "tests/test_cpe_management.py",
+        "line": 248
+      },
+      {
+        "file": "tests/test_inventory_view.cjs",
+        "line": 113
+      },
+      {
+        "file": "tests/test_windows_compat.py",
+        "line": 48
+      },
+      {
+        "file": "tests/test_support_diagnostics.py",
+        "line": 251
+      },
+      {
+        "file": "tests/test_huawei_eg8041_family_provider.py",
+        "line": 20
+      },
+      {
+        "file": "tests/test_model_ui_isolation.cjs",
+        "line": 1
+      },
+      {
+        "file": "tests/test_model_ui_isolation.cjs",
+        "line": 59
+      },
+      {
+        "file": "tests/test_model_ui_isolation.cjs",
+        "line": 59
+      }
+    ],
+    "count": 127
+  },
+  {
+    "model": "F680",
+    "occurrences": [
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 26
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 6
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 18
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 27
+      },
+      {
+        "file": "tests/test_connection_inventory.cjs",
+        "line": 53
+      },
+      {
+        "file": "tests/test_connection_inventory.cjs",
+        "line": 54
+      },
+      {
+        "file": "tests/test_connection_inventory.cjs",
+        "line": 69
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 53
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 67
+      },
+      {
+        "file": "tests/test_multimodel_discovery.py",
+        "line": 40
+      },
+      {
+        "file": "tests/test_api_error_policy.py",
+        "line": 45
+      },
+      {
+        "file": "tests/test_api_error_policy.py",
+        "line": 47
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 75
+      },
+      {
+        "file": "apps/zte_manager/templates/index.html",
+        "line": 290
+      },
+      {
+        "file": "apps/zte_manager/templates/index.html",
+        "line": 290
+      },
+      {
+        "file": "apps/zte_manager/templates/source/pages/connection.html",
+        "line": 70
+      },
+      {
+        "file": "apps/zte_manager/templates/source/pages/connection.html",
+        "line": 70
+      }
+    ],
+    "count": 17
+  },
+  {
+    "model": "F8748",
+    "occurrences": [
+      {
+        "file": "docs/AUDITORIA_FUNCOES_ZTE_2026.md",
+        "line": 26
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 6
+      },
+      {
+        "file": "docs/MULTIMODEL_ZTE.md",
+        "line": 18
+      },
+      {
+        "file": "docs/ZTE_TRACKER_DISCOVERY.md",
+        "line": 29
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 53
+      },
+      {
+        "file": "tests/test_tracker_capability_detection.py",
+        "line": 65
+      },
+      {
+        "file": "tests/test_model_diagnostics.py",
+        "line": 100
+      },
+      {
+        "file": "tests/test_multimodel_discovery.py",
+        "line": 40
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 76
+      },
+      {
+        "file": "apps/zte_manager/services/multimodel_service.py",
+        "line": 161
+      },
+      {
+        "file": "apps/zte_manager/templates/index.html",
+        "line": 292
+      },
+      {
+        "file": "apps/zte_manager/templates/index.html",
+        "line": 292
+      },
+      {
+        "file": "apps/zte_manager/templates/source/pages/connection.html",
+        "line": 72
+      },
+      {
+        "file": "apps/zte_manager/templates/source/pages/connection.html",
+        "line": 72
+      }
+    ],
+    "count": 14
+  },
+  {
+    "model": "F9999",
+    "occurrences": [
+      {
+        "file": "tests/test_model_diagnostics.py",
+        "line": 117
+      }
+    ],
+    "count": 1
+  },
+  {
+    "model": "HG8010",
+    "occurrences": [
+      {
+        "file": "docs/huawei/eg8041_family_runtime.md",
+        "line": 40
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 167
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 35
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 37
+      }
+    ],
+    "count": 4
+  },
+  {
+    "model": "HG8010H",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 92
+      },
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 114
+      },
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 116
+      },
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 119
+      },
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 241
+      },
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 254
+      },
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 275
+      },
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 278
+      },
+      {
+        "file": "tests/test_huawei_hg8010_telemetry.py",
+        "line": 280
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 145
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 146
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 146
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 167
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 170
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 171
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 172
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 188
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/protocol.py",
+        "line": 93
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 32
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 33
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 35
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 36
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 36
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 37
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 40
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 40
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 41
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 41
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 76
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 46
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 63
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 74
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 98
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 167
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 168
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 169
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 24
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 31
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 33
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 63
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 68
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 68
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 79
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 103
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 104
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 124
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 124
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 9
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 10
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 43
+      }
+    ],
+    "count": 57
+  },
+  {
+    "model": "HG8012H",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 278
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 18
+      }
+    ],
+    "count": 2
+  },
+  {
+    "model": "HG8145X6",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_hg8145x6_ontwatch.py",
+        "line": 141
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 31
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 51
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 225
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 560
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 585
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+        "line": 33
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 17
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 45
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 69
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 75
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 76
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 77
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 78
+      },
+      {
+        "file": ".github/workflows/huawei-phase0-phase1-validation.yml",
+        "line": 62
+      },
+      {
+        "file": ".github/workflows/huawei-hg8145x6-ontwatch-validation.yml",
+        "line": 1
+      },
+      {
+        "file": ".github/workflows/huawei-hg8145x6-ontwatch-validation.yml",
+        "line": 10
+      },
+      {
+        "file": ".github/workflows/huawei-hg8145x6-ontwatch-validation.yml",
+        "line": 39
+      }
+    ],
+    "count": 18
+  },
+  {
+    "model": "HG8145X6-10",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_hg8145x6_phase1.py",
+        "line": 111
+      },
+      {
+        "file": "tests/test_huawei_hg8145x6_phase1.py",
+        "line": 124
+      },
+      {
+        "file": "tests/test_huawei_hg8145x6_ontwatch.py",
+        "line": 85
+      },
+      {
+        "file": "tests/test_huawei_hg8145x6_ontwatch.py",
+        "line": 141
+      },
+      {
+        "file": "tests/test_huawei_hg8145x6_ontwatch.py",
+        "line": 141
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+        "line": 36
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+        "line": 41
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+        "line": 238
+      },
+      {
+        "file": "docs/huawei/phase0_phase1_evidence.md",
+        "line": 17
+      }
+    ],
+    "count": 9
+  },
+  {
+    "model": "HG8145X610",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 51
+      }
+    ],
+    "count": 1
+  },
+  {
+    "model": "HG8240H5",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 279
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 19
+      }
+    ],
+    "count": 2
+  },
+  {
+    "model": "HG8245",
+    "occurrences": [
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 95
+      }
+    ],
+    "count": 1
+  },
+  {
+    "model": "HG8245H",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 128
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 132
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 203
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 241
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 245
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 254
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 255
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 256
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 269
+      },
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 270
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 240
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 328
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 522
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 33
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 369
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 414
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 552
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 706
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 746
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8245h_runtime.py",
+        "line": 37
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8245h_runtime.py",
+        "line": 51
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8245h_runtime.py",
+        "line": 80
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8245h_runtime.py",
+        "line": 83
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8245h_runtime.py",
+        "line": 162
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 277
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/auth.py",
+        "line": 110
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/family_client.py",
+        "line": 119
+      },
+      {
+        "file": "tests/fixtures/huawei/phase3/deviceinfo.xml",
+        "line": 3
+      },
+      {
+        "file": "tests/fixtures/huawei/phase3/login_sha256.html",
+        "line": 2
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 95
+      },
+      {
+        "file": "docs/huawei/phase3_hg8245h_dual_protocol.md",
+        "line": 1
+      },
+      {
+        "file": "docs/huawei/phase3_hg8245h_dual_protocol.md",
+        "line": 5
+      },
+      {
+        "file": "docs/huawei/phase3_hg8245h_dual_protocol.md",
+        "line": 38
+      },
+      {
+        "file": "docs/huawei/phase3_hg8245h_dual_protocol.md",
+        "line": 49
+      },
+      {
+        "file": "docs/huawei/phase3_hg8245h_dual_protocol.md",
+        "line": 80
+      },
+      {
+        "file": "docs/huawei/phase3_hg8245h_dual_protocol.md",
+        "line": 89
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 17
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 99
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 108
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 110
+      },
+      {
+        "file": ".github/workflows/huawei-phase3-validation.yml",
+        "line": 19
+      },
+      {
+        "file": ".github/workflows/huawei-phase3-validation.yml",
+        "line": 48
+      }
+    ],
+    "count": 42
+  },
+  {
+    "model": "HG8245H5",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 270
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 273
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 26
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 26
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 45
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 47
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 48
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 100
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 110
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 175
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 51
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 16
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 37
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 37
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 38
+      }
+    ],
+    "count": 15
+  },
+  {
+    "model": "HG8245Q2",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_phase3_hg8245h.py",
+        "line": 247
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 301
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 22
+      }
+    ],
+    "count": 3
+  },
+  {
+    "model": "HG8245U",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 305
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 26
+      }
+    ],
+    "count": 2
+  },
+  {
+    "model": "HG8245X6",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_phase4_hg8245x6_affinity.py",
+        "line": 93
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 262
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 306
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 306
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/transport.py",
+        "line": 138
+      },
+      {
+        "file": "apps/zte_manager/infrastructure/huawei/transport.py",
+        "line": 152
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 25
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 29
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 47
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 66
+      },
+      {
+        "file": "docs/huawei/firmware_families.md",
+        "line": 173
+      },
+      {
+        "file": "docs/huawei/phase4_hg8245x6_affinity.md",
+        "line": 1
+      },
+      {
+        "file": "docs/huawei/phase4_hg8245x6_affinity.md",
+        "line": 5
+      },
+      {
+        "file": "docs/huawei/phase4_hg8245x6_affinity.md",
+        "line": 119
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 25
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 106
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 15
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 27
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 37
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 8
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 25
+      },
+      {
+        "file": "docs/huawei/endpoints.md",
+        "line": 36
+      },
+      {
+        "file": ".github/workflows/huawei-phase4-validation.yml",
+        "line": 18
+      },
+      {
+        "file": ".github/workflows/huawei-phase4-validation.yml",
+        "line": 47
+      }
+    ],
+    "count": 24
+  },
+  {
+    "model": "HG8347R",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_phase5_hg8347r_lab.py",
+        "line": 98
+      },
+      {
+        "file": "tests/test_huawei_phase5_hg8347r_lab.py",
+        "line": 122
+      },
+      {
+        "file": "tests/test_huawei_phase5_hg8347r_lab.py",
+        "line": 134
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 21
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 70
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 95
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 135
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 161
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 196
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+        "line": 223
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 13
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 22
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 23
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 77
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 83
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 87
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 93
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 135
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+        "line": 150
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 1
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 3
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 5
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 5
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 9
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 20
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 20
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 119
+      },
+      {
+        "file": "docs/huawei/phase5_hg8347r_lab_mode.md",
+        "line": 153
+      },
+      {
+        "file": ".github/workflows/huawei-phase5-validation.yml",
+        "line": 17
+      },
+      {
+        "file": ".github/workflows/huawei-phase5-validation.yml",
+        "line": 46
+      }
+    ],
+    "count": 30
+  },
+  {
+    "model": "HG8546M",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 302
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 23
+      }
+    ],
+    "count": 2
+  },
+  {
+    "model": "HN8010",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 280
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 98
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 96
+      }
+    ],
+    "count": 3
+  },
+  {
+    "model": "HN8010T",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 300
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 300
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 64
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 21
+      }
+    ],
+    "count": 4
+  },
+  {
+    "model": "HN8010TS",
+    "occurrences": [
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 27
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 27
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 34
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 92
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 107
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 115
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 169
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 171
+      },
+      {
+        "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+        "line": 172
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 77
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 78
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 79
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 80
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 106
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+        "line": 136
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 32
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 283
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 687
+      },
+      {
+        "file": "apps/zte_manager/services/huawei_unified_provider.py",
+        "line": 712
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 281
+      },
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 282
+      },
+      {
+        "file": "tests/fixtures/huawei/phase2/hn8010ts_deviceinfo.asp",
+        "line": 5
+      },
+      {
+        "file": "tests/fixtures/huawei/phase2/hn8010ts_deviceinfo.asp",
+        "line": 5
+      },
+      {
+        "file": "docs/huawei/research_registry.md",
+        "line": 27
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 64
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 69
+      },
+      {
+        "file": "docs/huawei/external_references.md",
+        "line": 76
+      },
+      {
+        "file": "docs/huawei/capability_matrix.md",
+        "line": 96
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 20
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 1
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 5
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 37
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 41
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 52
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 58
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 66
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 72
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 74
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 82
+      },
+      {
+        "file": "docs/huawei/phase2_eg8145v5_hn8010ts.md",
+        "line": 87
+      },
+      {
+        "file": ".github/workflows/huawei-phase2-validation.yml",
+        "line": 15
+      },
+      {
+        "file": ".github/workflows/huawei-phase2-validation.yml",
+        "line": 41
+      }
+    ],
+    "count": 42
+  },
+  {
+    "model": "HS8145V5",
+    "occurrences": [
+      {
+        "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+        "line": 303
+      },
+      {
+        "file": "docs/huawei/model_matrix.md",
+        "line": 24
+      }
+    ],
+    "count": 2
+  },
+  {
+    "model": "ZXHN F6201B",
+    "occurrences": [
+      {
+        "file": "tests/test_f6201b_candidate.py",
+        "line": 38
+      },
+      {
+        "file": "tests/test_multimodel_discovery.py",
+        "line": 60
+      },
+      {
+        "file": "tests/test_f6600p_advanced_ui.cjs",
+        "line": 111
+      },
+      {
+        "file": "tests/test_phase2_integration.py",
+        "line": 166
+      },
+      {
+        "file": "tests/test_phase2_integration.py",
+        "line": 383
+      },
+      {
+        "file": "tests/test_phase2_integration.py",
+        "line": 401
+      },
+      {
+        "file": "tests/test_phase2_integration.py",
+        "line": 414
+      }
+    ],
+    "count": 7
+  },
+  {
+    "model": "ZXHN F6600P",
+    "occurrences": [
+      {
+        "file": "docs/F6600P_LIVE_DIAGNOSTIC_LIGHT_MODE_FIX.md",
+        "line": 10
+      },
+      {
+        "file": "tests/test_discovery_bootstrap.cjs",
+        "line": 47
+      },
+      {
+        "file": "tests/test_f6600p_advanced_ui.cjs",
+        "line": 41
+      },
+      {
+        "file": "tests/test_f6600p_advanced_ui.cjs",
+        "line": 61
+      },
+      {
+        "file": "apps/zte_manager/static/js/advanced.js",
+        "line": 800
+      }
+    ],
+    "count": 5
+  },
+  {
+    "model": "ZXHN F670L",
+    "occurrences": [
+      {
+        "file": "tests/test_device_adapters.py",
+        "line": 14
+      },
+      {
+        "file": "tests/test_phase2_integration.py",
+        "line": 33
+      },
+      {
+        "file": "tests/test_phase2_integration.py",
+        "line": 192
+      },
+      {
+        "file": "tests/test_phase2_integration.py",
+        "line": 241
+      }
+    ],
+    "count": 4
+  }
+]

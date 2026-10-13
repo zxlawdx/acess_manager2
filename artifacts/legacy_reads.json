@@ -1,0 +1,3960 @@
+[
+  {
+    "file": "apps/zte_manager/application/contracts/device.py",
+    "line": 29,
+    "kind": "class",
+    "name": "DeviceInfo",
+    "qualified": "DeviceInfo",
+    "decorators": [
+      "dataclass(frozen=True, slots=True)"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/application/contracts/device.py",
+    "line": 46,
+    "kind": "method",
+    "name": "read_info",
+    "qualified": "DeviceAdapter.read_info",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/application/contracts/device.py",
+    "line": 47,
+    "kind": "method",
+    "name": "get_lan_config",
+    "qualified": "DeviceAdapter.get_lan_config",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/application/contracts/device.py",
+    "line": 49,
+    "kind": "method",
+    "name": "get_wifi_config",
+    "qualified": "DeviceAdapter.get_wifi_config",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/huawei/auth.py",
+    "line": 151,
+    "kind": "method",
+    "name": "parse_session_token_info",
+    "qualified": "ApiSesTokenAuth.parse_session_token_info",
+    "decorators": [
+      "classmethod"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/huawei/cli.py",
+    "line": 75,
+    "kind": "function",
+    "name": "probe_tcp_port",
+    "qualified": "probe_tcp_port",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/huawei/client.py",
+    "line": 431,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "HuaweiWebClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/huawei/detector.py",
+    "line": 85,
+    "kind": "method",
+    "name": "detect_authenticated",
+    "qualified": "HuaweiDetector.detect_authenticated",
+    "decorators": [
+      "classmethod"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/huawei/family_client.py",
+    "line": 559,
+    "kind": "method",
+    "name": "get_api_page",
+    "qualified": "HuaweiFamilyAwareWebClient.get_api_page",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/huawei/family_client.py",
+    "line": 600,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "HuaweiFamilyAwareWebClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/huawei/wifi.py",
+    "line": 56,
+    "kind": "function",
+    "name": "_channels_or_fallback",
+    "qualified": "_channels_or_fallback",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/zte/adapters/thinklua_device.py",
+    "line": 212,
+    "kind": "method",
+    "name": "read_device_status",
+    "qualified": "ThinkLuaDeviceAdapter.read_device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/zte/adapters/thinklua_device.py",
+    "line": 220,
+    "kind": "method",
+    "name": "read_info",
+    "qualified": "ThinkLuaDeviceAdapter.read_info",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/zte/adapters/thinklua_device.py",
+    "line": 223,
+    "kind": "method",
+    "name": "get_lan_config",
+    "qualified": "ThinkLuaDeviceAdapter.get_lan_config",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/zte/adapters/thinklua_device.py",
+    "line": 232,
+    "kind": "method",
+    "name": "get_wifi_config",
+    "qualified": "ThinkLuaDeviceAdapter.get_wifi_config",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/infrastructure/zte/firmware_policy.py",
+    "line": 84,
+    "kind": "method",
+    "name": "recognition_status",
+    "qualified": "FirmwarePolicy.recognition_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/device_adapters/huawei.py",
+    "line": 230,
+    "kind": "function",
+    "name": "resolve_huawei_profile",
+    "qualified": "resolve_huawei_profile",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/device_adapters/huawei_registry.py",
+    "line": 310,
+    "kind": "function",
+    "name": "resolve_huawei_model_knowledge",
+    "qualified": "resolve_huawei_model_knowledge",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/telemetry.py",
+    "line": 8,
+    "kind": "class",
+    "name": "PonStatus",
+    "qualified": "PonStatus",
+    "decorators": [
+      "dataclass(frozen=True)"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/model/telemetry.py",
+    "line": 66,
+    "kind": "class",
+    "name": "OpticalTelemetry",
+    "qualified": "OpticalTelemetry",
+    "decorators": [
+      "dataclass(frozen=True)"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/model/telemetry.py",
+    "line": 87,
+    "kind": "class",
+    "name": "DeviceResourceTelemetry",
+    "qualified": "DeviceResourceTelemetry",
+    "decorators": [
+      "dataclass(frozen=True)"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 85,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "ZTE.get_view",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 92,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "ZTE.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 103,
+    "kind": "method",
+    "name": "device_status_raw",
+    "qualified": "ZTE.device_status_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 106,
+    "kind": "method",
+    "name": "wan_status_raw",
+    "qualified": "ZTE.wan_status_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 109,
+    "kind": "method",
+    "name": "wifi_status_raw",
+    "qualified": "ZTE.wifi_status_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 112,
+    "kind": "method",
+    "name": "optical_status_raw",
+    "qualified": "ZTE.optical_status_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 115,
+    "kind": "method",
+    "name": "wifi_clients_raw",
+    "qualified": "ZTE.wifi_clients_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 118,
+    "kind": "method",
+    "name": "lan_clients_raw",
+    "qualified": "ZTE.lan_clients_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 121,
+    "kind": "method",
+    "name": "lan_ports_raw",
+    "qualified": "ZTE.lan_ports_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 127,
+    "kind": "method",
+    "name": "dns_status_raw",
+    "qualified": "ZTE.dns_status_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 130,
+    "kind": "method",
+    "name": "wan_config_raw",
+    "qualified": "ZTE.wan_config_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 215,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "ZTE.device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 289,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "ZTE.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 309,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "ZTE.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 366,
+    "kind": "method",
+    "name": "lan_clients",
+    "qualified": "ZTE.lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 398,
+    "kind": "method",
+    "name": "lan_ports",
+    "qualified": "ZTE.lan_ports",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 407,
+    "kind": "method",
+    "name": "channel_status",
+    "qualified": "ZTE.channel_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 458,
+    "kind": "method",
+    "name": "available_channels",
+    "qualified": "ZTE.available_channels",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 535,
+    "kind": "method",
+    "name": "radio_power_status",
+    "qualified": "ZTE.radio_power_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 551,
+    "kind": "method",
+    "name": "wifi_schedule_status",
+    "qualified": "ZTE.wifi_schedule_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 565,
+    "kind": "method",
+    "name": "wps_status",
+    "qualified": "ZTE.wps_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 581,
+    "kind": "method",
+    "name": "upnp_status",
+    "qualified": "ZTE.upnp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 595,
+    "kind": "method",
+    "name": "mesh_status",
+    "qualified": "ZTE.mesh_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 614,
+    "kind": "method",
+    "name": "band_steering_status",
+    "qualified": "ZTE.band_steering_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 641,
+    "kind": "method",
+    "name": "dhcp_status",
+    "qualified": "ZTE.dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 673,
+    "kind": "method",
+    "name": "port_forwarding_status",
+    "qualified": "ZTE.port_forwarding_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 696,
+    "kind": "method",
+    "name": "dmz_status",
+    "qualified": "ZTE.dmz_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 714,
+    "kind": "method",
+    "name": "qos_status",
+    "qualified": "ZTE.qos_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 741,
+    "kind": "method",
+    "name": "firewall_management_status",
+    "qualified": "ZTE.firewall_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 791,
+    "kind": "method",
+    "name": "sntp_management_status",
+    "qualified": "ZTE.sntp_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 805,
+    "kind": "method",
+    "name": "tr069_management_status",
+    "qualified": "ZTE.tr069_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 819,
+    "kind": "method",
+    "name": "wan_configurations",
+    "qualified": "ZTE.wan_configurations",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 853,
+    "kind": "method",
+    "name": "wan_action",
+    "qualified": "ZTE.wan_action",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 875,
+    "kind": "method",
+    "name": "firmware_management_status",
+    "qualified": "ZTE.firmware_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 902,
+    "kind": "method",
+    "name": "dns_status",
+    "qualified": "ZTE.dns_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 917,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "ZTE.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 927,
+    "kind": "method",
+    "name": "account_status",
+    "qualified": "ZTE.account_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 954,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "ZTE.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 999,
+    "kind": "method",
+    "name": "pppoe_status",
+    "qualified": "ZTE.pppoe_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte.py",
+    "line": 1028,
+    "kind": "method",
+    "name": "wifi_neighbor_scan",
+    "qualified": "ZTE.wifi_neighbor_scan",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_advanced.py",
+    "line": 9,
+    "kind": "function",
+    "name": "radio_power_status",
+    "qualified": "radio_power_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_advanced.py",
+    "line": 210,
+    "kind": "function",
+    "name": "wifi_schedule_status",
+    "qualified": "wifi_schedule_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_advanced.py",
+    "line": 374,
+    "kind": "function",
+    "name": "wps_status",
+    "qualified": "wps_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_advanced.py",
+    "line": 549,
+    "kind": "function",
+    "name": "upnp_status",
+    "qualified": "upnp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_advanced.py",
+    "line": 801,
+    "kind": "function",
+    "name": "band_steering_status",
+    "qualified": "band_steering_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_clients.py",
+    "line": 1,
+    "kind": "function",
+    "name": "wifi_clients",
+    "qualified": "wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_clients.py",
+    "line": 8,
+    "kind": "function",
+    "name": "lan_clients",
+    "qualified": "lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_connection_status.py",
+    "line": 1,
+    "kind": "function",
+    "name": "device_status",
+    "qualified": "device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_connection_status.py",
+    "line": 12,
+    "kind": "function",
+    "name": "wan_status",
+    "qualified": "wan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_device_management.py",
+    "line": 14,
+    "kind": "function",
+    "name": "optical_raw",
+    "qualified": "optical_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_device_management.py",
+    "line": 30,
+    "kind": "function",
+    "name": "optical_status",
+    "qualified": "optical_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_device_management.py",
+    "line": 142,
+    "kind": "function",
+    "name": "account_status",
+    "qualified": "account_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_dns.py",
+    "line": 13,
+    "kind": "function",
+    "name": "dns_status_raw",
+    "qualified": "dns_status_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_dns.py",
+    "line": 35,
+    "kind": "function",
+    "name": "dns_hosts_raw",
+    "qualified": "dns_hosts_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_dns.py",
+    "line": 54,
+    "kind": "function",
+    "name": "dns_status",
+    "qualified": "dns_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_get_menu.py",
+    "line": 6,
+    "kind": "function",
+    "name": "get_view",
+    "qualified": "get_view",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_get_menu.py",
+    "line": 50,
+    "kind": "function",
+    "name": "get_menu",
+    "qualified": "get_menu",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_lan.py",
+    "line": 33,
+    "kind": "function",
+    "name": "lan_ports_raw",
+    "qualified": "lan_ports_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_lan.py",
+    "line": 44,
+    "kind": "function",
+    "name": "lan_ports",
+    "qualified": "lan_ports",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_management.py",
+    "line": 152,
+    "kind": "function",
+    "name": "qos_status",
+    "qualified": "qos_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_management.py",
+    "line": 256,
+    "kind": "function",
+    "name": "firewall_status",
+    "qualified": "firewall_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_management.py",
+    "line": 529,
+    "kind": "function",
+    "name": "sntp_status",
+    "qualified": "sntp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_management.py",
+    "line": 590,
+    "kind": "function",
+    "name": "tr069_status",
+    "qualified": "tr069_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_management.py",
+    "line": 910,
+    "kind": "function",
+    "name": "wan_configurations",
+    "qualified": "wan_configurations",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_management.py",
+    "line": 1601,
+    "kind": "function",
+    "name": "wan_action",
+    "qualified": "wan_action",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_management.py",
+    "line": 1801,
+    "kind": "function",
+    "name": "firmware_status",
+    "qualified": "firmware_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_mesh.py",
+    "line": 354,
+    "kind": "function",
+    "name": "mesh_status",
+    "qualified": "mesh_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_network_management.py",
+    "line": 298,
+    "kind": "function",
+    "name": "dhcp_status",
+    "qualified": "dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_network_management.py",
+    "line": 553,
+    "kind": "function",
+    "name": "port_forwarding_status",
+    "qualified": "port_forwarding_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_network_management.py",
+    "line": 605,
+    "kind": "function",
+    "name": "dmz_status",
+    "qualified": "dmz_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_support_diagnostics.py",
+    "line": 56,
+    "kind": "function",
+    "name": "wifi_neighbor_scan",
+    "qualified": "wifi_neighbor_scan",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_wan_config.py",
+    "line": 11,
+    "kind": "function",
+    "name": "wan_config_raw",
+    "qualified": "wan_config_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_wan_config.py",
+    "line": 37,
+    "kind": "function",
+    "name": "pppoe_status",
+    "qualified": "pppoe_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_wifi.py",
+    "line": 136,
+    "kind": "function",
+    "name": "wifi_status",
+    "qualified": "wifi_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_wifi.py",
+    "line": 148,
+    "kind": "function",
+    "name": "wifi_networks",
+    "qualified": "wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/model/zte_configuration/zte_wlan_channel_configuration.py",
+    "line": 131,
+    "kind": "function",
+    "name": "get_channel",
+    "qualified": "get_channel",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/capabilities.py",
+    "line": 293,
+    "kind": "function",
+    "name": "read_feature",
+    "qualified": "read_feature",
+    "decorators": [
+      "api.get('/features/read')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/devices.py",
+    "line": 5,
+    "kind": "function",
+    "name": "device_status",
+    "qualified": "device_status",
+    "decorators": [
+      "api.get('/device/status')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/devices.py",
+    "line": 10,
+    "kind": "function",
+    "name": "optical_status",
+    "qualified": "optical_status",
+    "decorators": [
+      "api.get('/device/optical')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/devices.py",
+    "line": 15,
+    "kind": "function",
+    "name": "account_status",
+    "qualified": "account_status",
+    "decorators": [
+      "api.get('/device/accounts')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/f6201b.py",
+    "line": 25,
+    "kind": "function",
+    "name": "f6201b_write_status",
+    "qualified": "f6201b_write_status",
+    "decorators": [
+      "api.get('/f6201b/write/status')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/f6201b.py",
+    "line": 83,
+    "kind": "function",
+    "name": "f6201b_dns_status",
+    "qualified": "f6201b_dns_status",
+    "decorators": [
+      "api.get('/f6201b/dns/status')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/huawei_lab.py",
+    "line": 5,
+    "kind": "function",
+    "name": "huawei_lab_status",
+    "qualified": "huawei_lab_status",
+    "decorators": [
+      "api.get('/huawei/lab')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/management_artifacts.py",
+    "line": 54,
+    "kind": "function",
+    "name": "management_firmware_status",
+    "qualified": "management_firmware_status",
+    "decorators": [
+      "api.get('/management/firmware/status')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/management_artifacts.py",
+    "line": 70,
+    "kind": "function",
+    "name": "management_acs_status",
+    "qualified": "management_acs_status",
+    "decorators": [
+      "api.get('/management/acs')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/management_core.py",
+    "line": 168,
+    "kind": "function",
+    "name": "management_monitor_status",
+    "qualified": "management_monitor_status",
+    "decorators": [
+      "api.get('/management/monitor/status')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/management_network.py",
+    "line": 10,
+    "kind": "function",
+    "name": "management_mesh_status",
+    "qualified": "management_mesh_status",
+    "decorators": [
+      "api.get('/management/mesh')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/management_network.py",
+    "line": 124,
+    "kind": "function",
+    "name": "list_tr069_providers",
+    "qualified": "list_tr069_providers",
+    "decorators": [
+      "api.get('/tr069/providers')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/network.py",
+    "line": 5,
+    "kind": "function",
+    "name": "upnp_status",
+    "qualified": "upnp_status",
+    "decorators": [
+      "api.get('/upnp')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/network.py",
+    "line": 18,
+    "kind": "function",
+    "name": "dns_status",
+    "qualified": "dns_status",
+    "decorators": [
+      "api.get('/dns/status')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/network.py",
+    "line": 33,
+    "kind": "function",
+    "name": "dhcp_status",
+    "qualified": "dhcp_status",
+    "decorators": [
+      "api.get('/network/dhcp')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/network.py",
+    "line": 62,
+    "kind": "function",
+    "name": "port_forwarding_status",
+    "qualified": "port_forwarding_status",
+    "decorators": [
+      "api.get('/network/port-forwarding')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/network.py",
+    "line": 83,
+    "kind": "function",
+    "name": "dmz_status",
+    "qualified": "dmz_status",
+    "decorators": [
+      "api.get('/network/dmz')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/profiles.py",
+    "line": 17,
+    "kind": "function",
+    "name": "get_profile",
+    "qualified": "get_profile",
+    "decorators": [
+      "api.post('/profiles/get')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/profiles.py",
+    "line": 40,
+    "kind": "function",
+    "name": "list_named_presets",
+    "qualified": "list_named_presets",
+    "decorators": [
+      "api.post('/profiles/named/list')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/profiles.py",
+    "line": 48,
+    "kind": "function",
+    "name": "get_named_preset",
+    "qualified": "get_named_preset",
+    "decorators": [
+      "api.post('/profiles/named/get')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/system.py",
+    "line": 52,
+    "kind": "function",
+    "name": "connection_status",
+    "qualified": "connection_status",
+    "decorators": [
+      "api.get('/connection/status')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/system.py",
+    "line": 58,
+    "kind": "function",
+    "name": "security_status",
+    "qualified": "security_status",
+    "decorators": [
+      "api.get('/debug/security')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wan.py",
+    "line": 5,
+    "kind": "function",
+    "name": "wan_status",
+    "qualified": "wan_status",
+    "decorators": [
+      "api.get('/wan/status')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wan.py",
+    "line": 10,
+    "kind": "function",
+    "name": "pppoe_status",
+    "qualified": "pppoe_status",
+    "decorators": [
+      "api.get('/wan/pppoe')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wan.py",
+    "line": 21,
+    "kind": "function",
+    "name": "wifi_clients",
+    "qualified": "wifi_clients",
+    "decorators": [
+      "api.get('/clients/wifi')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wan.py",
+    "line": 26,
+    "kind": "function",
+    "name": "lan_clients",
+    "qualified": "lan_clients",
+    "decorators": [
+      "api.get('/clients/lan')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wan.py",
+    "line": 31,
+    "kind": "function",
+    "name": "lan_ports",
+    "qualified": "lan_ports",
+    "decorators": [
+      "api.get('/lan/ports')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wifi.py",
+    "line": 5,
+    "kind": "function",
+    "name": "wifi_networks",
+    "qualified": "wifi_networks",
+    "decorators": [
+      "api.get('/wifi/networks')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wifi.py",
+    "line": 29,
+    "kind": "function",
+    "name": "get_radios",
+    "qualified": "get_radios",
+    "decorators": [
+      "api.get('/wifi/radios')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wifi.py",
+    "line": 34,
+    "kind": "function",
+    "name": "get_channels",
+    "qualified": "get_channels",
+    "decorators": [
+      "api.get('/wifi/channels')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wifi.py",
+    "line": 59,
+    "kind": "function",
+    "name": "wifi_power_status",
+    "qualified": "wifi_power_status",
+    "decorators": [
+      "api.get('/wifi/power')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wifi.py",
+    "line": 72,
+    "kind": "function",
+    "name": "wifi_schedule_status",
+    "qualified": "wifi_schedule_status",
+    "decorators": [
+      "api.get('/wifi/schedule')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wifi.py",
+    "line": 85,
+    "kind": "function",
+    "name": "wifi_wps_status",
+    "qualified": "wifi_wps_status",
+    "decorators": [
+      "api.get('/wifi/wps')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/presentation/api/wifi.py",
+    "line": 98,
+    "kind": "function",
+    "name": "band_steering_status",
+    "qualified": "band_steering_status",
+    "decorators": [
+      "api.get('/wifi/band-steering')"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 511,
+    "kind": "method",
+    "name": "list_devices",
+    "qualified": "ManagementRepository.list_devices",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 582,
+    "kind": "method",
+    "name": "get_device",
+    "qualified": "ManagementRepository.get_device",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 738,
+    "kind": "method",
+    "name": "list_profiles",
+    "qualified": "ManagementRepository.list_profiles",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 752,
+    "kind": "method",
+    "name": "get_profile",
+    "qualified": "ManagementRepository.get_profile",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 851,
+    "kind": "method",
+    "name": "list_agents",
+    "qualified": "ManagementRepository.list_agents",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 861,
+    "kind": "method",
+    "name": "get_agent",
+    "qualified": "ManagementRepository.get_agent",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 969,
+    "kind": "method",
+    "name": "list_remote_sessions",
+    "qualified": "ManagementRepository.list_remote_sessions",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 1075,
+    "kind": "method",
+    "name": "get_batch_job",
+    "qualified": "ManagementRepository.get_batch_job",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 1089,
+    "kind": "method",
+    "name": "list_batch_jobs",
+    "qualified": "ManagementRepository.list_batch_jobs",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 1178,
+    "kind": "method",
+    "name": "get_monitor",
+    "qualified": "ManagementRepository.get_monitor",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 1277,
+    "kind": "method",
+    "name": "list_incidents",
+    "qualified": "ManagementRepository.list_incidents",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 1362,
+    "kind": "method",
+    "name": "list_firmware",
+    "qualified": "ManagementRepository.list_firmware",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 1425,
+    "kind": "method",
+    "name": "list_backups",
+    "qualified": "ManagementRepository.list_backups",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 1490,
+    "kind": "method",
+    "name": "list_provisioning_events",
+    "qualified": "ManagementRepository.list_provisioning_events",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/repositories/management_repository.py",
+    "line": 1551,
+    "kind": "method",
+    "name": "get_setting",
+    "qualified": "ManagementRepository.get_setting",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/attendance_report_service.py",
+    "line": 526,
+    "kind": "method",
+    "name": "_final_status",
+    "qualified": "AttendanceReportService._final_status",
+    "decorators": [
+      "staticmethod"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/services/automatic_diagnostic_service.py",
+    "line": 333,
+    "kind": "method",
+    "name": "_overall_status",
+    "qualified": "AutomaticDiagnosticService._overall_status",
+    "decorators": [
+      "staticmethod"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/services/capability_service.py",
+    "line": 244,
+    "kind": "method",
+    "name": "probe_many",
+    "qualified": "ThinkLuaCapabilityGateway.probe_many",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/cpe_management_service.py",
+    "line": 677,
+    "kind": "method",
+    "name": "monitor_status",
+    "qualified": "CPEManagementService.monitor_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/cpe_management_service.py",
+    "line": 790,
+    "kind": "method",
+    "name": "mesh_status",
+    "qualified": "CPEManagementService.mesh_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/cpe_management_service.py",
+    "line": 986,
+    "kind": "method",
+    "name": "wan_create",
+    "qualified": "CPEManagementService.wan_create",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/cpe_management_service.py",
+    "line": 1003,
+    "kind": "method",
+    "name": "wan_update",
+    "qualified": "CPEManagementService.wan_update",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/cpe_management_service.py",
+    "line": 1024,
+    "kind": "method",
+    "name": "wan_delete",
+    "qualified": "CPEManagementService.wan_delete",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/cpe_management_service.py",
+    "line": 1036,
+    "kind": "method",
+    "name": "wan_action",
+    "qualified": "CPEManagementService.wan_action",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/cpe_management_service.py",
+    "line": 1213,
+    "kind": "method",
+    "name": "acs_status",
+    "qualified": "CPEManagementService.acs_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/desktop_capabilities.py",
+    "line": 15,
+    "kind": "function",
+    "name": "get_desktop_capabilities",
+    "qualified": "get_desktop_capabilities",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/device_service.py",
+    "line": 287,
+    "kind": "method",
+    "name": "status",
+    "qualified": "DeviceService.status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/device_service.py",
+    "line": 349,
+    "kind": "method",
+    "name": "probe_capabilities",
+    "qualified": "DeviceService.probe_capabilities",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/device_service.py",
+    "line": 360,
+    "kind": "method",
+    "name": "read_capability",
+    "qualified": "DeviceService.read_capability",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/device_service.py",
+    "line": 382,
+    "kind": "method",
+    "name": "list_ipv4_filters",
+    "qualified": "DeviceService.list_ipv4_filters",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/f6201b_dhcp.py",
+    "line": 64,
+    "kind": "function",
+    "name": "status",
+    "qualified": "status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/f6201b_writes.py",
+    "line": 117,
+    "kind": "method",
+    "name": "list_ssids",
+    "qualified": "ExperimentalF6201BWrites.list_ssids",
+    "decorators": [
+      "staticmethod"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+    "line": 192,
+    "kind": "method",
+    "name": "clients",
+    "qualified": "HuaweiAffinityUnifiedProvider.clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+    "line": 204,
+    "kind": "method",
+    "name": "lan_clients",
+    "qualified": "HuaweiAffinityUnifiedProvider.lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+    "line": 212,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "HuaweiAffinityUnifiedProvider.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_affinity_provider.py",
+    "line": 237,
+    "kind": "method",
+    "name": "lab_status",
+    "qualified": "HuaweiAffinityUnifiedProvider.lab_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 527,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "HuaweiCapturedFeatureService.device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 603,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "HuaweiCapturedFeatureService.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 674,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "HuaweiCapturedFeatureService.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 752,
+    "kind": "method",
+    "name": "pppoe_status",
+    "qualified": "HuaweiCapturedFeatureService.pppoe_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 812,
+    "kind": "method",
+    "name": "lan_clients",
+    "qualified": "HuaweiCapturedFeatureService.lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 884,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "HuaweiCapturedFeatureService.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 1020,
+    "kind": "method",
+    "name": "lan_ports",
+    "qualified": "HuaweiCapturedFeatureService.lan_ports",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 1099,
+    "kind": "method",
+    "name": "layer3_status",
+    "qualified": "HuaweiCapturedFeatureService.layer3_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 1183,
+    "kind": "method",
+    "name": "lan_ipv4_status",
+    "qualified": "HuaweiCapturedFeatureService.lan_ipv4_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 1301,
+    "kind": "method",
+    "name": "ipv6_lan_status",
+    "qualified": "HuaweiCapturedFeatureService.ipv6_lan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 1406,
+    "kind": "method",
+    "name": "dhcp_status",
+    "qualified": "HuaweiCapturedFeatureService.dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 1739,
+    "kind": "method",
+    "name": "dns_status",
+    "qualified": "HuaweiCapturedFeatureService.dns_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 2259,
+    "kind": "method",
+    "name": "dmz_status",
+    "qualified": "HuaweiCapturedFeatureService.dmz_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 2356,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "HuaweiCapturedFeatureService.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 2740,
+    "kind": "method",
+    "name": "wifi_radios",
+    "qualified": "HuaweiCapturedFeatureService.wifi_radios",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 2856,
+    "kind": "method",
+    "name": "wifi_channels",
+    "qualified": "HuaweiCapturedFeatureService.wifi_channels",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3153,
+    "kind": "method",
+    "name": "radio_power_status",
+    "qualified": "HuaweiCapturedFeatureService.radio_power_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3182,
+    "kind": "method",
+    "name": "tr069_management_status",
+    "qualified": "HuaweiCapturedFeatureService.tr069_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3273,
+    "kind": "method",
+    "name": "firewall_level_status",
+    "qualified": "HuaweiCapturedFeatureService.firewall_level_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3292,
+    "kind": "method",
+    "name": "firewall_management_status",
+    "qualified": "HuaweiCapturedFeatureService.firewall_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3321,
+    "kind": "method",
+    "name": "alg_status",
+    "qualified": "HuaweiCapturedFeatureService.alg_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3392,
+    "kind": "method",
+    "name": "igmp_status",
+    "qualified": "HuaweiCapturedFeatureService.igmp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3426,
+    "kind": "method",
+    "name": "dos_status",
+    "qualified": "HuaweiCapturedFeatureService.dos_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3474,
+    "kind": "method",
+    "name": "ipv6_firewall_status",
+    "qualified": "HuaweiCapturedFeatureService.ipv6_firewall_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_captured_features.py",
+    "line": 3523,
+    "kind": "method",
+    "name": "internet_control_status",
+    "qualified": "HuaweiCapturedFeatureService.internet_control_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_cli_telemetry.py",
+    "line": 143,
+    "kind": "function",
+    "name": "parse_wap_pon_status",
+    "qualified": "parse_wap_pon_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_cli_telemetry.py",
+    "line": 159,
+    "kind": "class",
+    "name": "HuaweiCliTelemetryReader",
+    "qualified": "HuaweiCliTelemetryReader",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_cli_telemetry.py",
+    "line": 187,
+    "kind": "method",
+    "name": "pon_status",
+    "qualified": "HuaweiCliTelemetryReader.pon_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_provider.py",
+    "line": 141,
+    "kind": "method",
+    "name": "channel_status",
+    "qualified": "HuaweiEG8041FamilyProvider.channel_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_provider.py",
+    "line": 144,
+    "kind": "method",
+    "name": "available_channels",
+    "qualified": "HuaweiEG8041FamilyProvider.available_channels",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_provider.py",
+    "line": 157,
+    "kind": "method",
+    "name": "wifi_neighbor_scan",
+    "qualified": "HuaweiEG8041FamilyProvider.wifi_neighbor_scan",
+    "decorators": [
+      "staticmethod"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_provider.py",
+    "line": 350,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "HuaweiEG8041FamilyProvider.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_provider.py",
+    "line": 426,
+    "kind": "method",
+    "name": "probe_capabilities",
+    "qualified": "HuaweiEG8041FamilyProvider.probe_capabilities",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_provider.py",
+    "line": 484,
+    "kind": "method",
+    "name": "read_capability",
+    "qualified": "HuaweiEG8041FamilyProvider.read_capability",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+    "line": 247,
+    "kind": "method",
+    "name": "_discover_channels",
+    "qualified": "HuaweiEG8041FamilyRuntimeService._discover_channels",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+    "line": 373,
+    "kind": "method",
+    "name": "wifi_configuration_descriptor",
+    "qualified": "HuaweiEG8041FamilyRuntimeService.wifi_configuration_descriptor",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+    "line": 387,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "HuaweiEG8041FamilyRuntimeService.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+    "line": 429,
+    "kind": "method",
+    "name": "clients",
+    "qualified": "HuaweiEG8041FamilyRuntimeService.clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041_family_runtime.py",
+    "line": 452,
+    "kind": "method",
+    "name": "web_resource_telemetry",
+    "qualified": "HuaweiEG8041FamilyRuntimeService.web_resource_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041x7_runtime.py",
+    "line": 190,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "HuaweiEG8041X7CapturedFeatureService.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041x7_runtime.py",
+    "line": 354,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "HuaweiEG8041X7CapturedFeatureService.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8041x7_runtime.py",
+    "line": 483,
+    "kind": "method",
+    "name": "dns_status",
+    "qualified": "HuaweiEG8041X7CapturedFeatureService.dns_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+    "line": 264,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "HuaweiEG8145V5FamilyRuntime.device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+    "line": 331,
+    "kind": "method",
+    "name": "clients",
+    "qualified": "HuaweiEG8145V5FamilyRuntime.clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+    "line": 365,
+    "kind": "method",
+    "name": "resource_telemetry",
+    "qualified": "HuaweiEG8145V5FamilyRuntime.resource_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+    "line": 386,
+    "kind": "method",
+    "name": "optical_telemetry",
+    "qualified": "HuaweiEG8145V5FamilyRuntime.optical_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_eg8145v5_family_runtime.py",
+    "line": 395,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "HuaweiEG8145V5FamilyRuntime.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+    "line": 192,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "HuaweiHG8145X6CapturedFeatureService.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+    "line": 233,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "HuaweiHG8145X6CapturedFeatureService.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+    "line": 277,
+    "kind": "method",
+    "name": "pppoe_status",
+    "qualified": "HuaweiHG8145X6CapturedFeatureService.pppoe_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+    "line": 297,
+    "kind": "method",
+    "name": "wifi_traffic",
+    "qualified": "HuaweiHG8145X6CapturedFeatureService.wifi_traffic",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+    "line": 332,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "HuaweiHG8145X6CapturedFeatureService.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+    "line": 374,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "HuaweiHG8145X6CapturedFeatureService.device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8145x6_runtime.py",
+    "line": 399,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "HuaweiHG8145X6CapturedFeatureService.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8245h_runtime.py",
+    "line": 101,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "HuaweiHG8245HApiRuntime.device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+    "line": 90,
+    "kind": "method",
+    "name": "parse_clients",
+    "qualified": "HuaweiHG8347RRuntime.parse_clients",
+    "decorators": [
+      "classmethod"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+    "line": 138,
+    "kind": "method",
+    "name": "_read_raw_clients",
+    "qualified": "HuaweiHG8347RRuntime._read_raw_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_hg8347r_runtime.py",
+    "line": 188,
+    "kind": "method",
+    "name": "clients",
+    "qualified": "HuaweiHG8347RRuntime.clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_ipv4_filter_service.py",
+    "line": 111,
+    "kind": "function",
+    "name": "resolve_ipv4_filter_domain",
+    "qualified": "resolve_ipv4_filter_domain",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_ipv4_filter_service.py",
+    "line": 232,
+    "kind": "method",
+    "name": "list_ipv4_filters",
+    "qualified": "HuaweiIPv4FilterService.list_ipv4_filters",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_mapped_surface.py",
+    "line": 927,
+    "kind": "method",
+    "name": "read_request",
+    "qualified": "HuaweiMappedSurfaceService.read_request",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_mapped_surface.py",
+    "line": 966,
+    "kind": "method",
+    "name": "read_feature",
+    "qualified": "HuaweiMappedSurfaceService.read_feature",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 114,
+    "kind": "method",
+    "name": "device_info",
+    "qualified": "HuaweiService.device_info",
+    "decorators": [
+      "property"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 696,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "HuaweiService.device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 824,
+    "kind": "method",
+    "name": "get_profile",
+    "qualified": "HuaweiService.get_profile",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1125,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "HuaweiService.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1133,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "HuaweiService.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1141,
+    "kind": "method",
+    "name": "pppoe_status",
+    "qualified": "HuaweiService.pppoe_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1163,
+    "kind": "method",
+    "name": "lan_clients",
+    "qualified": "HuaweiService.lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1171,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "HuaweiService.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1179,
+    "kind": "method",
+    "name": "lan_ports",
+    "qualified": "HuaweiService.lan_ports",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1187,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "HuaweiService.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1240,
+    "kind": "method",
+    "name": "wifi_radios",
+    "qualified": "HuaweiService.wifi_radios",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1248,
+    "kind": "method",
+    "name": "wifi_channels",
+    "qualified": "HuaweiService.wifi_channels",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1288,
+    "kind": "method",
+    "name": "radio_power_status",
+    "qualified": "HuaweiService.radio_power_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1330,
+    "kind": "method",
+    "name": "wifi_schedule_status",
+    "qualified": "HuaweiService.wifi_schedule_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1363,
+    "kind": "method",
+    "name": "layer3_status",
+    "qualified": "HuaweiService.layer3_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1371,
+    "kind": "method",
+    "name": "lan_ipv4_status",
+    "qualified": "HuaweiService.lan_ipv4_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1379,
+    "kind": "method",
+    "name": "ipv6_lan_status",
+    "qualified": "HuaweiService.ipv6_lan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1387,
+    "kind": "method",
+    "name": "dhcp_static_status",
+    "qualified": "HuaweiService.dhcp_static_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1397,
+    "kind": "method",
+    "name": "dns_host_status",
+    "qualified": "HuaweiService.dns_host_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1407,
+    "kind": "method",
+    "name": "dhcp_status",
+    "qualified": "HuaweiService.dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1545,
+    "kind": "method",
+    "name": "dns_status",
+    "qualified": "HuaweiService.dns_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1581,
+    "kind": "method",
+    "name": "dmz_status",
+    "qualified": "HuaweiService.dmz_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1622,
+    "kind": "method",
+    "name": "tr069_management_status",
+    "qualified": "HuaweiService.tr069_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1724,
+    "kind": "method",
+    "name": "alg_status",
+    "qualified": "HuaweiService.alg_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1732,
+    "kind": "method",
+    "name": "igmp_status",
+    "qualified": "HuaweiService.igmp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1740,
+    "kind": "method",
+    "name": "dos_status",
+    "qualified": "HuaweiService.dos_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1748,
+    "kind": "method",
+    "name": "ipv6_firewall_status",
+    "qualified": "HuaweiService.ipv6_firewall_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1756,
+    "kind": "method",
+    "name": "internet_control_status",
+    "qualified": "HuaweiService.internet_control_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1964,
+    "kind": "method",
+    "name": "firewall_level_status",
+    "qualified": "HuaweiService.firewall_level_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 1972,
+    "kind": "method",
+    "name": "firewall_management_status",
+    "qualified": "HuaweiService.firewall_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2658,
+    "kind": "method",
+    "name": "port_forwarding_status",
+    "qualified": "HuaweiService.port_forwarding_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2661,
+    "kind": "method",
+    "name": "sntp_management_status",
+    "qualified": "HuaweiService.sntp_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2664,
+    "kind": "method",
+    "name": "qos_management_status",
+    "qualified": "HuaweiService.qos_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2667,
+    "kind": "method",
+    "name": "firmware_management_status",
+    "qualified": "HuaweiService.firmware_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2672,
+    "kind": "method",
+    "name": "wan_configurations",
+    "qualified": "HuaweiService.wan_configurations",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2688,
+    "kind": "method",
+    "name": "account_status",
+    "qualified": "HuaweiService.account_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2691,
+    "kind": "method",
+    "name": "upnp_status",
+    "qualified": "HuaweiService.upnp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2721,
+    "kind": "method",
+    "name": "wps_status",
+    "qualified": "HuaweiService.wps_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2742,
+    "kind": "method",
+    "name": "band_steering_status",
+    "qualified": "HuaweiService.band_steering_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 2783,
+    "kind": "method",
+    "name": "list_ipv4_filters",
+    "qualified": "HuaweiService.list_ipv4_filters",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 3080,
+    "kind": "method",
+    "name": "probe_capabilities",
+    "qualified": "HuaweiService.probe_capabilities",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_service.py",
+    "line": 3214,
+    "kind": "method",
+    "name": "read_capability",
+    "qualified": "HuaweiService.read_capability",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry.py",
+    "line": 131,
+    "kind": "class",
+    "name": "HuaweiOpticalTelemetryReader",
+    "qualified": "HuaweiOpticalTelemetryReader",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 23,
+    "kind": "class",
+    "name": "HuaweiTelemetryRuntimeService",
+    "qualified": "HuaweiTelemetryRuntimeService",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 145,
+    "kind": "method",
+    "name": "_read_optical_telemetry_model",
+    "qualified": "HuaweiTelemetryRuntimeService._read_optical_telemetry_model",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 169,
+    "kind": "method",
+    "name": "optical_telemetry",
+    "qualified": "HuaweiTelemetryRuntimeService.optical_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 179,
+    "kind": "method",
+    "name": "_read_normalized_pon_status_model",
+    "qualified": "HuaweiTelemetryRuntimeService._read_normalized_pon_status_model",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 217,
+    "kind": "method",
+    "name": "normalized_pon_status",
+    "qualified": "HuaweiTelemetryRuntimeService.normalized_pon_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 247,
+    "kind": "method",
+    "name": "resource_telemetry",
+    "qualified": "HuaweiTelemetryRuntimeService.resource_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 267,
+    "kind": "method",
+    "name": "_probe_telemetry",
+    "qualified": "HuaweiTelemetryRuntimeService._probe_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 372,
+    "kind": "method",
+    "name": "probe_capabilities",
+    "qualified": "HuaweiTelemetryRuntimeService.probe_capabilities",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_telemetry_runtime.py",
+    "line": 418,
+    "kind": "method",
+    "name": "read_capability",
+    "qualified": "HuaweiTelemetryRuntimeService.read_capability",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 494,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "HuaweiUnifiedProvider.device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 524,
+    "kind": "method",
+    "name": "load_phase2",
+    "qualified": "HuaweiUnifiedProvider.device_status.load_phase2",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 555,
+    "kind": "method",
+    "name": "wifi_traffic",
+    "qualified": "HuaweiUnifiedProvider.wifi_traffic",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 569,
+    "kind": "method",
+    "name": "resource_telemetry",
+    "qualified": "HuaweiUnifiedProvider.resource_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 590,
+    "kind": "method",
+    "name": "clients",
+    "qualified": "HuaweiUnifiedProvider.clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 628,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "HuaweiUnifiedProvider.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 632,
+    "kind": "method",
+    "name": "lan_clients",
+    "qualified": "HuaweiUnifiedProvider.lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 641,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "HuaweiUnifiedProvider.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 650,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "HuaweiUnifiedProvider.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 662,
+    "kind": "method",
+    "name": "optical_telemetry",
+    "qualified": "HuaweiUnifiedProvider.optical_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_unified_provider.py",
+    "line": 678,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "HuaweiUnifiedProvider.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_wifi_domain_runtime.py",
+    "line": 150,
+    "kind": "method",
+    "name": "pon_status",
+    "qualified": "HuaweiWifiDomainRuntimeService.pon_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_wifi_domain_runtime.py",
+    "line": 195,
+    "kind": "method",
+    "name": "probe_capabilities",
+    "qualified": "HuaweiWifiDomainRuntimeService.probe_capabilities",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_wifi_domain_runtime.py",
+    "line": 233,
+    "kind": "method",
+    "name": "read_capability",
+    "qualified": "HuaweiWifiDomainRuntimeService.read_capability",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/huawei_wifi_domain_runtime.py",
+    "line": 302,
+    "kind": "method",
+    "name": "wifi_configuration_descriptor",
+    "qualified": "HuaweiWifiDomainRuntimeService.wifi_configuration_descriptor",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/model_diagnostic_service.py",
+    "line": 191,
+    "kind": "function",
+    "name": "optical_details",
+    "qualified": "optical_details",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/model_diagnostic_service.py",
+    "line": 218,
+    "kind": "function",
+    "name": "wifi_ssid_summary",
+    "qualified": "wifi_ssid_summary",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/multimodel_service.py",
+    "line": 250,
+    "kind": "function",
+    "name": "read_clients",
+    "qualified": "read_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/operations_monitoring_service.py",
+    "line": 184,
+    "kind": "method",
+    "name": "status",
+    "qualified": "MonitoringService.status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/profile_service.py",
+    "line": 348,
+    "kind": "method",
+    "name": "list_profiles",
+    "qualified": "ProfileService.list_profiles",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/profile_service.py",
+    "line": 356,
+    "kind": "method",
+    "name": "get_profile",
+    "qualified": "ProfileService.get_profile",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/provisioning_service.py",
+    "line": 478,
+    "kind": "method",
+    "name": "status",
+    "qualified": "ACSService.status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/remote_access_service.py",
+    "line": 963,
+    "kind": "method",
+    "name": "_overlay_status",
+    "qualified": "RemoteAccessService._overlay_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/support_diagnostic_service.py",
+    "line": 1695,
+    "kind": "method",
+    "name": "_overall_status",
+    "qualified": "SupportDiagnosticService._overall_status",
+    "decorators": [
+      "staticmethod"
+    ]
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 504,
+    "kind": "method",
+    "name": "get_client",
+    "qualified": "ZTEService.get_client",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 675,
+    "kind": "method",
+    "name": "security_status",
+    "qualified": "ZTEService.security_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 697,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "ZTEService.device_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 710,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "ZTEService.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 714,
+    "kind": "method",
+    "name": "account_status",
+    "qualified": "ZTEService.account_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 797,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "ZTEService.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 801,
+    "kind": "method",
+    "name": "pppoe_status",
+    "qualified": "ZTEService.pppoe_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 822,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "ZTEService.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 831,
+    "kind": "method",
+    "name": "lan_clients",
+    "qualified": "ZTEService.lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 844,
+    "kind": "method",
+    "name": "lan_ports",
+    "qualified": "ZTEService.lan_ports",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 848,
+    "kind": "method",
+    "name": "all_clients",
+    "qualified": "ZTEService.all_clients",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 861,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "ZTEService.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 922,
+    "kind": "method",
+    "name": "wifi_radios",
+    "qualified": "ZTEService.wifi_radios",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 926,
+    "kind": "method",
+    "name": "wifi_channels",
+    "qualified": "ZTEService.wifi_channels",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 962,
+    "kind": "method",
+    "name": "radio_power_status",
+    "qualified": "ZTEService.radio_power_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 985,
+    "kind": "method",
+    "name": "wifi_schedule_status",
+    "qualified": "ZTEService.wifi_schedule_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1003,
+    "kind": "method",
+    "name": "wps_status",
+    "qualified": "ZTEService.wps_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1026,
+    "kind": "method",
+    "name": "upnp_status",
+    "qualified": "ZTEService.upnp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1047,
+    "kind": "method",
+    "name": "mesh_status",
+    "qualified": "ZTEService.mesh_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1086,
+    "kind": "method",
+    "name": "band_steering_status",
+    "qualified": "ZTEService.band_steering_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1132,
+    "kind": "method",
+    "name": "dhcp_status",
+    "qualified": "ZTEService.dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1205,
+    "kind": "method",
+    "name": "port_forwarding_status",
+    "qualified": "ZTEService.port_forwarding_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1242,
+    "kind": "method",
+    "name": "dmz_status",
+    "qualified": "ZTEService.dmz_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1270,
+    "kind": "method",
+    "name": "probe_capabilities",
+    "qualified": "ZTEService.probe_capabilities",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1379,
+    "kind": "method",
+    "name": "f6201b_write_status",
+    "qualified": "ZTEService.f6201b_write_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1456,
+    "kind": "method",
+    "name": "f6201b_dns_status",
+    "qualified": "ZTEService.f6201b_dns_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1611,
+    "kind": "method",
+    "name": "read_capability",
+    "qualified": "ZTEService.read_capability",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 1624,
+    "kind": "method",
+    "name": "dns_status",
+    "qualified": "ZTEService.dns_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 2323,
+    "kind": "method",
+    "name": "qos_management_status",
+    "qualified": "ZTEService.qos_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 2373,
+    "kind": "method",
+    "name": "firewall_management_status",
+    "qualified": "ZTEService.firewall_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 2474,
+    "kind": "method",
+    "name": "sntp_management_status",
+    "qualified": "ZTEService.sntp_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 2504,
+    "kind": "method",
+    "name": "tr069_management_status",
+    "qualified": "ZTEService.tr069_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 2648,
+    "kind": "method",
+    "name": "wan_configurations",
+    "qualified": "ZTEService.wan_configurations",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 2973,
+    "kind": "method",
+    "name": "firmware_management_status",
+    "qualified": "ZTEService.firmware_management_status",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 3040,
+    "kind": "method",
+    "name": "get_profile",
+    "qualified": "ZTEService.get_profile",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 3070,
+    "kind": "method",
+    "name": "list_named_presets",
+    "qualified": "ZTEService.list_named_presets",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 3073,
+    "kind": "method",
+    "name": "get_named_preset",
+    "qualified": "ZTEService.get_named_preset",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 3172,
+    "kind": "method",
+    "name": "wifi_raw",
+    "qualified": "ZTEService.wifi_raw",
+    "decorators": []
+  },
+  {
+    "file": "apps/zte_manager/services/zte_service.py",
+    "line": 3184,
+    "kind": "method",
+    "name": "wan_raw",
+    "qualified": "ZTEService.wan_raw",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_advanced_discovery_recovery.py",
+    "line": 41,
+    "kind": "method",
+    "name": "test_zero_connected_clients_is_legitimate",
+    "qualified": "BootstrapRecoveryTests.test_zero_connected_clients_is_legitimate",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_advanced_features.py",
+    "line": 13,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeZTE.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_advanced_features.py",
+    "line": 17,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeZTE.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_advanced_features.py",
+    "line": 31,
+    "kind": "method",
+    "name": "test_radio_power_status",
+    "qualified": "AdvancedFeaturesTest.test_radio_power_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_advanced_features.py",
+    "line": 111,
+    "kind": "method",
+    "name": "test_wps_status_paira_bandas",
+    "qualified": "AdvancedFeaturesTest.test_wps_status_paira_bandas",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_advanced_features.py",
+    "line": 149,
+    "kind": "method",
+    "name": "test_upnp_status",
+    "qualified": "AdvancedFeaturesTest.test_upnp_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_advanced_features.py",
+    "line": 177,
+    "kind": "method",
+    "name": "test_band_steering_status",
+    "qualified": "BandSteeringTest.test_band_steering_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_api_error_policy.py",
+    "line": 43,
+    "kind": "method",
+    "name": "test_live_status_route_is_preserved_and_does_not_read_password",
+    "qualified": "ApiBoundaryIntegration.test_live_status_route_is_preserved_and_does_not_read_password",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_automatic_diagnostic.py",
+    "line": 10,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "FakeZTE.device_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_automatic_diagnostic.py",
+    "line": 15,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "FakeZTE.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_automatic_diagnostic.py",
+    "line": 21,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "FakeZTE.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_automatic_diagnostic.py",
+    "line": 28,
+    "kind": "method",
+    "name": "pppoe_status",
+    "qualified": "FakeZTE.pppoe_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_automatic_diagnostic.py",
+    "line": 34,
+    "kind": "method",
+    "name": "lan_ports",
+    "qualified": "FakeZTE.lan_ports",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_automatic_diagnostic.py",
+    "line": 43,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "FakeZTE.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_automatic_diagnostic.py",
+    "line": 53,
+    "kind": "method",
+    "name": "lan_clients",
+    "qualified": "FakeZTE.lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_automatic_diagnostic.py",
+    "line": 71,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "AutomaticDiagnosticTests.test_f670l_numeric_o5_is_registered.NumericO5ZTE.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_capability_probe_safety.py",
+    "line": 23,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "Device.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_device_management.py",
+    "line": 24,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeZte.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_device_management.py",
+    "line": 27,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeZte.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_diagnostic_session_restore.py",
+    "line": 15,
+    "kind": "method",
+    "name": "test_connection_status_restores_frontend_without_credentials",
+    "qualified": "DiagnosticSessionRestoreTests.test_connection_status_restores_frontend_without_credentials",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_candidate.py",
+    "line": 25,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "ReadOnlyDevice.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_candidate.py",
+    "line": 28,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "ReadOnlyDevice.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_dhcp_module.py",
+    "line": 13,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeONT.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_dhcp_module.py",
+    "line": 17,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeONT.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_diagnostics_native.py",
+    "line": 39,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeONT.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_diagnostics_native.py",
+    "line": 43,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeONT.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_expanded_lab.py",
+    "line": 32,
+    "kind": "method",
+    "name": "read_dns",
+    "qualified": "FullProfileTests.read_dns",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_expanded_lab.py",
+    "line": 34,
+    "kind": "method",
+    "name": "read_hosts",
+    "qualified": "FullProfileTests.read_hosts",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_full_forms.py",
+    "line": 73,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeONT.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_full_forms.py",
+    "line": 80,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeONT.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_operator_reads.py",
+    "line": 18,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "Router.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_operator_reads.py",
+    "line": 21,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "Router.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_profile.py",
+    "line": 40,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeONT.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_profile.py",
+    "line": 43,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeONT.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_second_capture.py",
+    "line": 43,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "DNSTestRouter.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_second_capture.py",
+    "line": 46,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "DNSTestRouter.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_view_binding.py",
+    "line": 51,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "ContextRequiredRouter.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_view_binding.py",
+    "line": 57,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "ContextRequiredRouter.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_view_binding.py",
+    "line": 108,
+    "kind": "method",
+    "name": "test_wan_optical_and_wifi_clients_use_captured_context",
+    "qualified": "CapturedViewBindingTests.test_wan_optical_and_wifi_clients_use_captured_context",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_workbench.py",
+    "line": 34,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeZTE.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_workbench.py",
+    "line": 38,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeZTE.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_writes.py",
+    "line": 47,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "Router.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6201b_writes.py",
+    "line": 52,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "Router.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6600p_dhcp_encoded.py",
+    "line": 40,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeRouter.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_f6600p_dhcp_encoded.py",
+    "line": 42,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeRouter.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_captured_features.py",
+    "line": 121,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeHuaweiClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_captured_features.py",
+    "line": 467,
+    "kind": "method",
+    "name": "test_device_status_reads_js_and_table_values",
+    "qualified": "HuaweiCapturedFeatureTests.test_device_status_reads_js_and_table_values",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_captured_features.py",
+    "line": 510,
+    "kind": "method",
+    "name": "test_wifi_channels_are_discovered_from_firmware",
+    "qualified": "HuaweiCapturedFeatureTests.test_wifi_channels_are_discovered_from_firmware",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_diagnostics.py",
+    "line": 42,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeDiagnosticClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_dns_physical_state.py",
+    "line": 64,
+    "kind": "method",
+    "name": "dns_status",
+    "qualified": "PhysicalStateService.dns_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_dns_physical_state.py",
+    "line": 69,
+    "kind": "method",
+    "name": "test_dns_status_drops_constructor_calls_from_page_functions",
+    "qualified": "HuaweiPhysicalDnsRegressionTests.test_dns_status_drops_constructor_calls_from_page_functions",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_eg8041_capture_contract.py",
+    "line": 50,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "RecordingClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_eg8041_capture_contract.py",
+    "line": 118,
+    "kind": "method",
+    "name": "test_wifi_clients_use_only_captured_wlan_list_and_lan_inventory",
+    "qualified": "HuaweiEG8041CaptureContractTests.test_wifi_clients_use_only_captured_wlan_list_and_lan_inventory",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_eg8041_family_provider.py",
+    "line": 68,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "FakeCapturedSecrets.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_eg8041_family_runtime.py",
+    "line": 73,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FamilySignatureClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_eg8041x7_runtime.py",
+    "line": 48,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeEGClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_eg8041x7_runtime.py",
+    "line": 113,
+    "kind": "method",
+    "name": "dns_status",
+    "qualified": "StatefulCaptured.dns_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_hg8010_telemetry.py",
+    "line": 54,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakePageClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_hg8010_telemetry.py",
+    "line": 112,
+    "kind": "class",
+    "name": "HuaweiHg8010TelemetryTests",
+    "qualified": "HuaweiHg8010TelemetryTests",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_hg8010_telemetry.py",
+    "line": 142,
+    "kind": "method",
+    "name": "test_legacy_status_optical_signature_is_normalized_with_explicit_units",
+    "qualified": "HuaweiHg8010TelemetryTests.test_legacy_status_optical_signature_is_normalized_with_explicit_units",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_hg8010_telemetry.py",
+    "line": 184,
+    "kind": "method",
+    "name": "test_wap_pon_status_and_statistics_are_separate_domain_models",
+    "qualified": "HuaweiHg8010TelemetryTests.test_wap_pon_status_and_statistics_are_separate_domain_models",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_hg8145x6_ontwatch.py",
+    "line": 75,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeHG8145Client.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_hg8145x6_ontwatch.py",
+    "line": 109,
+    "kind": "method",
+    "name": "test_wifi_clients_keep_signal_rates_mode_and_ssid",
+    "qualified": "HuaweiHG8145X6OntWatchTests.test_wifi_clients_keep_signal_rates_mode_and_ssid",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_hg8145x6_phase1.py",
+    "line": 65,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "SignatureClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_ipv4_filter.py",
+    "line": 75,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeHuaweiClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_mapped_surface.py",
+    "line": 36,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_multirepo_foundation.py",
+    "line": 96,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "PageClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_multirepo_foundation.py",
+    "line": 108,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "DetectorClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_phase2_eg8145v5_hn8010ts.py",
+    "line": 40,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "Phase2Client.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_phase3_hg8245h.py",
+    "line": 138,
+    "kind": "method",
+    "name": "get_api_page",
+    "qualified": "RuntimeClient.get_api_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_phase3_hg8245h.py",
+    "line": 240,
+    "kind": "method",
+    "name": "test_api_runtime_requires_model_from_authenticated_deviceinfo",
+    "qualified": "HuaweiPhase3HG8245HTests.test_api_runtime_requires_model_from_authenticated_deviceinfo",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_phase5_hg8347r_lab.py",
+    "line": 31,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeHG8347RClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_phase5_hg8347r_lab.py",
+    "line": 90,
+    "kind": "method",
+    "name": "test_clean_room_runtime_extracts_token_and_clients",
+    "qualified": "HuaweiPhase5HG8347RTests.test_clean_room_runtime_extracts_token_and_clients",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_provider_architecture.py",
+    "line": 62,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeHuaweiWebClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_provider_architecture.py",
+    "line": 470,
+    "kind": "method",
+    "name": "test_huawei_device_status_reads_authenticated_device_page",
+    "qualified": "HuaweiProviderArchitectureTests.test_huawei_device_status_reads_authenticated_device_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_response_protocol.py",
+    "line": 38,
+    "kind": "method",
+    "name": "get_page",
+    "qualified": "FakeMappedClient.get_page",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 35,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "CountingCaptured.device_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 42,
+    "kind": "method",
+    "name": "optical_status",
+    "qualified": "CountingCaptured.optical_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 45,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "CountingCaptured.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 53,
+    "kind": "method",
+    "name": "pppoe_status",
+    "qualified": "CountingCaptured.pppoe_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 61,
+    "kind": "method",
+    "name": "lan_ports",
+    "qualified": "CountingCaptured.lan_ports",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 64,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "CountingCaptured.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 76,
+    "kind": "method",
+    "name": "wifi_radios",
+    "qualified": "CountingCaptured.wifi_radios",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 79,
+    "kind": "method",
+    "name": "dns_status",
+    "qualified": "CountingCaptured.dns_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 87,
+    "kind": "method",
+    "name": "lan_clients",
+    "qualified": "CountingCaptured.lan_clients",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 93,
+    "kind": "method",
+    "name": "wifi_clients",
+    "qualified": "CountingCaptured.wifi_clients",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 99,
+    "kind": "method",
+    "name": "tr069_management_status",
+    "qualified": "CountingCaptured.tr069_management_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 108,
+    "kind": "method",
+    "name": "firewall_level_status",
+    "qualified": "CountingCaptured.firewall_level_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 114,
+    "kind": "method",
+    "name": "dos_status",
+    "qualified": "CountingCaptured.dos_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 117,
+    "kind": "method",
+    "name": "alg_status",
+    "qualified": "CountingCaptured.alg_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 120,
+    "kind": "method",
+    "name": "igmp_status",
+    "qualified": "CountingCaptured.igmp_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 123,
+    "kind": "method",
+    "name": "ipv6_firewall_status",
+    "qualified": "CountingCaptured.ipv6_firewall_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 129,
+    "kind": "method",
+    "name": "internet_control_status",
+    "qualified": "CountingCaptured.internet_control_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 132,
+    "kind": "method",
+    "name": "dhcp_status",
+    "qualified": "CountingCaptured.dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 175,
+    "kind": "method",
+    "name": "list_ipv4_filters",
+    "qualified": "CountingIPv4Filter.list_ipv4_filters",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_huawei_session_snapshot.py",
+    "line": 321,
+    "kind": "method",
+    "name": "test_explicit_clients_refresh_touches_only_clients",
+    "qualified": "HuaweiSessionSnapshotTests.test_explicit_clients_refresh_touches_only_clients",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_mesh_management.py",
+    "line": 37,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeMeshZTE.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_mesh_management.py",
+    "line": 49,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeMeshZTE.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_mesh_management.py",
+    "line": 86,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeFallbackMeshZTE.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_mesh_management.py",
+    "line": 103,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeFallbackMeshZTE.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_mesh_management.py",
+    "line": 135,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeBrazilOiMeshZTE.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_mesh_management.py",
+    "line": 149,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeBrazilOiMeshZTE.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_mesh_management.py",
+    "line": 200,
+    "kind": "method",
+    "name": "test_mesh_status_reads_hidden_netsphere_backend",
+    "qualified": "EasyMeshBackendTests.test_mesh_status_reads_hidden_netsphere_backend",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_model_diagnostics.py",
+    "line": 37,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "ReadOnlyRouter.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_model_diagnostics.py",
+    "line": 40,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "ReadOnlyRouter.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_model_session_binding.py",
+    "line": 16,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "FakeRouter.device_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multimodel_discovery.py",
+    "line": 29,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeClient.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multimodel_discovery.py",
+    "line": 32,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeClient.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multimodel_discovery.py",
+    "line": 103,
+    "kind": "method",
+    "name": "raise_for_status",
+    "qualified": "MultiModelDiscoveryTests.test_vue_uses_read_only_vue_data.VueClient.raise_for_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multimodel_discovery.py",
+    "line": 113,
+    "kind": "method",
+    "name": "test_legacy_h_series_clients_return_normalized_fields",
+    "qualified": "MultiModelDiscoveryTests.test_legacy_h_series_clients_return_normalized_fields",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multimodel_discovery.py",
+    "line": 134,
+    "kind": "method",
+    "name": "raise_for_status",
+    "qualified": "MultiModelDiscoveryTests.test_mesh_summary_contains_counts_but_no_client_identifiers.FakeMeshResponse.raise_for_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multimodel_discovery.py",
+    "line": 149,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "MultiModelDiscoveryTests.test_mesh_summary_contains_counts_but_no_client_identifiers.MeshClient.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multivendor_runtime_regressions.py",
+    "line": 52,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "FakeHuaweiProvider.device_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multivendor_runtime_regressions.py",
+    "line": 79,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "FakeZTEProvider.device_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multivendor_runtime_regressions.py",
+    "line": 82,
+    "kind": "method",
+    "name": "wan_status",
+    "qualified": "FakeZTEProvider.wan_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multivendor_runtime_regressions.py",
+    "line": 85,
+    "kind": "method",
+    "name": "dhcp_status",
+    "qualified": "FakeZTEProvider.dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multivendor_runtime_regressions.py",
+    "line": 114,
+    "kind": "method",
+    "name": "test_huawei_connected_device_status_does_not_call_zte",
+    "qualified": "MultivendorApiRoutingTests.test_huawei_connected_device_status_does_not_call_zte",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_multivendor_runtime_regressions.py",
+    "line": 122,
+    "kind": "method",
+    "name": "test_huawei_connected_wan_status_does_not_call_zte",
+    "qualified": "MultivendorApiRoutingTests.test_huawei_connected_wan_status_does_not_call_zte",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_operations_builders.py",
+    "line": 89,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "OperationsBuilderTests.test_schedule_preserves_radio_states_when_disabling_timer.FakeZTE.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_phase2_integration.py",
+    "line": 65,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "FakeZTE.device_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_phase2_integration.py",
+    "line": 69,
+    "kind": "method",
+    "name": "dhcp_status",
+    "qualified": "FakeZTE.dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_phase2_integration.py",
+    "line": 80,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "FakeZTE.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_phase2_integration.py",
+    "line": 168,
+    "kind": "method",
+    "name": "test_invalid_telemetry_manifest_cannot_disable_known_model_writes",
+    "qualified": "FirmwarePolicyTests.test_invalid_telemetry_manifest_cannot_disable_known_model_writes",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_phase2_integration.py",
+    "line": 180,
+    "kind": "method",
+    "name": "test_operator_can_document_new_firmware_as_telemetry",
+    "qualified": "FirmwarePolicyTests.test_operator_can_document_new_firmware_as_telemetry",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_phase2_integration.py",
+    "line": 232,
+    "kind": "method",
+    "name": "test_ssid_dhcp_and_status_execute_through_bound_driver",
+    "qualified": "RealServiceIntegrationTests.test_ssid_dhcp_and_status_execute_through_bound_driver",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_phase2_integration.py",
+    "line": 357,
+    "kind": "method",
+    "name": "broken_status",
+    "qualified": "RealServiceIntegrationTests.test_identity_read_failure_quarantines_existing_session.broken_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_runtime_device_contract.py",
+    "line": 43,
+    "kind": "method",
+    "name": "device_status",
+    "qualified": "FakeZTE.device_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_runtime_device_contract.py",
+    "line": 46,
+    "kind": "method",
+    "name": "dhcp_status",
+    "qualified": "FakeZTE.dhcp_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_runtime_device_contract.py",
+    "line": 58,
+    "kind": "method",
+    "name": "wifi_networks",
+    "qualified": "FakeZTE.wifi_networks",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_tracker_capability_detection.py",
+    "line": 23,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeONT.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_tracker_capability_detection.py",
+    "line": 25,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeONT.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_tracker_capability_detection.py",
+    "line": 37,
+    "kind": "method",
+    "name": "test_probe_pagination_keeps_candidate_status",
+    "qualified": "TrackerCapabilityDetectionTests.test_probe_pagination_keeps_candidate_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_wifi_ssid.py",
+    "line": 47,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeZte.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_wifi_ssid.py",
+    "line": 50,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeZte.get_menu",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_wifi_ssid.py",
+    "line": 55,
+    "kind": "method",
+    "name": "test_networks_traz_nome_banda_e_estado",
+    "qualified": "WifiSSIDTest.test_networks_traz_nome_banda_e_estado",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_windows_compat.py",
+    "line": 23,
+    "kind": "method",
+    "name": "raise_for_status",
+    "qualified": "FakeResponse.raise_for_status",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_windows_compat.py",
+    "line": 37,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeZTE.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_wlan_builder.py",
+    "line": 57,
+    "kind": "method",
+    "name": "get_view",
+    "qualified": "FakeZte.get_view",
+    "decorators": []
+  },
+  {
+    "file": "tests/test_wlan_builder.py",
+    "line": 65,
+    "kind": "method",
+    "name": "get_menu",
+    "qualified": "FakeZte.get_menu",
+    "decorators": []
+  }
+]

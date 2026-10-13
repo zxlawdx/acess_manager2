@@ -1,0 +1,162 @@
+[
+  {
+    "feature": "auth/session + HTTPS:80",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "infrastructure/huawei/{protocol.py,auth.py,affinity_client.py}; fixture http_bootstrap.html",
+    "next_evidence": "infrastructure/huawei/protocol/* + tests/regression/huawei/eg8041x6_10/test_auth.py",
+    "status": "PARITY",
+    "evidence_level": "AUTOMATED_TESTED + LOCAL_FIRMWARE_OBSERVED"
+  },
+  {
+    "feature": "device info",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "huawei_captured_features.py::device_status + device_brebg2.asp",
+    "next_evidence": "huawei/captured.py::device_status + HuaweiEG8041FamilyRuntime + test_device_info.py",
+    "status": "PARITY",
+    "evidence_level": "PHYSICALLY_VALIDATED_IN_LEGACY_REGISTRY"
+  },
+  {
+    "feature": "clients dedup/enrichment",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "huawei_captured_features.py::{lan_clients,wifi_clients}",
+    "next_evidence": "HuaweiEG8041FamilyRuntime.clients + test_clients.py + test_runtime_parity.py",
+    "status": "PARITY_AUTOMATED",
+    "evidence_level": "AUTOMATED_TESTED; NO_X6_CLIENT_FIXTURE"
+  },
+  {
+    "feature": "wifi.read",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "huawei_eg8041_family_provider.py + wifi_2g.asp/wifi_5g.asp",
+    "next_evidence": "HuaweiEG8041FamilyRuntime.wifi_networks + test_wifi_read.py",
+    "status": "PARITY",
+    "evidence_level": "FIXTURE_VALIDATED"
+  },
+  {
+    "feature": "wifi.password.read-on-demand",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041 family",
+    "legacy_evidence": "huawei_eg8041_family_provider.py::_wifi_password_for_band",
+    "next_evidence": "HuaweiEG8041FamilyRuntime._wifi_password_for_band + POST /device/wifi/reveal-password + test_wifi_read.py",
+    "status": "PARITY_AUTOMATED",
+    "evidence_level": "AUTOMATED_TESTED; LIVE SECRET EXPOSURE DEPENDS ON FIRMWARE/LOGIN"
+  },
+  {
+    "feature": "wifi.write",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "shared AMP/BBSP mutation surface + family provider read-back",
+    "next_evidence": "HuaweiProvider.set_ssid_config/set_wifi_radio + test_wifi_write.py",
+    "status": "MIGRATED_NOT_PHYSICALLY_REVALIDATED",
+    "evidence_level": "IMPLEMENTED/AUTOMATED CAPABILITY TEST"
+  },
+  {
+    "feature": "wan.read",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "huawei_captured_features.py::wan_status + wan_list.asp",
+    "next_evidence": "HuaweiEG8041FamilyRuntime.wan_status + test_wan.py",
+    "status": "PARITY",
+    "evidence_level": "PHYSICALLY_VALIDATED_IN_LEGACY_REGISTRY + FIXTURE"
+  },
+  {
+    "feature": "lan.read/parser",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041 family",
+    "legacy_evidence": "huawei_captured_features.py::lan_ports",
+    "next_evidence": "captured.py::lan_ports; Layer3 fallback separated from duplex + test_lan.py",
+    "status": "PARITY_AUTOMATED",
+    "evidence_level": "AUTOMATED_TESTED; NO_X6_ETH_FIXTURE"
+  },
+  {
+    "feature": "dhcp.read/write",
+    "legacy": "YES",
+    "next": "RUNTIME-PROBED",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "huawei_captured_features.py::dhcp_status/set_dhcp_basic",
+    "next_evidence": "captured.py + runtime probe + test_dhcp.py",
+    "status": "UNKNOWN_EVIDENCE_GAP",
+    "evidence_level": "NO_X6_DHCP_FIXTURE; NOT UNSUPPORTED"
+  },
+  {
+    "feature": "dns.read/write",
+    "legacy": "YES",
+    "next": "RUNTIME-PROBED",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "huawei_captured_features.py::dns_status/set_dns",
+    "next_evidence": "captured.py + runtime probe + test_dns.py",
+    "status": "UNKNOWN_EVIDENCE_GAP",
+    "evidence_level": "NO_X6_DNS_FIXTURE; NOT UNSUPPORTED"
+  },
+  {
+    "feature": "traffic",
+    "legacy": "COUNTER SURFACES",
+    "next": "COUNTER SURFACES",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "WAN/LAN counter fields; no dedicated normalized X6 traffic fixture found",
+    "next_evidence": "HuaweiEG8041FamilyRuntime.traffic + test_traffic.py",
+    "status": "PARITY_PARTIAL",
+    "evidence_level": "REAL SOURCES, ACTIVE COUNTERS RUNTIME-DEPENDENT"
+  },
+  {
+    "feature": "optical.read",
+    "legacy": "YES",
+    "next": "RUNTIME-PROBED",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "huawei_captured_features.py::optical_status",
+    "next_evidence": "captured.py + runtime probe + test_optical.py",
+    "status": "UNKNOWN_EVIDENCE_GAP",
+    "evidence_level": "NO_X6_OPTICAL_FIXTURE; NOT UNSUPPORTED"
+  },
+  {
+    "feature": "diagnostics ping/traceroute",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "diagnostic fixtures + local registry physical validation",
+    "next_evidence": "HuaweiEG8041FamilyRuntime.{ping,traceroute}; API routes; active frontend; test_diagnostics.py",
+    "status": "PARITY",
+    "evidence_level": "PHYSICALLY_VALIDATED_IN_LEGACY_REGISTRY + AUTOMATED"
+  },
+  {
+    "feature": "reboot.write",
+    "legacy": "NOT PROVEN",
+    "next": "UNKNOWN",
+    "model": "EG8041X6-10",
+    "legacy_evidence": "reboot page/surface mapped, but no proven production writer/read-back for X6",
+    "next_evidence": "reboot.read surface probe; reboot.write UNKNOWN; test_reboot.py",
+    "status": "NO_FALSE_CLAIM",
+    "evidence_level": "NEGATIVE PROOF INCOMPLETE; UNKNOWN CORRECT"
+  },
+  {
+    "feature": "ZTE diagnostics",
+    "legacy": "YES",
+    "next": "YES",
+    "model": "F670L/F6600P/F6201B",
+    "legacy_evidence": "zte_configuration diagnostics + F6201B captured diagnostics",
+    "next_evidence": "ZTEProvider diagnostics write promoted for known models + test_zte_provider.py",
+    "status": "PARITY_AUTOMATED",
+    "evidence_level": "AUTOMATED_TESTED"
+  },
+  {
+    "feature": "ZTE traffic",
+    "legacy": "YES COUNTERS",
+    "next": "YES COUNTERS",
+    "model": "ZTE families",
+    "legacy_evidence": "WAN/LAN/Wi-Fi RX/TX counter fields",
+    "next_evidence": "ZTEProvider.get_traffic uses WAN/LAN/Wi-Fi counter sources",
+    "status": "MIGRATED_NOT_FIXTURE_COMPLETE",
+    "evidence_level": "IMPLEMENTED"
+  }
+]

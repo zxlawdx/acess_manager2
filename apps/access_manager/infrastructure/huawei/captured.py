@@ -1,0 +1,3631 @@
+from __future__ import annotations
+
+import html as html_module
+import logging
+import os
+import re
+import time
+from typing import Any, Callable, Iterable
+
+from apps.access_manager.infrastructure.huawei.protocol import (
+    HuaweiMutationTransport,
+    HuaweiResponseParser,
+    HuaweiWebClient,
+    decode_huawei_js_string,
+)
+
+
+DHCP_PAGE = "/html/bbsp/dhcp/dhcp.asp"
+DHCP_SERVER_PAGE = "/html/bbsp/dhcpservercfg/dhcp2.asp"
+DHCP_STATIC_PAGE = "/html/bbsp/dhcpstatic/dhcpstatic.asp"
+DHCP_INFO_PAGE = "/html/bbsp/common/dhcpinfo.asp"
+LAYER3_PAGE = "/html/bbsp/layer3/layer3.asp"
+LAN_ADDRESS_PAGE = "/html/bbsp/lanaddress/lanaddress.asp"
+
+DNS_PAGE = "/html/bbsp/dnsconfiguration/dnsconfigcommon.asp"
+DNS_HOSTS_PAGE = "/html/bbsp/common/dnshostslist.asp"
+
+DMZ_PAGE = "/html/bbsp/dmz/dmz.asp"
+FIREWALL_PAGE = "/html/bbsp/firewalllevel/firewalllevel.asp"
+DOS_PAGE = "/html/bbsp/Dos/Dos.asp"
+IPV6_FIREWALL_PAGE = "/html/bbsp/ipv6firewall/firewall.asp"
+INTERNET_CONTROL_PAGE = "/html/bbsp/internetcontrol/internetcontrol.asp"
+ALG_PAGE = "/html/bbsp/alg/alg.asp"
+IGMP_PAGE = "/html/bbsp/igmp/igmp.asp"
+
+TR069_PAGE = "/html/ssmp/tr069/tr069.asp"
+DEVICE_INFO_PAGE = "/html/ssmp/deviceinfo/deviceinfo.asp"
+DEVICE_INFO_CUS_PAGE = "/html/ssmp/deviceinfo/deviceinfo.cus"
+OPTICAL_PAGE = "/html/amp/opticinfo/opticinfo.asp"
+ETH_INFO_PAGE = "/html/amp/ethinfo/ethinfo.asp"
+
+WAN_INFO_PAGE = "/html/bbsp/common/wan_list_info.asp"
+WAN_CACHE_PAGE = "/html/bbsp/common/wan_list_cache_wan.asp"
+
+LAN_USER_INFO_PAGE = "/html/bbsp/common/lanuserinfo.asp"
+LAN_USER_DEV_PAGE = "/html/bbsp/common/GetLanUserDevInfo.asp"
+LAN_USER_DHCP_PAGE = "/html/bbsp/common/GetLanUserDhcpInfo.asp"
+USER_DEVICE_PAGE = "/html/bbsp/userdevinfo/userdevinfo1.asp"
+
+WLAN_BASIC_PAGE = "/html/amp/wlanbasic/WlanBasic.asp"
+WLAN_ADV_PAGE = "/html/amp/wlanadv/WlanAdvance.asp"
+WLAN_LIST_PAGE = "/html/amp/common/wlan_list.asp"
+WLAN_INFO_PAGE = "/html/amp/wlaninfo/wlaninfo.asp"
+WLAN_ASSOC_PAGE = "/html/amp/wlaninfo/getassociateddeviceinfo.asp"
+WLAN_STA_BOOST_PAGE = "/html/amp/wlaninfo/getassociatedstaboost.asp"
+WLAN_ADV_COMMON_PAGE = "/html/amp/wlanadv/wlanadvance_com_api.asp"
+WLAN_ADV_API_PAGE = "/html/amp/wlanadv/wlanadvance_api.asp"
+WLAN_CHANNEL_PAGE = "/html/amp/common/WlanChannel.asp?1=1"
+
+logger = logging.getLogger(__name__)
+
+
+def _terminal_debug(message: str) -> None:
+    logger.info(message)
+    mode = str(os.getenv("HUAWEI_HTTP_TRACE") or "").strip().casefold()
+    if mode in {"1", "true", "yes", "basic", "raw", "unsafe"}:
+        print(message, flush=True)
+
+
+WAN_DMZ_DOMAIN = (
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1."
+    "WANPPPConnection.1.X_HW_DMZ"
+)
+
+
+def _matching_delimiter(source: str, start: int, opening: str, closing: str) -> int:
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    for index in range(start, len(source)):
+        char = source[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            continue
+        if char == opening:
+            depth += 1
+        elif char == closing:
+            depth -= 1
+            if depth == 0:
+                return index
+    return -1
+
+
+def _split_js_arguments(raw: str) -> list[str]:
+    items: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+    escaped = False
+    depth = 0
+    for char in raw:
+        if quote:
+            current.append(char)
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            current.append(char)
+            continue
+        if char in "([{":
+            depth += 1
+            current.append(char)
+            continue
+        if char in ")]}":
+            depth = max(0, depth - 1)
+            current.append(char)
+            continue
+        if char == "," and depth == 0:
+            items.append("".join(current).strip())
+            current = []
+            continue
+        current.append(char)
+    if current or raw.strip():
+        items.append("".join(current).strip())
+    return items
+
+
+def _js_literal(raw: str) -> Any:
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return decode_huawei_js_string(value[1:-1])
+    low = value.lower()
+    if low in {"null", "undefined"}:
+        return ""
+    if low == "true":
+        return True
+    if low == "false":
+        return False
+    if re.fullmatch(r"-?[0-9]+", value):
+        try:
+            return int(value)
+        except ValueError:
+            pass
+    if re.fullmatch(r"-?(?:[0-9]+\.[0-9]*|[0-9]*\.[0-9]+)", value):
+        try:
+            return float(value)
+        except ValueError:
+            pass
+    return decode_huawei_js_string(value)
+
+
+def _constructor_definitions(html: str) -> dict[str, tuple[list[str], dict[str, str]]]:
+    definitions: dict[str, tuple[list[str], dict[str, str]]] = {}
+    pattern = re.compile(r"function\s+([A-Za-z_$][\w$]*)\s*\(")
+    for match in pattern.finditer(html or ""):
+        open_paren = match.end() - 1
+        close_paren = _matching_delimiter(html, open_paren, "(", ")")
+        if close_paren < 0:
+            continue
+        body_start = html.find("{", close_paren)
+        if body_start < 0:
+            continue
+        body_end = _matching_delimiter(html, body_start, "{", "}")
+        if body_end < 0:
+            continue
+        params = [
+            item.strip()
+            for item in html[open_paren + 1:close_paren].split(",")
+            if item.strip()
+        ]
+        body = html[body_start + 1:body_end]
+        assignments: dict[str, str] = {}
+        for prop, param in re.findall(
+            r"this\s*\.\s*([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)",
+            body,
+        ):
+            assignments[prop] = param
+        for prop, param in re.findall(
+            r"this\s*\[\s*['\"]([^'\"]+)['\"]\s*\]\s*=\s*([A-Za-z_$][\w$]*)",
+            body,
+        ):
+            assignments[prop] = param
+        definitions[match.group(1)] = (params, assignments)
+    return definitions
+
+
+def parse_huawei_js_records(html: str) -> list[dict[str, Any]]:
+    """Parse Huawei's generated JS constructor records without model-specific positions."""
+    definitions = _constructor_definitions(html or "")
+    records: list[dict[str, Any]] = []
+    pattern = re.compile(r"new\s+([A-Za-z_$][\w$]*)\s*\(")
+    for match in pattern.finditer(html or ""):
+        name = match.group(1)
+        open_paren = match.end() - 1
+        close_paren = _matching_delimiter(html, open_paren, "(", ")")
+        if close_paren < 0:
+            continue
+        values = [
+            _js_literal(item)
+            for item in _split_js_arguments(html[open_paren + 1:close_paren])
+        ]
+        params, assignments = definitions.get(name, ([], {}))
+        record: dict[str, Any] = {
+            "_constructor": name,
+            "_args": values,
+        }
+        for index, param in enumerate(params):
+            if index < len(values):
+                record[param] = values[index]
+        param_index = {param: index for index, param in enumerate(params)}
+        for prop, param in assignments.items():
+            index = param_index.get(param)
+            if index is not None and index < len(values):
+                record[prop] = values[index]
+        records.append(record)
+    return records
+
+
+def _record_value(records: Iterable[dict[str, Any]], *keys: str, default=None):
+    wanted = {str(key).lower() for key in keys}
+    for record in records:
+        for key, value in record.items():
+            if str(key).lower() in wanted and value not in (None, ""):
+                return value
+    return default
+
+
+def _record_domain(record: dict[str, Any]) -> str:
+    for key in ("domain", "Domain", "_InstID", "InstID", "id"):
+        value = record.get(key)
+        if isinstance(value, str) and "InternetGatewayDevice." in value:
+            return value
+    for value in record.values():
+        if isinstance(value, str) and value.startswith("InternetGatewayDevice."):
+            return value
+    return ""
+
+
+def _source_value(source: str, *names: str, default=None):
+    """Best-effort scalar extraction for Huawei pages that use plain JS/HTML.
+
+    Constructor records stay the primary parser. This only covers simple
+    named values commonly emitted by device/optic information pages.
+    """
+    text = source or ""
+    for name in names:
+        escaped = re.escape(str(name))
+        patterns = (
+            rf"(?:var\s+)?{escaped}\s*=\s*['\"]([^'\"]*)['\"]",
+            rf"(?:name|id)\s*=\s*['\"]{escaped}['\"][^>]*"
+            rf"value\s*=\s*['\"]([^'\"]*)['\"]",
+            rf"value\s*=\s*['\"]([^'\"]*)['\"][^>]*"
+            rf"(?:name|id)\s*=\s*['\"]{escaped}['\"]",
+        )
+        for pattern in patterns:
+            match = re.search(pattern, text, re.I | re.S)
+            if match:
+                return decode_huawei_js_string(match.group(1))
+    return default
+
+
+def _label_value(source: str, *labels: str, default=""):
+    """Extract simple two-cell label/value rows from Huawei information pages."""
+    text = source or ""
+    for label in labels:
+        escaped = re.escape(str(label))
+        patterns = (
+            rf"<(?:td|th)[^>]*>\s*{escaped}\s*</(?:td|th)>\s*"
+            rf"<(?:td|th)[^>]*>\s*(.*?)\s*</(?:td|th)>",
+            rf"<label[^>]*>\s*{escaped}\s*</label>\s*"
+            rf"<[^>]+>\s*(.*?)\s*</[^>]+>",
+        )
+        for pattern in patterns:
+            match = re.search(pattern, text, re.I | re.S)
+            if not match:
+                continue
+            value = re.sub(r"<[^>]+>", "", match.group(1))
+            value = html_module.unescape(value).strip()
+            if value:
+                return decode_huawei_js_string(value)
+    return default
+
+
+def _real_wan_domain(value: str) -> bool:
+    return bool(re.fullmatch(
+        r"InternetGatewayDevice\.WANDevice\.\d+\."
+        r"WANConnectionDevice\.\d+\."
+        r"(?:WANIPConnection|WANPPPConnection)\.\d+",
+        str(value or ""),
+    ))
+
+
+def _mac_from_record(record: dict[str, Any]) -> str:
+    for key in (
+        "AssociatedDeviceMACAddress", "MACAddress", "MACAddr",
+        "PhysAddress", "Chaddr", "MAC", "mac",
+    ):
+        value = str(record.get(key) or "").strip()
+        if re.fullmatch(
+            r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}",
+            value,
+        ):
+            return value.upper()
+    for value in record.get("_args") or []:
+        text = str(value or "").strip()
+        if re.fullmatch(
+            r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}",
+            text,
+        ):
+            return text.upper()
+    return ""
+
+
+def _ip_from_record(record: dict[str, Any]) -> str:
+    for key in (
+        "IPAddress", "IPAddr", "Yiaddr", "IPv4Address",
+        "Address", "IP", "ip",
+    ):
+        value = str(record.get(key) or "").strip()
+        if re.fullmatch(
+            r"(?:\d{1,3}\.){3}\d{1,3}",
+            value,
+        ):
+            return value
+    for value in record.get("_args") or []:
+        text = str(value or "").strip()
+        if re.fullmatch(
+            r"(?:\d{1,3}\.){3}\d{1,3}",
+            text,
+        ):
+            return text
+    return ""
+
+
+def _record_text(record: dict[str, Any], *keys: str, default="") -> str:
+    for key in keys:
+        value = record.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return str(default or "")
+
+
+def _as01(value: Any, default: str = "0") -> str:
+    if value in (True, 1, "1", "true", "True", "on", "ON"):
+        return "1"
+    if value in (False, 0, "0", "false", "False", "off", "OFF"):
+        return "0"
+    return default
+
+
+def _enabled(value: Any) -> bool:
+    return _as01(value) == "1"
+
+
+def _band_details(band: str) -> tuple[str, str, str]:
+    normalized = str(band or "").lower()
+    if "5" in normalized:
+        return "5GHz", "5", "5G"
+    return "2.4GHz", "1", "2G"
+
+
+class HuaweiCapturedFeatureService:
+    """Features physically exercised on the EG8041X7-10 WebUI capture.
+
+    A mutation is always submitted at most once. Success is established through
+    a fresh read whenever the corresponding page exposes enough state.
+    """
+
+    def __init__(
+        self,
+        client: HuaweiWebClient,
+        *,
+        model: str | None = None,
+        sleep: Callable[[float], None] = time.sleep,
+        readback_tries: int = 6,
+    ) -> None:
+        self.client = client
+        self.model = model or ""
+        self.sleep = sleep
+        self.readback_tries = max(1, int(readback_tries))
+
+    def _page(self, path: str) -> str:
+        return self.client.get_page(path)
+
+    def _records(self, *pages: str) -> tuple[str, list[dict[str, Any]]]:
+        chunks: list[str] = []
+        for page in pages:
+            try:
+                chunks.append(self._page(page))
+            except Exception:
+                if len(pages) == 1:
+                    raise
+        html = "\n".join(chunks)
+        return html, parse_huawei_js_records(html)
+
+    def _post_verified(
+        self,
+        *,
+        path: str,
+        request_file: str,
+        payload: dict[str, str],
+        verifier: Callable[[], Any] | None,
+    ) -> dict[str, Any]:
+        page = self._page(request_file)
+        token = self.client.extract_token(page)
+        body = {**payload, "x.X_HW_Token": token}
+
+        _terminal_debug(
+            "[HUAWEI VERIFY] submit "
+            f"path={path!r} request_file={request_file!r} "
+            f"payload_keys={sorted(body)}"
+        )
+        transport: HuaweiMutationTransport = self.client.post_form(
+            path,
+            body,
+            referer=request_file,
+        )
+        parsed = HuaweiResponseParser.parse(
+            http_status=transport.http_status,
+            body=transport.body,
+            content_type=transport.content_type,
+        )
+        _terminal_debug(
+            "[HUAWEI VERIFY] mutation-result "
+            f"status={transport.http_status!r} "
+            f"type={parsed.response_type!r} "
+            f"accepted={parsed.accepted!r} "
+            f"confirmed={parsed.confirmed!r} "
+            f"error_code={parsed.error_code!r} "
+            f"timed_out={transport.timed_out!r} "
+            f"connection_uncertain={transport.connection_uncertain!r}"
+        )
+
+        verified = None
+        if verifier is not None and parsed.accepted:
+            for attempt, delay in enumerate(
+                (0.35, 0.55, 0.8, 1.0, 1.4, 1.8)[: self.readback_tries],
+                start=1,
+            ):
+                self.sleep(delay)
+                try:
+                    verified = verifier()
+                    _terminal_debug(
+                        "[HUAWEI VERIFY] readback "
+                        f"attempt={attempt}/{self.readback_tries} "
+                        f"verified={bool(verified)!r} "
+                        f"value={verified!r}"
+                    )
+                except Exception as exc:
+                    logger.exception(
+                        "Huawei read-back failed after mutation: "
+                        "path=%s request_file=%s attempt=%s",
+                        path,
+                        request_file,
+                        attempt,
+                    )
+                    _terminal_debug(
+                        "[HUAWEI VERIFY] readback-exception "
+                        f"attempt={attempt}/{self.readback_tries} "
+                        f"type={type(exc).__name__} error={exc}"
+                    )
+                    verified = None
+                if verified:
+                    break
+        elif verifier is not None:
+            _terminal_debug(
+                "[HUAWEI VERIFY] readback-skipped because mutation "
+                f"was not accepted; parser_type={parsed.response_type!r}"
+            )
+
+        success = (
+            bool(verified)
+            if verifier is not None
+            else bool(parsed.accepted)
+        )
+        uncertain = bool(
+            not success
+            and (
+                transport.timed_out
+                or transport.connection_uncertain
+                or (parsed.accepted and verifier is not None)
+            )
+        )
+        _terminal_debug(
+            "[HUAWEI VERIFY] final "
+            f"path={path!r} success={success!r} "
+            f"accepted={parsed.accepted!r} verified={bool(verified)!r} "
+            f"uncertain={uncertain!r}"
+        )
+        return {
+            "success": success,
+            "accepted": parsed.accepted,
+            "verified": bool(verified) or (
+                verifier is None and parsed.confirmed
+            ),
+            "uncertain": uncertain,
+            "http_status": transport.http_status,
+            "response_type": parsed.response_type,
+            "error_code": parsed.error_code,
+            "error_message": parsed.error_message,
+            "response_data": (
+                parsed.data
+                if isinstance(parsed.data, (dict, list))
+                else None
+            ),
+            # Verifiers return normalized/parsed state only. Keeping the
+            # successful read-back in the result lets HuaweiService replace
+            # exactly one session-snapshot segment without issuing a second
+            # router request after the mutation.
+            "readback": verified if verified else None,
+        }
+
+    # ----------------------------- WAN / device reads
+
+    def device_status(self) -> dict[str, Any]:
+        html, records = self._records(
+            DEVICE_INFO_PAGE,
+            DEVICE_INFO_CUS_PAGE,
+        )
+
+        def value(*names: str, default="", labels=()):
+            from_records = _record_value(
+                records,
+                *names,
+                default=None,
+            )
+            if from_records not in (None, ""):
+                return from_records
+            scalar = _source_value(
+                html,
+                *names,
+                default=None,
+            )
+            if scalar not in (None, ""):
+                return scalar
+            return _label_value(
+                html,
+                *(labels or names),
+                default=default,
+            )
+
+        return {
+            "fabricante": value(
+                "Manufacturer", "Vendor", "ManufacturerName",
+                default="Huawei",
+                labels=("Manufacturer", "Fabricante"),
+            ) or "Huawei",
+            "modelo": value(
+                "ProductClass", "ProductName", "ModelName", "Model",
+                "DeviceType", default=self.model,
+                labels=(
+                    "Product Name", "Product Class", "Device Type",
+                    "Model", "Modelo",
+                ),
+            ) or self.model,
+            "firmware": value(
+                "SoftwareVersion", "SoftwareVer",
+                "FirmwareVersion", "MainSoftwareVersion",
+                labels=(
+                    "Software Version", "Firmware Version",
+                    "Versão de software",
+                ),
+            ),
+            "hardware": value(
+                "HardwareVersion", "HardwareVer",
+                labels=("Hardware Version", "Versão de hardware"),
+            ),
+            "boot": value(
+                "BootLoaderVersion", "BootVersion",
+                labels=("Boot Loader Version", "Boot Version"),
+            ),
+            "serial": value(
+                "SerialNumber", "SerialNo", "SN",
+                labels=("Serial Number", "Serial No.", "SN"),
+            ),
+            "uptime": value(
+                "UpTime", "Uptime", "DeviceUpTime",
+                labels=("Up Time", "Uptime", "Device Up Time"),
+            ),
+            "temperatura_cpu": value(
+                "Temperature", "CPUTemperature", "CpuTemperature",
+            ),
+            "memoria_percent": value(
+                "MemoryUsage", "MemoryUsedPercent",
+            ),
+            "flash_usado_percent": value(
+                "FlashUsage", "FlashUsedPercent",
+            ),
+        }
+
+    def optical_status(self) -> dict[str, Any]:
+        html, records = self._records(OPTICAL_PAGE)
+
+        def value(*names: str, default=""):
+            from_records = _record_value(
+                records,
+                *names,
+                default=None,
+            )
+            if from_records not in (None, ""):
+                return from_records
+            return _source_value(
+                html,
+                *names,
+                default=default,
+            )
+
+        return {
+            "rx_power_dbm": value(
+                "RxPower", "RXPower", "RxOpticalPower",
+                "ReceivePower", "RxPowerValue",
+            ),
+            "tx_power_dbm": value(
+                "TxPower", "TXPower", "TxOpticalPower",
+                "TransmitPower", "TxPowerValue",
+            ),
+            "temperature_c": value(
+                "Temperature", "TemperatureC", "ChipTemperature",
+            ),
+            "voltage": value(
+                "Voltage", "SupplyVoltage",
+            ),
+            "current_ma": value(
+                "Current", "BiasCurrent", "TxBias",
+            ),
+            "registration_status": value(
+                "Status", "ONTState", "RegisterStatus",
+                default="Huawei GPON",
+            ),
+            "onu_id": value(
+                "OnuId", "ONUId", "ONTID", default="-",
+            ),
+            "los": value(
+                "LOS", "LosStatus", default="-",
+            ),
+            "pon_uptime": value(
+                "Uptime", "PONUptime",
+            ),
+        }
+
+    def _wan_records(self) -> list[dict[str, Any]]:
+        # wan_list_info.asp defines WanIP/WanPPP constructors while the cache
+        # contains the live connection instances. The definition page also
+        # creates helper objects such as ".X_HW_AddressType"; those are NOT WAN
+        # services and were the source of the duplicate cards seen in runtime.
+        _html, records = self._records(
+            WAN_INFO_PAGE,
+            WAN_CACHE_PAGE,
+        )
+        selected: dict[str, dict[str, Any]] = {}
+        for item in records:
+            domain = _record_domain(item)
+            if not _real_wan_domain(domain):
+                continue
+            current = selected.get(domain)
+            # Prefer the richest/live record when the same domain appears in
+            # both definition and cache sources.
+            if current is None or len(item) >= len(current):
+                selected[domain] = item
+        return list(selected.values())
+
+    def wan_status(self) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for item in self._wan_records():
+            domain = _record_domain(item)
+            name = (
+                item.get("NewName")
+                or item.get("Name")
+                or item.get("name")
+                or domain
+            )
+            dns_raw = str(
+                item.get("dnsstr")
+                or item.get("DNSServers")
+                or ""
+            )
+            dns_parts = [
+                value.strip()
+                for value in dns_raw.split(",")
+                if value.strip()
+            ]
+            dns1 = (
+                item.get("IPv4PrimaryDNS")
+                or item.get("PrimaryDNS")
+                or item.get("DNS1")
+                or (dns_parts[0] if dns_parts else "")
+            )
+            dns2 = (
+                item.get("IPv4SecondaryDNS")
+                or item.get("SecondaryDNS")
+                or item.get("DNS2")
+                or (dns_parts[1] if len(dns_parts) > 1 else "")
+            )
+            result.append({
+                "id": domain,
+                "nome": name,
+                "status": (
+                    item.get("ConnectionStatus")
+                    or item.get("Status")
+                    or ""
+                ),
+                "ip": (
+                    item.get("IPv4IPAddress")
+                    or item.get("IPAddress")
+                    or item.get("ExternalIPAddress")
+                    or ""
+                ),
+                "gateway": (
+                    item.get("IPv4Gateway")
+                    or item.get("Gateway")
+                    or item.get("DefaultGateway")
+                    or ""
+                ),
+                "vlan": item.get("VlanId") or item.get("VLANID") or "",
+                "mtu": (
+                    item.get("IPv4MXU")
+                    or item.get("MTU")
+                    or item.get("MaxMRUSize")
+                    or ""
+                ),
+                "dns1": dns1,
+                "dns2": dns2,
+                "nat": (
+                    item.get("IPv4NATEnable")
+                    or item.get("NATEnable")
+                    or ""
+                ),
+                "uptime": item.get("Uptime") or "",
+                "ipv6": item.get("IPv6IPAddress") or item.get("IPv6Address") or "",
+                "wan_type": (
+                    "PPPoE"
+                    if "WANPPPConnection" in domain
+                    or item.get("_constructor") == "WanPPP"
+                    else "IP"
+                ),
+                "services": item.get("ServiceList") or item.get("ServList") or "",
+            })
+        return result
+
+    def pppoe_status(self, reveal_password: bool = False) -> list[dict[str, Any]]:
+        rows = []
+        for item in self._wan_records():
+            domain = _record_domain(item)
+            if (
+                "WANPPPConnection" not in domain
+                and item.get("_constructor") != "WanPPP"
+            ):
+                continue
+            password = ""
+            if reveal_password:
+                password = str(
+                    item.get("Password")
+                    or item.get("PPPPassword")
+                    or ""
+                )
+            rows.append({
+                "id": domain,
+                "nome": item.get("NewName") or item.get("Name") or domain,
+                "username": item.get("Username") or item.get("UserName") or "",
+                "password": password,
+                "password_hidden": not reveal_password,
+                "auth_type": item.get("PPPAuthenticationProtocol") or item.get("AuthMode") or "",
+                "vlan": item.get("VlanId") or item.get("VLANID") or "",
+                "mtu": item.get("MTU") or item.get("MaxMRUSize") or "",
+            })
+        return rows
+
+    def _lan_client_records(self) -> list[dict[str, Any]]:
+        chunks: list[str] = []
+        for page in (
+            USER_DEVICE_PAGE,
+            LAN_USER_INFO_PAGE,
+            LAN_USER_DEV_PAGE,
+            LAN_USER_DHCP_PAGE,
+            DHCP_INFO_PAGE,
+        ):
+            try:
+                chunks.append(self._page(page))
+            except Exception:
+                continue
+
+        # In the real WebUI these two inventory feeds are AJAX POSTs with no
+        # body. GETing only their script/definition pages yields zero clients.
+        for endpoint in (
+            LAN_USER_DEV_PAGE,
+            LAN_USER_DHCP_PAGE,
+        ):
+            try:
+                chunks.append(
+                    self.client.post_read(
+                        endpoint,
+                        referer=USER_DEVICE_PAGE,
+                    )
+                )
+            except Exception:
+                continue
+
+        return parse_huawei_js_records("\n".join(chunks))
+
+    def lan_clients(self) -> list[dict[str, Any]]:
+        try:
+            records = self._lan_client_records()
+        except Exception:
+            return []
+
+        by_mac: dict[str, dict[str, Any]] = {}
+        for item in records:
+            mac = _mac_from_record(item)
+            ip = _ip_from_record(item)
+            if not mac or not ip:
+                continue
+            interface = _record_text(
+                item,
+                "InterfaceType", "Interface", "Layer2Interface",
+                "PortType", "ConnectionType",
+            ).lower()
+            # User-device pages may contain both wired and wireless entries.
+            if "wlan" in interface or "wifi" in interface or "ssid" in interface:
+                continue
+            by_mac[mac] = {
+                "hostname": _record_text(
+                    item,
+                    "HostName", "hostname", "DeviceName", "Name",
+                ),
+                "alias": _record_text(
+                    item,
+                    "UserDevAlias", "Alias", "Description",
+                ),
+                "ip": ip,
+                "ipv4": _record_text(
+                    item,
+                    "IPv4Address", "IpAddr", "IPAddress",
+                    default=ip,
+                ),
+                "ipv6": _record_text(
+                    item,
+                    "IPv6Address", "IPv6Addr", "GlobalIPv6Address",
+                ),
+                "mac": mac,
+                "interface": _record_text(
+                    item,
+                    "Interface", "InterfaceType", "Layer2Interface",
+                    "Port", "PortName",
+                ),
+                "connection_type": _record_text(
+                    item,
+                    "PortType", "ConnectionType", "InterfaceType",
+                ),
+                "status": _record_text(
+                    item,
+                    "Status", "Active", "Online", "DeviceStatus",
+                ),
+                "address_source": _record_text(
+                    item,
+                    "AddressSource", "IPType", "DhcpType", "DHCPType",
+                ),
+                "lease": _record_text(
+                    item,
+                    "RemainingLeaseTime", "LeaseTime", "LeaseTimeRemaining",
+                ),
+                "vendor": _record_text(
+                    item,
+                    "Vendor", "Manufacturer", "Brand",
+                ),
+                "os": _record_text(
+                    item,
+                    "OS", "OperatingSystem", "OsType",
+                ),
+            }
+        return list(by_mac.values())
+
+    def wifi_clients(self) -> list[dict[str, Any]]:
+        chunks: list[str] = []
+        for page in (
+            WLAN_INFO_PAGE,
+            WLAN_LIST_PAGE,
+        ):
+            try:
+                chunks.append(self._page(page))
+            except Exception:
+                continue
+
+        # Huawei serves association state through POST-only XHR endpoints.
+        # They are read-only and HuaweiWebClient.post_read safely retries once
+        # only when authentication expired.
+        for endpoint in (
+            WLAN_ASSOC_PAGE,
+            WLAN_STA_BOOST_PAGE,
+        ):
+            try:
+                chunks.append(
+                    self.client.post_read(
+                        endpoint,
+                        referer=WLAN_INFO_PAGE,
+                    )
+                )
+            except Exception:
+                continue
+
+        association_records = parse_huawei_js_records(
+            "\n".join(chunks)
+        )
+        try:
+            lan_records = self._lan_client_records()
+        except Exception:
+            lan_records = []
+
+        lan_by_mac: dict[str, dict[str, Any]] = {}
+        for item in lan_records:
+            mac = _mac_from_record(item)
+            if mac:
+                lan_by_mac[mac] = item
+
+        clients: dict[str, dict[str, Any]] = {}
+        for item in association_records:
+            mac = _mac_from_record(item)
+            if not mac:
+                continue
+
+            constructor = str(item.get("_constructor") or "").lower()
+            domain = _record_domain(item).lower()
+            association_hint = any(
+                item.get(key) not in (None, "")
+                for key in (
+                    "AssociatedDeviceMACAddress", "SignalStrength",
+                    "RSSI", "Rssi", "RxRate", "TxRate",
+                    "LastDataDownlinkRate", "LastDataUplinkRate",
+                )
+            ) or any(
+                hint in constructor or hint in domain
+                for hint in ("assoc", "station", "sta", "wlan")
+            )
+            if not association_hint:
+                continue
+
+            lan = lan_by_mac.get(mac, {})
+            ip = _ip_from_record(item) or _ip_from_record(lan)
+            hostname = _record_text(
+                item,
+                "HostName", "hostname", "DeviceName", "Name",
+            ) or _record_text(
+                lan,
+                "HostName", "hostname", "DeviceName", "Name",
+            )
+            clients[mac] = {
+                "hostname": hostname,
+                "ip": ip,
+                "mac": mac,
+                "ssid": _record_text(
+                    item,
+                    "SSID", "SSIDName", "WlanName", "NetworkName",
+                ),
+                "rssi": _record_text(
+                    item,
+                    "SignalStrength", "RSSI", "Rssi", "Signal",
+                ),
+                "snr": _record_text(
+                    item,
+                    "SNR", "Snr", "SignalNoiseRatio",
+                ),
+                "rx_rate": _record_text(
+                    item,
+                    "RxRate", "ReceiveRate", "LastDataDownlinkRate",
+                ),
+                "tx_rate": _record_text(
+                    item,
+                    "TxRate", "TransmitRate", "LastDataUplinkRate",
+                ),
+                "interface": _record_text(
+                    item,
+                    "Interface", "InterfaceType", "Layer2Interface",
+                    "Port", "PortName",
+                ) or _record_text(
+                    lan,
+                    "Interface", "InterfaceType", "Layer2Interface",
+                    "Port", "PortName",
+                ),
+                "status": _record_text(
+                    item,
+                    "Status", "Active", "Online", "DeviceStatus",
+                ) or _record_text(
+                    lan,
+                    "Status", "Active", "Online", "DeviceStatus",
+                ),
+                "address_source": _record_text(
+                    lan,
+                    "AddressSource", "IPType", "DhcpType", "DHCPType",
+                ),
+                "ipv6": _record_text(
+                    lan,
+                    "IPv6Address", "IPv6Addr", "GlobalIPv6Address",
+                ),
+                "lease": _record_text(
+                    lan,
+                    "RemainingLeaseTime", "LeaseTime", "LeaseTimeRemaining",
+                ),
+                "vendor": _record_text(
+                    lan,
+                    "Vendor", "Manufacturer", "Brand",
+                ),
+                "os": _record_text(
+                    lan,
+                    "OS", "OperatingSystem", "OsType",
+                ),
+            }
+        return list(clients.values())
+
+    def lan_ports(self) -> list[dict[str, Any]]:
+        try:
+            _html, records = self._records(
+                ETH_INFO_PAGE,
+                LAN_USER_INFO_PAGE,
+            )
+        except Exception:
+            records = []
+
+        ports: dict[int, dict[str, Any]] = {}
+        for item in records:
+            domain = _record_domain(item)
+            match = re.search(
+                r"LANEthernetInterfaceConfig\.(\d+)",
+                domain,
+            )
+            constructor = str(item.get("_constructor") or "")
+            port_value = (
+                match.group(1)
+                if match
+                else _record_text(
+                    item,
+                    "Port", "PortId", "PortID", "LANPort",
+                )
+            )
+            if not str(port_value).isdigit():
+                if "eth" not in constructor.lower():
+                    continue
+                continue
+            port = int(port_value)
+            link_state = _record_text(
+                item,
+                "Status", "LinkStatus", "LinkState",
+                default="unknown",
+            )
+            enabled_raw = _record_text(
+                item,
+                "Enable", "Enabled", "AdminStatus",
+            )
+            ports[port] = {
+                "port": port,
+                "enabled": _enabled(enabled_raw) if enabled_raw != "" else None,
+                "status": link_state,
+                "link_state": link_state,
+                "speed": _record_text(
+                    item,
+                    "MaxBitRate", "Speed", "CurrentBitRate",
+                ),
+                "duplex": _record_text(
+                    item,
+                    "DuplexMode", "Duplex",
+                ),
+                "negotiation": _record_text(
+                    item,
+                    "AutoNegotiate", "AutoNegotiation", "Negotiation",
+                ),
+                "client": _record_text(
+                    item,
+                    "HostName", "DeviceName", "Client",
+                ),
+                "rx_bytes": _record_text(
+                    item,
+                    "BytesReceived", "RxBytes", "ReceiveBytes",
+                ),
+                "tx_bytes": _record_text(
+                    item,
+                    "BytesSent", "TxBytes", "TransmitBytes",
+                ),
+            }
+
+        if ports:
+            return [ports[key] for key in sorted(ports)]
+
+        # Layer3 only proves the administrative state. It does NOT prove a
+        # physical link state, speed or duplex value. Keep those fields empty/
+        # unknown instead of leaking the old sentinel `duplex = "L3 admin"`.
+        try:
+            layer3 = self.layer3_status()
+        except Exception:
+            return []
+        return [
+            {
+                "port": item["port"],
+                "enabled": bool(item.get("enabled")),
+                "admin_state": "enabled" if item.get("enabled") else "disabled",
+                "status": "unknown",
+                "link_state": "unknown",
+                "speed": "",
+                "duplex": "",
+                "negotiation": "",
+                "client": "",
+                "rx_bytes": "",
+                "tx_bytes": "",
+            }
+            for item in layer3.get("ports") or []
+        ]
+
+    # ----------------------------- LAN / Layer3
+
+    def layer3_status(self) -> dict[str, Any]:
+        _html, records = self._records(LAYER3_PAGE)
+        ports: list[dict[str, Any]] = []
+        prefix = (
+            "InternetGatewayDevice.LANDevice.1."
+            "LANEthernetInterfaceConfig."
+        )
+        for instance in ("1", "2", "3", "4"):
+            domain = prefix + instance
+            record = next(
+                (
+                    item for item in records
+                    if _record_domain(item) == domain
+                ),
+                {},
+            )
+            value = (
+                record.get("X_HW_L3Enable")
+                or record.get("L3Enable")
+                or ""
+            )
+            ports.append({
+                "port": int(instance),
+                "domain": domain,
+                "enabled": _enabled(value),
+                "raw": str(value),
+            })
+        return {
+            "ports": ports,
+        }
+
+    def set_layer3_ports(
+        self,
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        current = self.layer3_status()
+        current_by_port = {
+            str(item["port"]): item
+            for item in current.get("ports") or []
+        }
+        values: dict[str, str] = {}
+        for instance in ("1", "2", "3", "4"):
+            source = (
+                config.get(f"LAN{instance}")
+                if f"LAN{instance}" in config
+                else config.get(instance)
+            )
+            if source is None:
+                source = (
+                    current_by_port.get(instance, {})
+                    .get("enabled", True)
+                )
+            values[f"LAN{instance}.X_HW_L3Enable"] = _as01(source)
+
+        query = "&".join(
+            f"LAN{i}=InternetGatewayDevice.LANDevice.1."
+            f"LANEthernetInterfaceConfig.{i}"
+            for i in ("1", "2", "3", "4")
+        )
+        path = (
+            "/html/bbsp/layer3/set.cgi?"
+            + query
+            + "&RequestFile=html/bbsp/layer3/layer3.asp"
+        )
+
+        def verify():
+            actual = self.layer3_status()
+            for item in actual.get("ports") or []:
+                expected = values.get(
+                    f"LAN{item['port']}.X_HW_L3Enable"
+                )
+                if expected is None:
+                    continue
+                if item.get("raw") not in ("", expected):
+                    return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=LAYER3_PAGE,
+            payload=values,
+            verifier=verify,
+        )
+
+    def lan_ipv4_status(self) -> dict[str, Any]:
+        _html, records = self._records(DHCP_PAGE)
+        interfaces = []
+        prefix = (
+            "InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.IPInterface."
+        )
+        for instance in ("1", "2"):
+            domain = prefix + instance
+            record = next(
+                (
+                    item for item in records
+                    if _record_domain(item) == domain
+                ),
+                {},
+            )
+            interfaces.append({
+                "domain": domain,
+                "instance": int(instance),
+                "enabled": _enabled(
+                    record.get("Enable", "1")
+                ),
+                "ip": (
+                    record.get("IPInterfaceIPAddress")
+                    or record.get("IPAddress")
+                    or ""
+                ),
+                "subnet_mask": (
+                    record.get("IPInterfaceSubnetMask")
+                    or record.get("SubnetMask")
+                    or ""
+                ),
+            })
+        return {"interfaces": interfaces}
+
+    def set_lan_ipv4(
+        self,
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        current = self.lan_ipv4_status()
+        by_instance = {
+            str(item["instance"]): item
+            for item in current.get("interfaces") or []
+        }
+        primary = by_instance.get("1") or {}
+        secondary = by_instance.get("2") or {}
+
+        primary_ip = str(
+            config.get("primary_ip", primary.get("ip") or "")
+        )
+        primary_mask = str(
+            config.get(
+                "primary_subnet_mask",
+                primary.get("subnet_mask") or "",
+            )
+        )
+        secondary_enabled = bool(
+            config.get(
+                "secondary_enabled",
+                secondary.get("enabled", True),
+            )
+        )
+        secondary_ip = str(
+            config.get("secondary_ip", secondary.get("ip") or "")
+        )
+        secondary_mask = str(
+            config.get(
+                "secondary_subnet_mask",
+                secondary.get("subnet_mask") or "",
+            )
+        )
+        if not primary_ip or not primary_mask:
+            raise ValueError(
+                "IPv4/máscara primários da LAN são obrigatórios."
+            )
+
+        path = (
+            "/html/bbsp/dhcp/set.cgi"
+            "?x=InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.IPInterface.1"
+            "&z=InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.IPInterface.2"
+            "&RequestFile=html/bbsp/dhcp/dhcp.asp"
+        )
+        payload = {
+            "x.IPInterfaceIPAddress": primary_ip,
+            "x.IPInterfaceSubnetMask": primary_mask,
+            "z.Enable": _as01(secondary_enabled),
+            "z.IPInterfaceIPAddress": secondary_ip,
+            "z.IPInterfaceSubnetMask": secondary_mask,
+        }
+
+        # Changing the primary LAN address can intentionally break this HTTP
+        # path. In that case _post_verified returns uncertain instead of
+        # repeating the mutation.
+        def verify():
+            actual = self.lan_ipv4_status()
+            rows = {
+                str(item["instance"]): item
+                for item in actual.get("interfaces") or []
+            }
+            one = rows.get("1") or {}
+            two = rows.get("2") or {}
+            if str(one.get("ip") or "") != primary_ip:
+                return None
+            if str(one.get("subnet_mask") or "") != primary_mask:
+                return None
+            if secondary_ip and str(two.get("ip") or "") != secondary_ip:
+                return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=DHCP_PAGE,
+            payload=payload,
+            verifier=verify,
+        )
+
+    def ipv6_lan_status(self) -> dict[str, Any]:
+        _html, records = self._records(LAN_ADDRESS_PAGE)
+        keys = (
+            "IPv6Address", "Prefix", "PreferredLifeTime",
+            "ValidLifeTime", "Mode", "ParentPrefix",
+            "ChildPrefixMask", "MTU", "LanInterface",
+            "mode", "Enable", "IPv6DNSConfigType",
+            "IPv6DNSWANConnection", "IPv6DNSServers",
+            "ULAmode", "IAPDAddLength",
+        )
+        return {
+            key: _record_value(records, key, default="")
+            for key in keys
+        }
+
+    def set_ipv6_lan(
+        self,
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        current = self.ipv6_lan_status()
+        aliases = {
+            "ipv6_address": "IPv6Address",
+            "prefix": "Prefix",
+            "preferred_lifetime": "PreferredLifeTime",
+            "valid_lifetime": "ValidLifeTime",
+            "prefix_mode": "Mode",
+            "parent_prefix": "ParentPrefix",
+            "child_prefix_mask": "ChildPrefixMask",
+            "mtu": "MTU",
+            "lan_interface": "LanInterface",
+            "ra_mode": "mode",
+            "ra_enable": "Enable",
+            "dns_config_type": "IPv6DNSConfigType",
+            "dns_wan_connection": "IPv6DNSWANConnection",
+            "dns_servers": "IPv6DNSServers",
+            "ula_mode": "ULAmode",
+            "iapd_add_length": "IAPDAddLength",
+        }
+        normalized = dict(current)
+        for key, value in config.items():
+            target = aliases.get(key, key)
+            if target not in current:
+                raise ValueError(
+                    f"Parâmetro IPv6 LAN Huawei não mapeado: {key}."
+                )
+            normalized[target] = value
+
+        path = (
+            "/html/bbsp/lanaddress/set.cgi"
+            "?x=InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.X_HW_IPv6Interface.1.IPv6Address.1"
+            "&y=InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.X_HW_IPv6Interface.1.IPv6Prefix.1"
+            "&z=InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.X_HW_IPv6Interface.1"
+            "&p=InternetGatewayDevice.LANDevice.1.X_HW_IPv6Config"
+            "&m=InternetGatewayDevice.LANDevice.1.X_HW_RouterAdvertisement"
+            "&r=InternetGatewayDevice.LANDevice.1.X_HW_DHCPv6.Server"
+            "&n=InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.X_HW_IPv6Interface.1.ULAIPv6Prefix"
+            "&t=InternetGatewayDevice.LANDevice.1.X_HW_DHCPv6.Server.Pool.1"
+            "&RequestFile=html/bbsp/lanaddress/lanaddress.asp"
+        )
+        payload = {
+            "x.IPv6Address": str(normalized.get("IPv6Address") or ""),
+            "y.Prefix": str(normalized.get("Prefix") or ""),
+            "y.PreferredLifeTime": str(normalized.get("PreferredLifeTime") or ""),
+            "y.ValidLifeTime": str(normalized.get("ValidLifeTime") or ""),
+            "y.Mode": str(normalized.get("Mode") or ""),
+            "y.ParentPrefix": str(normalized.get("ParentPrefix") or ""),
+            "y.ChildPrefixMask": str(normalized.get("ChildPrefixMask") or ""),
+            "m.MTU": str(normalized.get("MTU") or ""),
+            "z.LanInterface": str(normalized.get("LanInterface") or ""),
+            "m.mode": str(normalized.get("mode") or ""),
+            "m.Enable": _as01(normalized.get("Enable")),
+            "r.Enable": _as01(normalized.get("Enable")),
+            "p.IPv6DNSConfigType": str(normalized.get("IPv6DNSConfigType") or ""),
+            "p.IPv6DNSWANConnection": str(normalized.get("IPv6DNSWANConnection") or ""),
+            "p.IPv6DNSServers": str(normalized.get("IPv6DNSServers") or ""),
+            "n.ULAmode": str(normalized.get("ULAmode") or ""),
+            "t.IAPDAddLength": str(normalized.get("IAPDAddLength") or ""),
+        }
+
+        def verify():
+            actual = self.ipv6_lan_status()
+            expected = {
+                "IPv6Address": payload["x.IPv6Address"],
+                "Prefix": payload["y.Prefix"],
+                "MTU": payload["m.MTU"],
+                "IPv6DNSConfigType": payload["p.IPv6DNSConfigType"],
+            }
+            for key, value in expected.items():
+                if value and str(actual.get(key) or "") != str(value):
+                    return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=LAN_ADDRESS_PAGE,
+            payload=payload,
+            verifier=verify,
+        )
+
+    # ----------------------------- DHCP
+
+    def dhcp_status(self) -> dict[str, Any]:
+        html, records = self._records(
+            DHCP_PAGE,
+            DHCP_SERVER_PAGE,
+            DHCP_STATIC_PAGE,
+            DHCP_INFO_PAGE,
+        )
+        dns_list = str(
+            _record_value(records, "X_HW_DNSList", "DNSList", default="")
+            or ""
+        )
+        dns = [item.strip() for item in dns_list.split(",") if item.strip()]
+        server_enable = _record_value(
+            records,
+            "DHCPServerEnable",
+            "ServerEnable",
+            default="",
+        )
+        basic = {
+            "_InstID": (
+                _record_value(records, "_InstID", "Domain", "domain", default="")
+                or "InternetGatewayDevice.LANDevice.1.LANHostConfigManagement"
+            ),
+            "ServerEnable": _as01(server_enable) if server_enable != "" else "",
+            "DHCPEnable": _record_value(records, "DHCPEnable", default=""),
+            "L2RelayEnable": _record_value(
+                records, "X_HW_DHCPL2RelayEnable", default=""
+            ),
+            "Option125Enable": _record_value(
+                records, "X_HW_Option125Enable", default=""
+            ),
+            "MinAddress": _record_value(records, "MinAddress", default=""),
+            "MaxAddress": _record_value(records, "MaxAddress", default=""),
+            "LeaseTime": _record_value(records, "DHCPLeaseTime", "LeaseTime", default=""),
+            "DNSServer1": dns[0] if dns else "",
+            "DNSServer2": dns[1] if len(dns) > 1 else "",
+            "IPAddr": _record_value(records, "IPInterfaceIPAddress", "IPAddr", default=""),
+            "SubnetMask": _record_value(records, "IPInterfaceSubnetMask", "SubnetMask", default=""),
+        }
+        reservations: list[dict[str, Any]] = []
+        leases: list[dict[str, Any]] = []
+        for item in records:
+            domain = _record_domain(item)
+            ip = item.get("Yiaddr") or item.get("IPAddr") or item.get("IPAddress")
+            mac = item.get("Chaddr") or item.get("MACAddr") or item.get("MACAddress")
+            if "DHCPStaticAddress" in domain or (item.get("Yiaddr") and item.get("Chaddr")):
+                reservations.append({
+                    "_InstID": domain,
+                    "Name": item.get("Name") or "",
+                    "IPAddr": ip or "",
+                    "MACAddr": mac or "",
+                })
+            elif ip and mac:
+                leases.append({
+                    "HostName": item.get("HostName") or item.get("hostname") or "",
+                    "IPAddr": ip,
+                    "MACAddr": mac,
+                    "RemainingLeaseTime": (
+                        item.get("RemainingLeaseTime")
+                        or item.get("LeaseTime")
+                        or ""
+                    ),
+                })
+        write_ready = all(
+            basic.get(key) not in (None, "")
+            for key in ("MinAddress", "MaxAddress", "LeaseTime")
+        )
+        return {
+            "basic": basic,
+            "leases": leases,
+            "reservations": reservations,
+            "ipv6": [],
+            "write_safe": True,
+            "capabilities": {
+                "server_write": write_ready,
+                "gateway_write": False,
+                "lease_read": True,
+                "reservation_write": True,
+                "reservation_create": True,
+                "reservation_update": True,
+                "reservation_delete": True,
+                "ipv6_read": False,
+                "ipv6_write": False,
+            },
+            "warnings": (
+                []
+                if write_ready
+                else ["A página DHCP respondeu, mas nem todos os campos do formulário foram identificados."]
+            ),
+        }
+
+    def set_dhcp_basic(self, config: dict[str, Any]) -> dict[str, Any]:
+        allowed = {
+            "enabled",
+            "dhcp_enable",
+            "l2_relay_enable",
+            "option125_enable",
+            "min_address",
+            "max_address",
+            "dns1",
+            "dns2",
+            "lease_time",
+            # Generic ZTE form fields are accepted but ignored by Huawei when
+            # they do not correspond to this captured DHCP page.
+            "dns_source",
+            "ipv4_dns_origin",
+        }
+        unsupported = [
+            key
+            for key, value in config.items()
+            if key not in allowed and value not in (None, "", False, [])
+        ]
+        if unsupported:
+            raise ValueError(
+                "Campos DHCP Huawei ainda não mapeados: " + ", ".join(unsupported)
+            )
+
+        current = self.dhcp_status()["basic"]
+        html, records = self._records(DHCP_SERVER_PAGE)
+
+        enabled = (
+            config["enabled"]
+            if "enabled" in config
+            else _enabled(current.get("ServerEnable"))
+        )
+        min_address = str(config.get("min_address", current.get("MinAddress") or ""))
+        max_address = str(config.get("max_address", current.get("MaxAddress") or ""))
+        lease = str(config.get("lease_time", current.get("LeaseTime") or ""))
+
+        dns1 = str(config.get("dns1", current.get("DNSServer1") or "") or "")
+        dns2 = str(config.get("dns2", current.get("DNSServer2") or "") or "")
+        dns_list = ",".join(item for item in (dns1, dns2) if item)
+
+        payload = {
+            "z.DHCPServerEnable": _as01(enabled),
+            "z.X_HW_DNSList": dns_list,
+            "z.MinAddress": min_address,
+            "z.MaxAddress": max_address,
+            "z.DHCPLeaseTime": lease,
+        }
+        preservation = {
+            "y.DHCPEnable": _record_value(records, "DHCPEnable", default=None),
+            "z.X_HW_DHCPL2RelayEnable": _record_value(
+                records, "X_HW_DHCPL2RelayEnable", default=None
+            ),
+            "z.X_HW_Option125Enable": _record_value(
+                records, "X_HW_Option125Enable", default=None
+            ),
+        }
+        if config.get("dhcp_enable") is not None:
+            preservation["y.DHCPEnable"] = _as01(config["dhcp_enable"])
+        if config.get("l2_relay_enable") is not None:
+            preservation["z.X_HW_DHCPL2RelayEnable"] = _as01(
+                config["l2_relay_enable"]
+            )
+        if config.get("option125_enable") is not None:
+            preservation["z.X_HW_Option125Enable"] = _as01(
+                config["option125_enable"]
+            )
+        payload.update({
+            key: str(value)
+            for key, value in preservation.items()
+            if value is not None
+        })
+
+        path = (
+            "/html/bbsp/dhcpservercfg/set.cgi"
+            "?x=InternetGatewayDevice.LANDevice.1.LANHostConfigManagement.IPInterface.2"
+            "&y=InternetGatewayDevice.X_HW_DHCPSLVSERVER"
+            "&z=InternetGatewayDevice.LANDevice.1.LANHostConfigManagement"
+            "&RequestFile=html/bbsp/dhcpservercfg/dhcp2.asp"
+        )
+
+        def verify():
+            actual = self.dhcp_status()["basic"]
+            expected = {
+                "ServerEnable": _as01(enabled),
+                "DHCPEnable": str(payload.get("y.DHCPEnable") or ""),
+                "L2RelayEnable": str(
+                    payload.get("z.X_HW_DHCPL2RelayEnable") or ""
+                ),
+                "Option125Enable": str(
+                    payload.get("z.X_HW_Option125Enable") or ""
+                ),
+                "MinAddress": min_address,
+                "MaxAddress": max_address,
+                "LeaseTime": lease,
+                "DNSServer1": dns1,
+                "DNSServer2": dns2,
+            }
+            for key, value in expected.items():
+                if str(actual.get(key) or "") != str(value or ""):
+                    return None
+            return actual
+
+        result = self._post_verified(
+            path=path,
+            request_file=DHCP_SERVER_PAGE,
+            payload=payload,
+            verifier=verify,
+        )
+        result["basic"] = verify() if result["verified"] else None
+        return result
+
+    def create_dhcp_reservation(
+        self,
+        *,
+        ip: str,
+        mac: str,
+    ) -> dict[str, Any]:
+        root = (
+            "InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.DHCPStaticAddress"
+        )
+        path = (
+            "/html/bbsp/dhcpstatic/add.cgi"
+            f"?x={root}"
+            "&RequestFile=html/bbsp/dhcpstatic/dhcpstatic.asp"
+        )
+
+        def verify():
+            actual = self.dhcp_status()
+            for item in actual.get("reservations") or []:
+                if (
+                    str(item.get("IPAddr") or "") == str(ip)
+                    and str(item.get("MACAddr") or "").upper()
+                    == str(mac).upper()
+                ):
+                    return item
+            return None
+
+        return self._post_verified(
+            path=path,
+            request_file=DHCP_STATIC_PAGE,
+            payload={
+                "x.Yiaddr": str(ip),
+                "x.Chaddr": str(mac),
+                "x.Enable": "1",
+            },
+            verifier=verify,
+        )
+
+    def update_dhcp_reservation(
+        self,
+        instance_or_domain: str,
+        *,
+        ip: str,
+        mac: str,
+    ) -> dict[str, Any]:
+        raw = str(instance_or_domain or "").strip()
+        prefix = (
+            "InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.DHCPStaticAddress."
+        )
+        if raw.isdigit():
+            domain = prefix + raw
+        elif raw.startswith(prefix) and raw[len(prefix):].isdigit():
+            domain = raw
+        else:
+            raise ValueError(
+                "Instância DHCP Static Huawei inválida."
+            )
+
+        path = (
+            "/html/bbsp/dhcpstatic/set.cgi"
+            f"?x={domain}"
+            "&RequestFile=html/bbsp/dhcpstatic/dhcpstatic.asp"
+        )
+
+        def verify():
+            actual = self.dhcp_status()
+            for item in actual.get("reservations") or []:
+                if (
+                    item.get("_InstID") == domain
+                    and str(item.get("IPAddr") or "") == str(ip)
+                    and str(item.get("MACAddr") or "").upper()
+                    == str(mac).upper()
+                ):
+                    return item
+            return None
+
+        return self._post_verified(
+            path=path,
+            request_file=DHCP_STATIC_PAGE,
+            payload={
+                "x.Yiaddr": str(ip),
+                "x.Chaddr": str(mac),
+            },
+            verifier=verify,
+        )
+
+    def delete_dhcp_reservation(
+        self,
+        instance_or_domain: str,
+    ) -> dict[str, Any]:
+        raw = str(instance_or_domain or "").strip()
+        root = (
+            "InternetGatewayDevice.LANDevice.1."
+            "LANHostConfigManagement.DHCPStaticAddress"
+        )
+        prefix = root + "."
+        if raw.isdigit():
+            domain = prefix + raw
+        elif raw.startswith(prefix) and raw[len(prefix):].isdigit():
+            domain = raw
+        else:
+            raise ValueError(
+                "Instância DHCP Static Huawei inválida."
+            )
+
+        path = (
+            "/html/bbsp/dhcpstatic/del.cgi"
+            f"?x={root}"
+            "&RequestFile=html/bbsp/dhcpstatic/dhcpstatic.asp"
+        )
+
+        def verify():
+            actual = self.dhcp_status()
+            exists = any(
+                str(item.get("_InstID") or "") == domain
+                for item in actual.get("reservations") or []
+            )
+            return None if exists else {"deleted": domain}
+
+        return self._post_verified(
+            path=path,
+            request_file=DHCP_STATIC_PAGE,
+            payload={domain: ""},
+            verifier=verify,
+        )
+
+    # ----------------------------- DNS
+
+    def dns_status(self) -> dict[str, Any]:
+        _html, records = self._records(DNS_PAGE, DNS_HOSTS_PAGE)
+        search_rows = [
+            item
+            for item in records
+            if (
+                "SearList" in _record_domain(item)
+                or (
+                    item.get("DNSServer") not in (None, "")
+                    and item.get("Interface") not in (None, "")
+                )
+            )
+        ]
+        host_rows = [
+            item
+            for item in records
+            if (
+                "X_HW_DNS.HOSTS" in _record_domain(item)
+                or (
+                    item.get("IPAddress") not in (None, "")
+                    and item.get("DomainName") not in (None, "")
+                    and item not in search_rows
+                )
+            )
+        ]
+        ipv4 = [
+            str(item.get("DNSServer") or "")
+            for item in search_rows
+            if item.get("DNSServer")
+            and ":" not in str(item.get("DNSServer") or "")
+        ]
+        ipv6 = [
+            str(item.get("DNSServer") or "")
+            for item in search_rows
+            if item.get("DNSServer")
+            and ":" in str(item.get("DNSServer") or "")
+        ]
+        domain = ""
+        if search_rows:
+            domain = str(search_rows[0].get("DomainName") or "")
+        elif host_rows:
+            domain = str(host_rows[0].get("DomainName") or "")
+        return {
+            "domain_name": domain,
+            "ipv4_1": ipv4[0] if ipv4 else "",
+            "ipv4_2": ipv4[1] if len(ipv4) > 1 else "",
+            "ipv6_1": ipv6[0] if ipv6 else "",
+            "ipv6_2": ipv6[1] if len(ipv6) > 1 else "",
+            "hosts": [
+                {
+                    "id": _record_domain(item),
+                    "nome": item.get("DomainName") or "",
+                    "ip": item.get("IPAddress") or "",
+                }
+                for item in host_rows
+            ],
+            "_search_rows": search_rows,
+        }
+
+    def _write_dns_search(
+        self,
+        *,
+        dns_server: str,
+        domain_name: str,
+        interface: str,
+        instance_or_domain: str | None = None,
+    ) -> dict[str, Any]:
+        root = "InternetGatewayDevice.X_HW_DNS.SearList"
+        raw = str(instance_or_domain or "").strip()
+        if raw:
+            if raw.isdigit():
+                domain = root + "." + raw
+            elif raw.startswith(root + ".") and raw[len(root) + 1:].isdigit():
+                domain = raw
+            else:
+                raise ValueError("Instância DNS SearList Huawei inválida.")
+            path = (
+                "/html/bbsp/dnsconfiguration/set.cgi"
+                f"?x={domain}"
+                "&RequestFile=html/bbsp/dnsconfiguration/dnsconfigcommon.asp"
+            )
+        else:
+            domain = ""
+            path = (
+                "/html/bbsp/dnsconfiguration/add.cgi"
+                f"?x={root}"
+                "&RequestFile=html/bbsp/dnsconfiguration/dnsconfigcommon.asp"
+            )
+
+        def verify():
+            actual = self.dns_status()
+            domain_seen = False
+            for item in actual.get("_search_rows") or []:
+                item_domain = _record_domain(item)
+                if domain and item_domain == domain:
+                    domain_seen = True
+                if (
+                    str(item.get("DNSServer") or "") == str(dns_server)
+                    and str(item.get("DomainName") or "") == str(domain_name)
+                    and str(item.get("Interface") or "") == str(interface)
+                    and (not domain or item_domain == domain)
+                ):
+                    return {
+                        "id": item_domain,
+                        "dns_server": item.get("DNSServer") or "",
+                        "domain_name": item.get("DomainName") or "",
+                        "interface": item.get("Interface") or "",
+                    }
+
+            # Some EG8041X7 firmware revisions remove a SearList instance when
+            # its server is cleared instead of serializing an empty value.
+            if domain and not str(dns_server) and not domain_seen:
+                return {
+                    "id": domain,
+                    "dns_server": "",
+                    "cleared": True,
+                }
+            return None
+
+        return self._post_verified(
+            path=path,
+            request_file=DNS_PAGE,
+            payload={
+                "x.DNSServer": str(dns_server),
+                "x.DomainName": str(domain_name),
+                "x.Interface": str(interface),
+            },
+            verifier=verify,
+        )
+
+    def create_dns_host(
+        self,
+        *,
+        ip: str,
+        domain_name: str,
+    ) -> dict[str, Any]:
+        root = "InternetGatewayDevice.X_HW_DNS.HOSTS"
+        path = (
+            "/html/bbsp/dnsconfiguration/add.cgi"
+            f"?x={root}"
+            "&RequestFile=html/bbsp/dnsconfiguration/dnsconfigcommon.asp"
+        )
+
+        def verify():
+            actual = self.dns_status()
+            for item in actual.get("hosts") or []:
+                if (
+                    str(item.get("ip") or "") == str(ip)
+                    and str(item.get("nome") or "") == str(domain_name)
+                ):
+                    return item
+            return None
+
+        return self._post_verified(
+            path=path,
+            request_file=DNS_PAGE,
+            payload={
+                "x.IPAddress": str(ip),
+                "x.DomainName": str(domain_name),
+            },
+            verifier=verify,
+        )
+
+    def update_dns_host(
+        self,
+        instance_or_domain: str,
+        *,
+        ip: str,
+        domain_name: str,
+    ) -> dict[str, Any]:
+        raw = str(instance_or_domain or "").strip()
+        prefix = "InternetGatewayDevice.X_HW_DNS.HOSTS."
+        if raw.isdigit():
+            domain = prefix + raw
+        elif raw.startswith(prefix) and raw[len(prefix):].isdigit():
+            domain = raw
+        else:
+            raise ValueError(
+                "Instância DNS HOSTS Huawei inválida."
+            )
+
+        path = (
+            "/html/bbsp/dnsconfiguration/set.cgi"
+            f"?x={domain}"
+            "&RequestFile=html/bbsp/dnsconfiguration/dnsconfigcommon.asp"
+        )
+
+        def verify():
+            actual = self.dns_status()
+            for item in actual.get("hosts") or []:
+                if (
+                    item.get("id") == domain
+                    and str(item.get("ip") or "") == str(ip)
+                    and str(item.get("nome") or "") == str(domain_name)
+                ):
+                    return item
+            return None
+
+        return self._post_verified(
+            path=path,
+            request_file=DNS_PAGE,
+            payload={
+                "x.IPAddress": str(ip),
+                "x.DomainName": str(domain_name),
+            },
+            verifier=verify,
+        )
+
+    def delete_dns_host(
+        self,
+        instance_or_domain: str,
+    ) -> dict[str, Any]:
+        raw = str(instance_or_domain or "").strip()
+        root = "InternetGatewayDevice.X_HW_DNS.HOSTS"
+        prefix = root + "."
+        if raw.isdigit():
+            domain = prefix + raw
+        elif raw.startswith(prefix) and raw[len(prefix):].isdigit():
+            domain = raw
+        else:
+            raise ValueError(
+                "Instância DNS HOSTS Huawei inválida."
+            )
+
+        path = (
+            "/html/bbsp/dnsconfiguration/del.cgi"
+            f"?x={root}"
+            "&RequestFile=html/bbsp/dnsconfiguration/dnsconfigcommon.asp"
+        )
+
+        def verify():
+            actual = self.dns_status()
+            exists = any(
+                str(item.get("id") or "") == domain
+                for item in actual.get("hosts") or []
+            )
+            return None if exists else {"deleted": domain}
+
+        return self._post_verified(
+            path=path,
+            request_file=DNS_PAGE,
+            payload={domain: ""},
+            verifier=verify,
+        )
+
+    def set_dns(self, config: dict[str, Any]) -> dict[str, Any]:
+        values = dict(config or {})
+        current = self.dns_status()
+        rows = list(current.get("_search_rows") or [])
+        interface = str(
+            values.get("interface")
+            or next(
+                (
+                    item.get("Interface")
+                    for item in rows
+                    if item.get("Interface")
+                ),
+                "",
+            )
+            or ""
+        )
+        requested = {
+            "ipv4_1": str(
+                values.get("ipv4_1", current.get("ipv4_1") or "") or ""
+            ),
+            "ipv4_2": str(
+                values.get("ipv4_2", current.get("ipv4_2") or "") or ""
+            ),
+            "ipv6_1": str(
+                values.get("ipv6_1", current.get("ipv6_1") or "") or ""
+            ),
+            "ipv6_2": str(
+                values.get("ipv6_2", current.get("ipv6_2") or "") or ""
+            ),
+        }
+        if any(requested.values()) and not interface:
+            raise RuntimeError(
+                "A interface WAN vinculada ao DNS não foi identificada."
+            )
+        domain_name = str(
+            values.get("domain_name", current.get("domain_name") or "") or ""
+        )
+
+        ipv4_rows = [
+            item for item in rows
+            if ":" not in str(item.get("DNSServer") or "")
+        ]
+        ipv6_rows = [
+            item for item in rows
+            if ":" in str(item.get("DNSServer") or "")
+        ]
+        plans = [
+            ("ipv4_1", ipv4_rows, 0),
+            ("ipv4_2", ipv4_rows, 1),
+            ("ipv6_1", ipv6_rows, 0),
+            ("ipv6_2", ipv6_rows, 1),
+        ]
+        slot_domains: dict[str, str] = {}
+        results = []
+
+        for key, group, index in plans:
+            dns_server = requested[key]
+            existing = group[index] if len(group) > index else None
+            existing_domain = _record_domain(existing or {})
+            slot_domains[key] = existing_domain
+            existing_server = str(
+                (existing or {}).get("DNSServer") or ""
+            )
+            existing_interface = str(
+                (existing or {}).get("Interface") or interface
+            )
+            effective_interface = interface or existing_interface
+
+            # Explicit empty values mean "clear this saved slot". Previously
+            # they were skipped, causing profiles to report success while the
+            # old server stayed active.
+            if not dns_server:
+                if existing is None or not existing_server:
+                    continue
+                results.append(
+                    self._write_dns_search(
+                        dns_server="",
+                        domain_name=domain_name,
+                        interface=effective_interface,
+                        instance_or_domain=existing_domain,
+                    )
+                )
+                continue
+
+            if not effective_interface:
+                raise RuntimeError(
+                    "A interface WAN vinculada ao DNS não foi identificada."
+                )
+
+            if (
+                existing
+                and existing_server == dns_server
+                and str(existing.get("DomainName") or "") == domain_name
+                and existing_interface == effective_interface
+            ):
+                continue
+
+            results.append(
+                self._write_dns_search(
+                    dns_server=dns_server,
+                    domain_name=domain_name,
+                    interface=effective_interface,
+                    instance_or_domain=(
+                        existing_domain
+                        if existing
+                        else None
+                    ),
+                )
+            )
+
+        if "hosts" in values:
+            requested_hosts = list(values.get("hosts") or [])
+            actual_hosts = list(current.get("hosts") or [])
+            requested_ids = {
+                str(item.get("id") or "")
+                for item in requested_hosts
+                if isinstance(item, dict) and item.get("id")
+            }
+            requested_values = {
+                (
+                    str(item.get("ip") or item.get("IPAddress") or ""),
+                    str(
+                        item.get("nome")
+                        or item.get("name")
+                        or item.get("domain_name")
+                        or item.get("DomainName")
+                        or ""
+                    ),
+                )
+                for item in requested_hosts
+                if isinstance(item, dict)
+                and (
+                    item.get("ip")
+                    or item.get("IPAddress")
+                )
+                and (
+                    item.get("nome")
+                    or item.get("name")
+                    or item.get("domain_name")
+                    or item.get("DomainName")
+                )
+            }
+            for item in requested_hosts:
+                if not isinstance(item, dict):
+                    continue
+                host_id = item.get("id")
+                ip = str(item.get("ip") or item.get("IPAddress") or "")
+                name = str(
+                    item.get("nome")
+                    or item.get("name")
+                    or item.get("domain_name")
+                    or item.get("DomainName")
+                    or ""
+                )
+                if not ip or not name:
+                    continue
+                if host_id:
+                    results.append(
+                        self.update_dns_host(
+                            str(host_id),
+                            ip=ip,
+                            domain_name=name,
+                        )
+                    )
+                elif (ip, name) not in {
+                    (
+                        str(existing.get("ip") or ""),
+                        str(existing.get("nome") or ""),
+                    )
+                    for existing in actual_hosts
+                }:
+                    results.append(
+                        self.create_dns_host(
+                            ip=ip,
+                            domain_name=name,
+                        )
+                    )
+
+            for item in actual_hosts:
+                host_id = str(item.get("id") or "")
+                identity = (
+                    str(item.get("ip") or ""),
+                    str(item.get("nome") or ""),
+                )
+                if (
+                    host_id
+                    and host_id not in requested_ids
+                    and identity not in requested_values
+                ):
+                    results.append(
+                        self.delete_dns_host(host_id)
+                    )
+
+        final = self.dns_status()
+        final_rows = list(final.get("_search_rows") or [])
+        final_by_domain = {
+            _record_domain(item): item
+            for item in final_rows
+            if _record_domain(item)
+        }
+
+        semantic_verified = True
+        for key, _group, _index in plans:
+            expected = requested[key]
+            original_domain = slot_domains.get(key) or ""
+            if original_domain:
+                row = final_by_domain.get(original_domain)
+                if not expected:
+                    if row is not None and str(row.get("DNSServer") or ""):
+                        semantic_verified = False
+                        break
+                    continue
+                if row is None:
+                    semantic_verified = False
+                    break
+                if str(row.get("DNSServer") or "") != expected:
+                    semantic_verified = False
+                    break
+                if str(row.get("DomainName") or "") != domain_name:
+                    semantic_verified = False
+                    break
+                if interface and str(row.get("Interface") or "") != interface:
+                    semantic_verified = False
+                    break
+            elif expected:
+                matching = [
+                    item
+                    for item in final_rows
+                    if str(item.get("DNSServer") or "") == expected
+                ]
+                if not matching:
+                    semantic_verified = False
+                    break
+                if not any(
+                    str(item.get("DomainName") or "") == domain_name
+                    and (
+                        not interface
+                        or str(item.get("Interface") or "") == interface
+                    )
+                    for item in matching
+                ):
+                    semantic_verified = False
+                    break
+
+        if semantic_verified and "hosts" in values:
+            final_hosts = {
+                (
+                    str(item.get("ip") or ""),
+                    str(item.get("nome") or ""),
+                )
+                for item in final.get("hosts") or []
+                if item.get("ip") and item.get("nome")
+            }
+            semantic_verified = final_hosts == requested_values
+
+        operation_verified = (
+            all(item.get("verified") is True for item in results)
+            if results
+            else True
+        )
+        verified = bool(operation_verified and semantic_verified)
+        return {
+            "success": verified,
+            "verified": verified,
+            "uncertain": any(
+                item.get("uncertain") is True
+                for item in results
+            ),
+            "semantic_verified": semantic_verified,
+            "results": results,
+            "readback": final,
+        }
+
+    # ----------------------------- DMZ
+
+    def dmz_status(self) -> dict[str, Any]:
+        _html, records = self._records(DMZ_PAGE)
+        record = next(
+            (
+                item for item in records
+                if "X_HW_DMZ" in _record_domain(item)
+                or "DMZEnable" in item
+            ),
+            {},
+        )
+        return {
+            "available": bool(record),
+            "id": _record_domain(record) or WAN_DMZ_DOMAIN,
+            "enabled": _enabled(record.get("DMZEnable")),
+            "internal_client": str(record.get("DMZHostIPAddress") or ""),
+            "wan": "",
+        }
+
+    def set_dmz(self, config: dict[str, Any]) -> dict[str, Any]:
+        current = self.dmz_status()
+        domain = current.get("id") or WAN_DMZ_DOMAIN
+        enabled = bool(config.get("enabled", current.get("enabled", False)))
+        host = str(config.get("internal_client", current.get("internal_client") or "") or "")
+        path = (
+            "/html/bbsp/dmz/set.cgi"
+            f"?x={domain}"
+            "&RequestFile=html/bbsp/dmz/dmz.asp"
+        )
+
+        def verify():
+            actual = self.dmz_status()
+            if bool(actual.get("enabled")) != enabled:
+                return None
+            if str(actual.get("internal_client") or "") != host:
+                return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=DMZ_PAGE,
+            payload={
+                "x.DMZEnable": _as01(enabled),
+                "x.DMZHostIPAddress": host,
+            },
+            verifier=verify,
+        )
+
+    # ----------------------------- Wi-Fi
+
+    def _wifi_pages(self, band: str) -> tuple[str, str, str, str]:
+        display, instance, query_band = _band_details(band)
+        return (
+            display,
+            instance,
+            f"{WLAN_BASIC_PAGE}?{query_band}",
+            f"{WLAN_ADV_PAGE}?{query_band}",
+        )
+
+    def _wifi_basic_record(self, band: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        _display, instance, page, _adv = self._wifi_pages(band)
+        # WlanBasic.asp depends on wlan_list.asp in the real WebUI. Reading the
+        # main document alone produced empty SSIDs in Access Manager.
+        _html, records = self._records(
+            page,
+            WLAN_LIST_PAGE,
+        )
+        exact_domain = (
+            "InternetGatewayDevice.LANDevice.1."
+            f"WLANConfiguration.{instance}"
+        )
+        candidates = [
+            item
+            for item in records
+            if (
+                _record_domain(item) == exact_domain
+                or str(item.get("SsidInst") or "") == instance
+            )
+        ]
+        with_ssid = [
+            item
+            for item in candidates
+            if item.get("SSID") not in (None, "")
+        ]
+        if with_ssid:
+            candidates = with_ssid
+
+        merged: dict[str, Any] = {}
+        for item in candidates:
+            merged.update({
+                key: value
+                for key, value in item.items()
+                if value not in (None, "")
+            })
+        if candidates and not _record_domain(merged):
+            merged["Domain"] = exact_domain
+        return merged, records
+
+    def wifi_networks(self, reveal_password: bool = False) -> list[dict[str, Any]]:
+        networks = []
+        for band in ("2.4GHz", "5GHz"):
+            display, instance, _page, _adv = self._wifi_pages(band)
+            record, records = self._wifi_basic_record(band)
+            if not record:
+                continue
+            domain = _record_domain(record)
+            if not domain or "WLANConfiguration" not in domain:
+                domain = f"InternetGatewayDevice.LANDevice.1.WLANConfiguration.{instance}"
+            networks.append({
+                "id": domain,
+                "ssid": record.get("SSID") or _record_value(records, "SSID", default=""),
+                "banda": display,
+                "ativo": _enabled(record.get("Enable", _record_value(records, "Enable", default="1"))),
+                "seguranca": record.get("BeaconType") or _record_value(records, "BeaconType", default=""),
+                "max_clientes": (
+                    record.get("X_HW_AssociateNum")
+                    or record.get("MaxAssociateNum")
+                    or _record_value(records, "X_HW_AssociateNum", "MaxAssociateNum", default=64)
+                ),
+                "broadcast": _enabled(
+                    record.get(
+                        "SSIDAdvertisementEnabled",
+                        _record_value(records, "SSIDAdvertisementEnabled", default="1"),
+                    )
+                ),
+                "isolamento": _enabled(
+                    record.get(
+                        "IsolationEnable",
+                        _record_value(records, "IsolationEnable", default="0"),
+                    )
+                ),
+                "wps_enabled": _enabled(
+                    next(
+                        (
+                            item.get("Enable")
+                            for item in records
+                            if _record_domain(item) == f"{domain}.WPS"
+                        ),
+                        _record_value(records, "WPSEnable", default="1"),
+                    )
+                ),
+                "wps_method": _record_value(
+                    records,
+                    "X_HW_ConfigMethod",
+                    default="PushButton",
+                ),
+                "authentication_mode": (
+                    record.get("X_HW_WPAand11iAuthenticationMode")
+                    or record.get("IEEE11iAuthenticationMode")
+                    or record.get("WPAAuthenticationMode")
+                    or _record_value(
+                        records,
+                        "X_HW_WPAand11iAuthenticationMode",
+                        "IEEE11iAuthenticationMode",
+                        "WPAAuthenticationMode",
+                        default="",
+                    )
+                ),
+                "encryption_mode": (
+                    record.get("X_HW_WPAand11iEncryptionModes")
+                    or record.get("IEEE11iEncryptionModes")
+                    or record.get("WPAEncryptionModes")
+                    or _record_value(
+                        records,
+                        "X_HW_WPAand11iEncryptionModes",
+                        "IEEE11iEncryptionModes",
+                        "WPAEncryptionModes",
+                        default="",
+                    )
+                ),
+                "group_rekey": _record_value(
+                    records,
+                    "X_HW_GroupRekey",
+                    default="3600",
+                ),
+                "password": "",
+                "password_hidden": True,
+            })
+        return networks
+
+    def _band_from_ssid_id(self, ssid_id: str) -> str:
+        raw = str(ssid_id or "")
+        if raw.endswith(".5") or raw == "5" or "5GHz" in raw:
+            return "5GHz"
+        if raw.endswith(".1") or raw == "1" or "2.4" in raw:
+            return "2.4GHz"
+        raise ValueError("SSID Huawei deve identificar WLANConfiguration.1 ou .5.")
+
+    def set_ssid_config(self, ssid_id: str, config: dict[str, Any]) -> dict[str, Any]:
+        band = self._band_from_ssid_id(ssid_id)
+        display, instance, basic_page, _adv_page = self._wifi_pages(band)
+        current = next(
+            (item for item in self.wifi_networks(False) if item["banda"] == display),
+            None,
+        )
+        if current is None:
+            raise RuntimeError("A configuração Wi-Fi Huawei não pôde ser relida.")
+
+        ssid = str(config.get("ssid", current.get("ssid") or ""))
+        enabled = bool(config.get("enabled", current.get("ativo", True)))
+        broadcast = bool(config.get("broadcast", current.get("broadcast", True)))
+        max_clients = str(config.get("max_clients", current.get("max_clientes") or 64))
+
+        y = f"InternetGatewayDevice.LANDevice.1.WLANConfiguration.{instance}"
+        z = f"{y}.WPS"
+        w = "InternetGatewayDevice.X_HW_DEBUG.AMP.WifiCoverSetWlanBasic"
+        c = "InternetGatewayDevice.X_HW_DEBUG.WLANConfigAction"
+        path = (
+            "/html/amp/wlanbasic/set.cgi"
+            f"?c1={c}&w={w}&y={y}&z={z}&k={y}.PreSharedKey.1&c2={c}"
+            "&RequestFile=html/amp/wlanbasic/WlanBasic.asp"
+        )
+        record, records = self._wifi_basic_record(band)
+        current_beacon = str(
+            record.get("BeaconType")
+            or _record_value(records, "BeaconType", default="")
+            or current.get("seguranca")
+            or ""
+        )
+        requested_security = str(
+            config.get("encryption")
+            or current_beacon
+            or ""
+        )
+        security_profiles = {
+            "WPA2-PSK-AES": ("11i", "AESEncryption"),
+            "WPA2/WPA3-SAE": ("WPA2/WPA3", "AESEncryption"),
+            "WPA2-PSK-AES/WPA3-SAE-AES": (
+                "WPA2/WPA3", "AESEncryption"
+            ),
+            "WPA3-SAE": ("WPA3", "AESEncryption"),
+            "WPA/WPA2-PSK-AES": (
+                "WPAand11i", "AESEncryption"
+            ),
+            "WPA/WPA2-PSK-TKIP/AES": (
+                "WPAand11i", "TKIPandAESEncryption"
+            ),
+            "WPA-PSK-AES": ("WPA", "AESEncryption"),
+            "No Security": ("Basic", "None"),
+            "WPA2/WPA3": ("WPA2/WPA3", "AESEncryption"),
+            "WPA3": ("WPA3", "AESEncryption"),
+            "WPAand11i": ("WPAand11i", "AESEncryption"),
+            "WPA/WPA2": ("WPAand11i", "AESEncryption"),
+            "11i": ("11i", "AESEncryption"),
+            "WPA2": ("11i", "AESEncryption"),
+            "WPA": ("WPA", "AESEncryption"),
+            "Basic": ("Basic", "None"),
+            "None": ("Basic", "None"),
+        }
+        beacon_type, security_encryption = security_profiles.get(
+            requested_security,
+            (requested_security or current_beacon, "AESEncryption"),
+        )
+        if not beacon_type:
+            raise RuntimeError(
+                "O modo de segurança Wi-Fi não foi identificado."
+            )
+
+        # WlanBasic.asp submits a complete form. Preserve the captured form
+        # and overwrite only the fields selected by the operator.
+        def preserved(name: str, default: str) -> str:
+            value = (
+                record.get(name)
+                or _record_value(records, name, default="")
+            )
+            return str(value if value not in (None, "") else default)
+
+        auth_default = (
+            "PSKandSAEAuthentication"
+            if beacon_type == "WPA2/WPA3"
+            else (
+                "SAEAuthentication"
+                if beacon_type == "WPA3"
+                else "PSKAuthentication"
+            )
+        )
+        auth_mode = str(
+            config.get("authentication_mode")
+            or auth_default
+        )
+        encryption_mode = str(
+            config.get("encryption_mode")
+            or security_encryption
+        )
+        group_rekey = str(
+            config.get("group_rekey")
+            if config.get("group_rekey") is not None
+            else preserved("X_HW_GroupRekey", "3600")
+        )
+        wps_method = str(
+            config.get("wps_method")
+            or current.get("wps_method")
+            or preserved("X_HW_ConfigMethod", "PushButton")
+        )
+
+        payload = {
+            "y.Enable": _as01(enabled),
+            "y.SSIDAdvertisementEnabled": _as01(broadcast),
+            "y.SSID": ssid,
+            "y.X_HW_AssociateNum": max_clients,
+            "y.IsolationEnable": _as01(
+                config.get(
+                    "isolation",
+                    current.get("isolamento", False),
+                )
+            ),
+            "y.BeaconType": beacon_type,
+            "y.BasicAuthenticationMode": (
+                "None"
+                if beacon_type == "Basic"
+                else preserved("BasicAuthenticationMode", "None")
+            ),
+            "y.BasicEncryptionModes": (
+                "None"
+                if beacon_type == "Basic"
+                else preserved("BasicEncryptionModes", "None")
+            ),
+            "y.WPAAuthenticationMode": (
+                auth_mode
+                if beacon_type == "WPA"
+                else preserved(
+                    "WPAAuthenticationMode",
+                    "PSKAuthentication",
+                )
+            ),
+            "y.WPAEncryptionModes": (
+                encryption_mode
+                if beacon_type == "WPA"
+                else preserved(
+                    "WPAEncryptionModes",
+                    "AESEncryption",
+                )
+            ),
+            "y.IEEE11iAuthenticationMode": (
+                auth_mode
+                if beacon_type == "11i"
+                else preserved(
+                    "IEEE11iAuthenticationMode",
+                    "PSKAuthentication",
+                )
+            ),
+            "y.IEEE11iEncryptionModes": (
+                encryption_mode
+                if beacon_type == "11i"
+                else preserved(
+                    "IEEE11iEncryptionModes",
+                    "AESEncryption",
+                )
+            ),
+            "y.X_HW_WPAand11iAuthenticationMode": (
+                auth_mode
+                if beacon_type in {
+                    "WPAand11i", "WPA3", "WPA2/WPA3"
+                }
+                else preserved(
+                    "X_HW_WPAand11iAuthenticationMode",
+                    "PSKAuthentication",
+                )
+            ),
+            "y.X_HW_WPAand11iEncryptionModes": (
+                encryption_mode
+                if beacon_type in {
+                    "WPAand11i", "WPA3", "WPA2/WPA3"
+                }
+                else preserved(
+                    "X_HW_WPAand11iEncryptionModes",
+                    "AESEncryption",
+                )
+            ),
+            "y.X_HW_GroupRekey": group_rekey,
+            "z.Enable": _as01(
+                config.get(
+                    "wps_enabled",
+                    current.get("wps_enabled", True),
+                )
+            ),
+            "z.X_HW_ConfigMethod": wps_method,
+            "w.SsidInst": instance,
+            "w.SSID": ssid,
+            "w.Enable": _as01(enabled),
+            "w.Standard": preserved("Standard", "11ax"),
+            "w.BasicAuthenticationMode": preserved(
+                "BasicAuthenticationMode",
+                "None",
+            ),
+            "w.BasicEncryptionModes": preserved(
+                "BasicEncryptionModes",
+                "AESEncryption",
+            ),
+            "w.WPAAuthenticationMode": preserved(
+                "WPAAuthenticationMode",
+                "EAPAuthentication",
+            ),
+            "w.WPAEncryptionModes": preserved(
+                "WPAEncryptionModes",
+                "AESEncryption",
+            ),
+            "w.IEEE11iAuthenticationMode": preserved(
+                "IEEE11iAuthenticationMode",
+                "EAPAuthentication",
+            ),
+            "w.IEEE11iEncryptionModes": preserved(
+                "IEEE11iEncryptionModes",
+                "AESEncryption",
+            ),
+            "w.MixAuthenticationMode": preserved(
+                "MixAuthenticationMode",
+                auth_default or "PSKandSAEAuthentication",
+            ),
+            "w.MixEncryptionModes": preserved(
+                "MixEncryptionModes",
+                "AESEncryption",
+            ),
+            "w.SSIDAdvertisementEnabled": _as01(broadcast),
+            "w.WMMEnable": preserved("WMMEnable", "1"),
+            "w.MaxAssociateNum": max_clients,
+            "w.BeaconType": beacon_type,
+            "w.WEPEncryptionLevel": preserved(
+                "WEPEncryptionLevel",
+                "104-bit",
+            ),
+            "w.WEPKeyIndex": preserved("WEPKeyIndex", "1"),
+            "c1.ActionType": "0",
+            "c2.ActionType": "1",
+            "c2.SSIDList": instance,
+        }
+
+        password = str(config.get("password") or "")
+        if password:
+            payload["k.PreSharedKey"] = password
+
+        def verify():
+            actual = next(
+                (item for item in self.wifi_networks(False) if item["banda"] == display),
+                None,
+            )
+            if not actual:
+                return None
+            if str(actual.get("ssid") or "") != ssid:
+                return None
+            if bool(actual.get("ativo")) != enabled:
+                return None
+            if bool(actual.get("broadcast")) != broadcast:
+                return None
+            if str(actual.get("max_clientes") or "") != max_clients:
+                return None
+            if str(actual.get("seguranca") or "") != beacon_type:
+                return None
+            if (
+                "wps_enabled" in config
+                and bool(actual.get("wps_enabled"))
+                != bool(config.get("wps_enabled"))
+            ):
+                return None
+            if (
+                config.get("group_rekey") is not None
+                and str(actual.get("group_rekey") or "") != group_rekey
+            ):
+                return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=basic_page,
+            payload=payload,
+            verifier=verify,
+        )
+
+    @staticmethod
+    def _standard_for_ui(raw: Any, band: str) -> str:
+        value = str(raw or "")
+        if value == "11ax":
+            return "a,n,ac,ax" if band == "5GHz" else "b,g,n,ax"
+        return value
+
+    @staticmethod
+    def _power_for_ui(raw: Any) -> str:
+        value = str(raw or "")
+        if value and not value.endswith("%"):
+            return value + "%"
+        return value or "100%"
+
+    def wifi_radios(self) -> list[dict[str, Any]]:
+        radios = []
+        for band in ("2.4GHz", "5GHz"):
+            display, instance, _basic, adv_page = self._wifi_pages(band)
+            _html, records = self._records(
+                adv_page,
+                WLAN_LIST_PAGE,
+                WLAN_ADV_COMMON_PAGE,
+                WLAN_ADV_API_PAGE,
+            )
+            exact_domain = (
+                "InternetGatewayDevice.LANDevice.1."
+                f"WLANConfiguration.{instance}"
+            )
+            relevant = [
+                item
+                for item in records
+                if (
+                    _record_domain(item) == exact_domain
+                    or exact_domain + "." in _record_domain(item)
+                    or str(item.get("SsidInst") or "") == instance
+                )
+            ]
+            if not relevant:
+                relevant = records
+            channel = _record_value(relevant, "Channel", default="0")
+            auto = _enabled(_record_value(relevant, "AutoChannelEnable", default="1"))
+            raw_standard = _record_value(relevant, "X_HW_Standard", "Standard", default="11ax")
+            raw_bw = str(_record_value(relevant, "X_HW_HT20", default=""))
+            # The physical EG8041X7-10 WebUI shows raw code 0 as
+            # "Auto 20/40 MHz" on 2.4 GHz and raw code 4 as
+            # "Auto 20/40/80/160 MHz" on 5 GHz. Keep the operator-facing
+            # representation generic ("Auto") and preserve the exact raw code
+            # separately in bandwidth_code.
+            bandwidth = (
+                "Auto"
+                if (
+                    (display == "2.4GHz" and raw_bw == "0")
+                    or (display == "5GHz" and raw_bw == "4")
+                )
+                else "Auto"
+            )
+            basic = next(
+                (row for row in self.wifi_networks(False) if row["banda"] == display),
+                {},
+            )
+            radios.append({
+                "id": f"InternetGatewayDevice.LANDevice.1.WLANConfiguration.{instance}",
+                "ssid": basic.get("ssid") or "",
+                "banda": display,
+                "canal": str(channel),
+                "canal_automatico": auto or str(channel) == "0",
+                "largura": bandwidth,
+                "padrao": self._standard_for_ui(raw_standard, display),
+                "pais": _record_value(relevant, "RegulatoryDomain", default="BR"),
+                "potencia": self._power_for_ui(
+                    _record_value(relevant, "TransmitPower", default="100")
+                ),
+                "beacon_interval": _record_value(relevant, "BeaconPeriod", default=100),
+                "rts_cts": _record_value(relevant, "RTSThreshold", default=2346),
+                "dtim": _record_value(relevant, "DtimPeriod", default=1),
+                "frag_threshold": _record_value(
+                    relevant, "FragThreshold", default=2346
+                ),
+                "band_steering": _enabled(
+                    _record_value(
+                        relevant,
+                        "BandSteeringPolicy",
+                        default="1",
+                    )
+                ),
+                "band_steering_policy": _record_value(
+                    relevant, "BandSteeringPolicy", default="1"
+                ),
+                "airtime_fairness": _enabled(
+                    _record_value(
+                        relevant,
+                        "X_HW_AirtimeFairness",
+                        default="0",
+                    )
+                ),
+                "auto_channel_scope": _record_value(
+                    relevant,
+                    "X_HW_AutoChannelScope",
+                    default="0",
+                ),
+                "bandwidth_code": raw_bw,
+                "standard_raw": str(raw_standard),
+                "sgi": False,
+                "mu_mimo": False,
+                "downlink_ofdma": False,
+                "twt": False,
+                "radio_ativo": bool(basic.get("ativo", True)),
+                "_raw_ht20": raw_bw,
+                "_raw_standard": str(raw_standard),
+                "_raw_dtim": str(
+                    _record_value(relevant, "DtimPeriod", default="1")
+                ),
+                "_raw_rts": str(
+                    _record_value(relevant, "RTSThreshold", default="2346")
+                ),
+                "_raw_frag": str(
+                    _record_value(relevant, "FragThreshold", default="2346")
+                ),
+                "_raw_band_steering": str(
+                    _record_value(relevant, "BandSteeringPolicy", default="1")
+                ),
+                "_raw_airtime": str(
+                    _record_value(relevant, "X_HW_AirtimeFairness", default="0")
+                ),
+                "_raw_auto_scope": str(
+                    _record_value(relevant, "X_HW_AutoChannelScope", default="0")
+                ),
+            })
+        return radios
+
+    def wifi_channels(
+        self,
+        band: str | None = None,
+        bandwidth: str | None = None,
+        country: str = "BRI",
+    ) -> list[dict[str, Any]]:
+        normalized = "5GHz" if "5" in str(band or "") else "2.4GHz"
+        query_band = "5G" if normalized == "5GHz" else "2G"
+        country_code = str(country or "BR").upper()
+        if country_code == "BRI":
+            country_code = "BR"
+
+        raw_width = None
+        standard = "11ax"
+        display_width = bandwidth or "Auto"
+        try:
+            current = next(
+                row for row in self.wifi_radios()
+                if row.get("banda") == normalized
+            )
+            raw_width = str(current.get("bandwidth_code") or "")
+            standard = str(current.get("standard_raw") or "11ax")
+            if bandwidth in (None, "", "Auto"):
+                display_width = current.get("largura") or "Auto"
+        except Exception:
+            current = None
+
+        if bandwidth not in (None, "", "Auto"):
+            value = str(bandwidth)
+            if value.isdigit():
+                raw_width = value
+
+        if not raw_width:
+            raw_width = "4" if normalized == "5GHz" else "0"
+
+        firmware_channels = False
+        try:
+            source = self.client.post_read(
+                WLAN_CHANNEL_PAGE,
+                {
+                    "freq": query_band,
+                    "country": country_code,
+                    "standard": standard,
+                    "width": raw_width,
+                },
+                referer=(
+                    f"{WLAN_ADV_PAGE}?5G"
+                    if normalized == "5GHz"
+                    else f"{WLAN_ADV_PAGE}?2G"
+                ),
+            )
+            channels = [
+                int(value)
+                for value in re.findall(r"(?<!\d)(\d{1,3})(?!\d)", source)
+                if 1 <= int(value) <= 196
+            ]
+            # Preserve firmware order while removing duplicates.
+            channels = list(dict.fromkeys(channels))
+            firmware_channels = bool(channels)
+        except Exception:
+            channels = []
+
+        if not channels:
+            channels = (
+                [
+                    36, 40, 44, 48, 52, 56, 60, 64,
+                    100, 104, 108, 112, 116, 120, 124, 128,
+                    132, 136, 140, 144, 149, 153, 157, 161,
+                ]
+                if normalized == "5GHz"
+                else list(range(1, 14))
+            )
+
+        return [{
+            "banda": normalized,
+            "largura": display_width,
+            "bandwidth_code": raw_width,
+            "pais": country_code,
+            "standard": standard,
+            "canais": channels,
+            "source": "firmware" if firmware_channels else "fallback",
+        }]
+
+    def set_wifi_radio(self, band: str, config: dict[str, Any]) -> dict[str, Any]:
+        display, instance, _basic, adv_page = self._wifi_pages(band)
+        current = next(
+            (row for row in self.wifi_radios() if row["banda"] == display),
+            None,
+        )
+        if current is None:
+            raise RuntimeError("O rádio Huawei não pôde ser relido.")
+
+        supported_keys = {
+            "auto_channel",
+            "channel",
+            "country",
+            "tx_power",
+            "beacon_interval",
+            "rts_cts",
+            "dtim",
+            "frag_threshold",
+            "band_steering",
+            "band_steering_policy",
+            "airtime_fairness",
+            "auto_channel_scope",
+            "bandwidth_code",
+            "bandwidth",
+            "standard",
+            "sgi",
+        }
+        unsupported = [
+            key
+            for key, value in config.items()
+            if key not in supported_keys
+            and value is not None
+        ]
+        if unsupported:
+            raise ValueError(
+                "Campos de rádio Huawei não pertencem ao formulário capturado: "
+                + ", ".join(sorted(unsupported))
+            )
+
+        # X_HW_HT20 is the actual field submitted by the Huawei page. The
+        # EG8041X7-10 capture confirms only the two automatic-width enums.
+        # Human-readable WebUI labels and the normalized "Auto" profile value
+        # are therefore mapped back to their exact raw code.
+        raw_bw = str(current.get("_raw_ht20") or "")
+        requested_bandwidth = config.get("bandwidth")
+        bandwidth_code = config.get("bandwidth_code")
+        if bandwidth_code in ("", None) and requested_bandwidth is not None:
+            label = " ".join(
+                str(requested_bandwidth or "").strip().split()
+            ).casefold()
+            known_bandwidth = {
+                ("2.4GHz", "auto"): "0",
+                ("2.4GHz", "auto 20/40 mhz"): "0",
+                ("5GHz", "auto"): "4",
+                ("5GHz", "auto 20/40/80/160 mhz"): "4",
+            }
+            bandwidth_code = known_bandwidth.get((display, label))
+            current_label = " ".join(
+                str(current.get("largura") or "").strip().split()
+            ).casefold()
+            if (
+                bandwidth_code is None
+                and label != current_label
+            ):
+                raise ValueError(
+                    "Para esta largura Huawei, informe bandwidth_code "
+                    "observado no formulário do firmware."
+                )
+        if bandwidth_code in ("", None):
+            bandwidth_code = raw_bw or ("4" if instance == "5" else "0")
+
+        raw_standard = str(current.get("_raw_standard") or "11ax")
+        requested_standard = config.get("standard")
+        standard = raw_standard
+        if requested_standard not in (None, ""):
+            value = str(requested_standard).strip()
+            if value in {"11ax", "b,g,n,ax", "a,n,ac,ax"}:
+                standard = "11ax"
+            elif value == str(current.get("padrao") or ""):
+                standard = raw_standard
+            else:
+                # Other values are accepted only as an explicit firmware enum;
+                # no cross-model translation is invented here.
+                standard = value
+
+        # SGI is not a field in the captured wlanadv mutation. Preserve it
+        # rather than silently pretending that another parameter controls it.
+        if (
+            "sgi" in config
+            and config.get("sgi") is not None
+            and bool(config.get("sgi")) != bool(current.get("sgi"))
+        ):
+            raise ValueError(
+                "SGI não faz parte do POST wlanadv capturado."
+            )
+
+        auto = bool(config.get("auto_channel", current.get("canal_automatico", True)))
+        channel = "0" if auto else str(config.get("channel") or current.get("canal") or "0")
+        country = str(config.get("country", current.get("pais") or "BR") or "BR")
+        power = str(config.get("tx_power", current.get("potencia") or "100%") or "100%").rstrip("%")
+        beacon = str(config.get("beacon_interval", current.get("beacon_interval") or 100))
+        rts = str(config.get("rts_cts", current.get("rts_cts") or 2346))
+        dtim = str(config.get("dtim", current.get("dtim") or 1))
+        frag = str(
+            config.get(
+                "frag_threshold",
+                current.get("frag_threshold")
+                or current.get("_raw_frag")
+                or 2346,
+            )
+        )
+        steering = str(
+            config.get(
+                "band_steering_policy",
+                _as01(config.get("band_steering"))
+                if config.get("band_steering") is not None
+                else current.get("band_steering_policy")
+                or current.get("_raw_band_steering")
+                or "1",
+            )
+        )
+        airtime = _as01(
+            config.get(
+                "airtime_fairness",
+                current.get("airtime_fairness", False),
+            )
+        )
+        auto_scope = str(
+            config.get(
+                "auto_channel_scope",
+                current.get("auto_channel_scope")
+                or current.get("_raw_auto_scope")
+                or "0",
+            )
+        )
+
+        y = f"InternetGatewayDevice.LANDevice.1.WLANConfiguration.{instance}"
+        radio = "1" if instance == "1" else "2"
+        x = f"{y}.X_HW_AdvanceConf"
+        v = f"{y}.X_HW_AttachConf"
+        c = "InternetGatewayDevice.X_HW_DEBUG.WLANConfigAction"
+        query = (
+            f"?c1={c}&x={x}&v={v}&y={y}&r=InternetGatewayDevice.LANDevice.1.WiFi.Radio.{radio}"
+        )
+        if instance == "5":
+            query += "&z=InternetGatewayDevice.LANDevice.1.WiFi.X_HW_GlobalConfig"
+        query += f"&c2={c}&RequestFile=html/amp/wlanadv/WlanAdvance.asp"
+        path = "/html/amp/wlanadv/set.cgi" + query
+
+        payload = {
+            "y.Channel": channel,
+            "y.AutoChannelEnable": _as01(auto),
+            "y.RegulatoryDomain": country,
+            "y.TransmitPower": power,
+            "y.X_HW_HT20": str(bandwidth_code),
+            "y.X_HW_Standard": str(standard),
+            "x.DtimPeriod": dtim,
+            "x.BeaconPeriod": beacon,
+            "x.RTSThreshold": rts,
+            "x.FragThreshold": frag,
+            "z.BandSteeringPolicy": steering,
+            "v.X_HW_AirtimeFairness": airtime,
+            "c1.ActionType": "0",
+            "c2.ActionType": "1",
+            "c2.SSIDList": instance,
+        }
+        if instance == "5":
+            payload["y.X_HW_AutoChannelScope"] = auto_scope
+
+        def verify():
+            actual = next(
+                (row for row in self.wifi_radios() if row["banda"] == display),
+                None,
+            )
+            if not actual:
+                return None
+            if bool(actual.get("canal_automatico")) != auto:
+                return None
+            if not auto and str(actual.get("canal") or "") != channel:
+                return None
+            if str(actual.get("pais") or "") != country:
+                return None
+            if str(actual.get("potencia") or "").rstrip("%") != power:
+                return None
+            if str(actual.get("beacon_interval") or "") != beacon:
+                return None
+            if str(actual.get("rts_cts") or "") != rts:
+                return None
+            if str(actual.get("dtim") or "") != dtim:
+                return None
+            if str(actual.get("frag_threshold") or "") != frag:
+                return None
+            if str(actual.get("bandwidth_code") or "") != str(bandwidth_code):
+                return None
+            if str(actual.get("standard_raw") or "") != str(standard):
+                return None
+            if str(actual.get("band_steering_policy") or "") != steering:
+                return None
+            if bool(actual.get("airtime_fairness")) != _enabled(airtime):
+                return None
+            if (
+                instance == "5"
+                and str(actual.get("auto_channel_scope") or "") != auto_scope
+            ):
+                return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=adv_page,
+            payload=payload,
+            verifier=verify,
+        )
+
+    def radio_power_status(self) -> list[dict[str, Any]]:
+        return [
+            {"band": item["banda"], "enabled": item["ativo"]}
+            for item in self.wifi_networks(False)
+        ]
+
+    def set_radio_power(self, band: str, enabled: bool) -> dict[str, Any]:
+        network = next(
+            (
+                item for item in self.wifi_networks(False)
+                if item["banda"] == _band_details(band)[0]
+            ),
+            None,
+        )
+        if not network:
+            raise RuntimeError("SSID principal Huawei não encontrado.")
+        return self.set_ssid_config(
+            network["id"],
+            {
+                "enabled": bool(enabled),
+                "ssid": network["ssid"],
+                "broadcast": network["broadcast"],
+                "max_clients": network["max_clientes"],
+                "encryption": network["seguranca"],
+            },
+        )
+
+    # ----------------------------- TR-069
+
+    def tr069_management_status(self) -> dict[str, Any]:
+        _html, records = self._records(TR069_PAGE)
+        record = next(
+            (
+                item for item in records
+                if "ManagementServer" in _record_domain(item)
+                or "URL" in item
+            ),
+            {},
+        )
+        server = {
+            "URL": record.get("URL") or _record_value(records, "URL", default=""),
+            "UserName": record.get("UserName") or record.get("Username") or "",
+            "PeriodicInformEnable": record.get("PeriodicInformEnable") or "",
+            "PeriodicInformInterval": record.get("PeriodicInformInterval") or "",
+            "DefaultWan": record.get("DefaultWan") or "",
+            "ConnectionRequestUsername": record.get("ConnectionRequestUsername") or "",
+        }
+        return {
+            "available": bool(records),
+            "server": server,
+        }
+
+    def tr069_setup(self) -> dict[str, Any]:
+        status = self.tr069_management_status()
+        server = status.get("server") or {}
+        return {
+            "available": status.get("available") is True,
+            "acs_secret_exists": True,
+            "request_secret_exists": True,
+            "wan_candidates": [
+                {
+                    "name": item.get("nome") or item.get("id"),
+                    "services": item.get("services") or "",
+                }
+                for item in self.wan_status()
+                if "TR069" in str(item.get("services") or "").upper()
+            ],
+            "current": {
+                key: server.get(key)
+                for key in (
+                    "URL", "UserName", "PeriodicInformEnable",
+                    "PeriodicInformInterval", "DefaultWan",
+                    "ConnectionRequestUsername",
+                )
+            },
+            "limited": True,
+            "note": "Captura Huawei validou alteração da URL ACS; credenciais TR-069 não são alteradas por este profile.",
+        }
+
+    def set_management_tr069(
+        self,
+        config: dict[str, Any],
+        *,
+        confirm: bool = True,
+    ) -> dict[str, Any]:
+        url = str(config.get("url") or config.get("URL") or "")
+        extras = {
+            key: value
+            for key, value in config.items()
+            if key not in {"url", "URL", "confirm"}
+            and value not in (None, "", False, [])
+        }
+        if extras:
+            raise ValueError(
+                "A captura Huawei validou somente a URL ACS; os demais parâmetros TR-069 não serão enviados."
+            )
+        if not url:
+            raise ValueError("Informe a URL ACS.")
+
+        path = (
+            "/html/ssmp/tr069/set.cgi"
+            "?x=InternetGatewayDevice.ManagementServer"
+            "&RequestFile=html/ssmp/tr069/tr069.asp"
+        )
+
+        def verify():
+            actual = self.tr069_management_status()
+            if str((actual.get("server") or {}).get("URL") or "") != url:
+                return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=TR069_PAGE,
+            payload={"x.URL": url},
+            verifier=verify,
+        )
+
+    # ----------------------------- Security / misc captured toggles
+
+    def firewall_level_status(self) -> dict[str, Any]:
+        """Read only the global firewall page.
+
+        The former capability reader fetched six security pages in one call
+        and the Advanced screen then fetched five of them again individually.
+        Keeping this reader narrow is important for the stateful Huawei WebUI
+        and for targeted session-snapshot refreshes.
+        """
+        _html, records = self._records(FIREWALL_PAGE)
+        return {
+            "available": bool(records),
+            "firewall": {
+                "Enable": _record_value(records, "Enable", default=""),
+                "AdvancedLevel": _record_value(
+                    records, "AdvancedLevel", default=""
+                ),
+            },
+        }
+
+    def firewall_management_status(self) -> dict[str, Any]:
+        # Compatibility aggregate for callers that explicitly ask for the
+        # complete security overview. Normal capability reads use the narrow
+        # per-feature methods and therefore do not duplicate router I/O.
+        firewall = self.firewall_level_status()
+        dos = self.dos_status()
+        ipv6 = self.ipv6_firewall_status()
+        alg = self.alg_status()
+        igmp = self.igmp_status()
+        internet = self.internet_control_status()
+        return {
+            "available": any((
+                firewall.get("available"),
+                bool(dos),
+                bool(ipv6),
+                bool(alg),
+                bool(igmp),
+                bool(internet),
+            )),
+            "firewall": firewall.get("firewall") or {},
+            "dos": dos,
+            "ipv6_firewall": ipv6.get(
+                "X_HW_IPv6FWDFireWallEnable", ""
+            ),
+            "alg": alg,
+            "igmp": igmp.get("IGMPEnable", ""),
+            "internet_control": internet.get("Enable", ""),
+        }
+
+    def alg_status(self) -> dict[str, Any]:
+        _html, records = self._records(ALG_PAGE)
+        return {
+            key: _record_value(records, key, default="")
+            for key in (
+                "FtpEnable", "TftpEnable", "H323Enable", "SipEnable",
+                "RTSPEnable", "PptpEnable", "L2TPForward",
+                "IPSecForward", "RTCPEnable", "RTCPPort",
+            )
+        }
+
+    def set_alg(self, config: dict[str, Any]) -> dict[str, Any]:
+        current = self.alg_status()
+        keys = (
+            "FtpEnable", "TftpEnable", "H323Enable", "SipEnable",
+            "RTSPEnable", "PptpEnable", "L2TPForward",
+            "IPSecForward", "RTCPEnable", "RTCPPort",
+        )
+        aliases = {
+            "ftp": "FtpEnable",
+            "tftp": "TftpEnable",
+            "h323": "H323Enable",
+            "sip": "SipEnable",
+            "rtsp": "RTSPEnable",
+            "pptp": "PptpEnable",
+            "l2tp": "L2TPForward",
+            "ipsec": "IPSecForward",
+            "rtcp": "RTCPEnable",
+            "rtcp_port": "RTCPPort",
+        }
+        normalized = dict(current)
+        for key, value in config.items():
+            target = aliases.get(key, key)
+            if target not in keys:
+                raise ValueError(
+                    f"Parâmetro ALG Huawei não mapeado: {key}."
+                )
+            normalized[target] = value
+
+        payload = {
+            f"x.{key}": (
+                str(value)
+                if key == "RTCPPort"
+                else _as01(value)
+            )
+            for key, value in normalized.items()
+            if key in keys
+        }
+        path = (
+            "/html/bbsp/alg/set.cgi"
+            "?x=InternetGatewayDevice.X_HW_ALG"
+            "&RequestFile=html/bbsp/alg/alg.asp"
+        )
+
+        def verify():
+            actual = self.alg_status()
+            for key in keys:
+                expected = payload.get(f"x.{key}")
+                if expected is None:
+                    continue
+                if str(actual.get(key) or "") != str(expected):
+                    return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=ALG_PAGE,
+            payload=payload,
+            verifier=verify,
+        )
+
+    def igmp_status(self) -> dict[str, Any]:
+        _html, records = self._records(IGMP_PAGE)
+        raw = _record_value(records, "IGMPEnable", default="")
+        return {
+            "IGMPEnable": raw,
+            "enabled": _enabled(raw),
+        }
+
+    def set_igmp(self, config: dict[str, Any]) -> dict[str, Any]:
+        enabled = config.get(
+            "enabled",
+            config.get(
+                "IGMPEnable",
+                self.igmp_status().get("IGMPEnable"),
+            ),
+        )
+        expected = _as01(enabled)
+        path = (
+            "/html/bbsp/igmp/set.cgi"
+            "?x=InternetGatewayDevice.Services.X_HW_IPTV"
+            "&RequestFile=html/bbsp/igmp/igmp.asp"
+        )
+
+        def verify():
+            actual = self.igmp_status()
+            return actual if str(actual.get("IGMPEnable") or "") == expected else None
+
+        return self._post_verified(
+            path=path,
+            request_file=IGMP_PAGE,
+            payload={"x.IGMPEnable": expected},
+            verifier=verify,
+        )
+
+    def dos_status(self) -> dict[str, Any]:
+        _html, records = self._records(DOS_PAGE)
+        return {
+            key: _record_value(records, key, default="")
+            for key in (
+                "SynFloodEn", "IcmpEchoReplyEn", "IcmpRedirectEn",
+                "LandEn", "SmurfEn", "WinnukeEn", "PingSweepEn",
+            )
+        }
+
+    def set_dos(self, config: dict[str, Any]) -> dict[str, Any]:
+        keys = (
+            "SynFloodEn", "IcmpEchoReplyEn", "IcmpRedirectEn",
+            "LandEn", "SmurfEn", "WinnukeEn", "PingSweepEn",
+        )
+        current = self.dos_status()
+        normalized = dict(current)
+        for key, value in config.items():
+            if key not in keys:
+                raise ValueError(
+                    f"Parâmetro DoS Huawei não mapeado: {key}."
+                )
+            normalized[key] = value
+
+        payload = {
+            f"x.{key}": _as01(normalized.get(key))
+            for key in keys
+        }
+        path = (
+            "/html/bbsp/Dos/set.cgi"
+            "?x=InternetGatewayDevice.X_HW_Security.Dosfilter"
+            "&RequestFile=html/bbsp/Dos/Dos.asp"
+        )
+
+        def verify():
+            actual = self.dos_status()
+            for key in keys:
+                if str(actual.get(key) or "") != payload[f"x.{key}"]:
+                    return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=DOS_PAGE,
+            payload=payload,
+            verifier=verify,
+        )
+
+    def ipv6_firewall_status(self) -> dict[str, Any]:
+        _html, records = self._records(IPV6_FIREWALL_PAGE)
+        raw = _record_value(
+            records,
+            "X_HW_IPv6FWDFireWallEnable",
+            default="",
+        )
+        return {
+            "X_HW_IPv6FWDFireWallEnable": raw,
+            "enabled": _enabled(raw),
+        }
+
+    def set_ipv6_firewall(self, config: dict[str, Any]) -> dict[str, Any]:
+        enabled = config.get(
+            "enabled",
+            config.get(
+                "X_HW_IPv6FWDFireWallEnable",
+                self.ipv6_firewall_status().get(
+                    "X_HW_IPv6FWDFireWallEnable"
+                ),
+            ),
+        )
+        expected = _as01(enabled)
+        path = (
+            "/html/bbsp/ipv6firewall/set.cgi"
+            "?x=InternetGatewayDevice.X_HW_Security"
+            "&RequestFile=html/bbsp/ipv6firewall/firewall.asp"
+        )
+
+        def verify():
+            actual = self.ipv6_firewall_status()
+            return (
+                actual
+                if str(
+                    actual.get("X_HW_IPv6FWDFireWallEnable")
+                    or ""
+                ) == expected
+                else None
+            )
+
+        return self._post_verified(
+            path=path,
+            request_file=IPV6_FIREWALL_PAGE,
+            payload={
+                "x.X_HW_IPv6FWDFireWallEnable": expected
+            },
+            verifier=verify,
+        )
+
+    def internet_control_status(self) -> dict[str, Any]:
+        _html, records = self._records(INTERNET_CONTROL_PAGE)
+        raw = _record_value(records, "Enable", default="")
+        return {
+            "Enable": raw,
+            "enabled": _enabled(raw),
+        }
+
+    def set_internet_control(self, config: dict[str, Any]) -> dict[str, Any]:
+        enabled = config.get(
+            "enabled",
+            config.get(
+                "Enable",
+                self.internet_control_status().get("Enable"),
+            ),
+        )
+        expected = _as01(enabled)
+        path = (
+            "/html/bbsp/internetcontrol/set.cgi"
+            "?x=InternetGatewayDevice.X_HW_Security.X_HW_InternetOffCtrl"
+            "&RequestFile=html/bbsp/internetcontrol/internetcontrol.asp"
+        )
+
+        def verify():
+            actual = self.internet_control_status()
+            return actual if str(actual.get("Enable") or "") == expected else None
+
+        return self._post_verified(
+            path=path,
+            request_file=INTERNET_CONTROL_PAGE,
+            payload={"x.Enable": expected},
+            verifier=verify,
+        )
+
+    def set_management_firewall(
+        self,
+        config: dict[str, Any],
+        *,
+        confirm: bool = False,
+    ) -> dict[str, Any]:
+        allowed = {
+            "enabled", "Enable",
+            "level", "advanced_level", "AdvancedLevel",
+        }
+        extras = [
+            key for key, value in config.items()
+            if key not in allowed and value not in (None, "", False, [])
+        ]
+        if extras:
+            raise ValueError(
+                "Este formulário Huawei aceita apenas nível/estado global do firewall; use as capabilities específicas para outros filtros."
+            )
+        current = self.firewall_level_status()["firewall"]
+        enabled = config.get("enabled", config.get("Enable", current.get("Enable")))
+        level = str(
+            config.get(
+                "level",
+                config.get(
+                    "advanced_level",
+                    config.get(
+                        "AdvancedLevel",
+                        current.get("AdvancedLevel") or "",
+                    ),
+                ),
+            )
+        )
+        path = (
+            "/html/bbsp/firewalllevel/set.cgi"
+            "?x=InternetGatewayDevice.X_HW_Security.Firewall"
+            "&RequestFile=html/bbsp/firewalllevel/firewalllevel.asp"
+        )
+
+        def verify():
+            actual = self.firewall_level_status()["firewall"]
+            if str(actual.get("Enable") or "") != _as01(enabled):
+                return None
+            if level and str(actual.get("AdvancedLevel") or "") != level:
+                return None
+            return actual
+
+        return self._post_verified(
+            path=path,
+            request_file=FIREWALL_PAGE,
+            payload={
+                "x.Enable": _as01(enabled),
+                "x.AdvancedLevel": level,
+            },
+            verifier=verify,
+        )

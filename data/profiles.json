@@ -1,0 +1,12 @@
+{
+  "configuração padrão": {
+    "name": "configuração padrão",
+    "description": "",
+    "wifi": {},
+    "dns": {
+      "ipv4_1": "1.1.1.1",
+      "ipv4_2": "8.8.8.8"
+    },
+    "dhcp": {}
+  }
+}
