@@ -11,6 +11,7 @@
     "build": "python tools/sync_frontend.py",
     "check": "python tools/sync_frontend.py --check",
     "test": "node --test tests/frontend/*.test.cjs",
-    "test:visual": "node tests/visual/qa.cjs"
+    "test:visual": "node tests/visual/qa.cjs",
+    "test:visual:native": "node tests/visual/native.cjs"
   }
 }
