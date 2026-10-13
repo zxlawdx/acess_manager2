@@ -26,3 +26,6 @@ profiles=ProfileService(
 
 from apps.access_manager.infrastructure.artifacts import ManagementArtifacts
 artifacts=ManagementArtifacts(sessions,commands)
+
+from apps.access_manager.application.services.full_diagnostic import FullDiagnosticService
+full_diagnostics=FullDiagnosticService(sessions,queries,commands,history)

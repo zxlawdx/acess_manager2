@@ -583,3 +583,15 @@ class HistoryRepository:
               AVG(json_extract(payload,'$.tx_mbps')) OVER (PARTITION BY source,identity,bucket) AS tx FROM samples)
             SELECT timestamp,payload,rx,tx FROM ranked WHERE n=1 ORDER BY timestamp LIMIT 20000""",(since,bucket,since,until,host,host,identifier,identifier)).fetchall()
             return [{'timestamp':r['timestamp'],**json.loads(r['payload']),'rx_mbps':r['rx'],'tx_mbps':r['tx'],'aggregation_seconds':bucket} for r in rows]
+
+
+    def full_diagnostics(self, host, vendor, since, status=None, serial=None):
+        with self._lock,self._connection() as db:
+            rows=db.execute("""SELECT id,payload_json FROM diagnostic_run
+              WHERE created_at>=? AND json_extract(payload_json,'$.kind')='full_diagnostic'
+              AND json_extract(payload_json,'$.device.host')=?
+              AND json_extract(payload_json,'$.device.vendor')=?
+              AND (? IS NULL OR status=?)
+              AND (? IS NULL OR json_extract(payload_json,'$.device.serial')=?)
+              ORDER BY created_at DESC LIMIT 1000""",(since,host,vendor,status,status,serial,serial)).fetchall()
+            return [{**json.loads(r['payload_json']),'history_id':r['id']} for r in rows]

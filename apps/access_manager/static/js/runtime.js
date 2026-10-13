@@ -35,7 +35,7 @@
       const url = new URL(path, window.location.origin);
       const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
       const text = await res.text(), data = parseResponseBody(text);
-      if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path)) clearSnapshots();
+      if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/diagnostics/full/run", "/api/device/diagnostics/full/history", "/api/device/diagnostics/full/export", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path)) clearSnapshots();
       if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
       if (!res.ok) throw new Error(data?.error?.message || data?.message || `HTTP ${res.status} ao acessar ${url.pathname}`);
       if (data?.success === false) throw new Error(data?.error?.message || "Falha na operação");
@@ -186,9 +186,9 @@
     const items = Object.entries(data || {}).filter(([, v]) => v !== void 0 && v !== null && typeof v !== "object");
     return `<div class="kv-grid">${items.map(([k, v]) => `<div class="kv"><label>${esc(k.replaceAll("_", " "))}</label><span>${valueMarkup(typeof v === "boolean" ? v ? "Ativo" : "Inativo" : v, k)}</span></div>`).join("")}</div>`;
   }
-  function table(columns2, rows3, empty = "Nenhum registro encontrado") {
-    if (!Array.isArray(rows3) || !rows3.length) return `<div class="empty-state"><span>${esc(empty)}</span></div>`;
-    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows3.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  function table(columns2, rows2, empty = "Nenhum registro encontrado") {
+    if (!Array.isArray(rows2) || !rows2.length) return `<div class="empty-state"><span>${esc(empty)}</span></div>`;
+    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows2.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
   function cap(feature) {
     return window.__amStore?.capabilities?.[feature] || { read: "UNKNOWN", write: "UNKNOWN", enabled: { read: false, write: false }, evidence: "UNKNOWN" };
@@ -947,8 +947,8 @@
   var definitions = [{ feature: "dmz", title: "DMZ", fields: [["enabled", "Habilitado", "bool"], ["internal_client", "IP do cliente"]] }, { feature: "upnp", title: "UPnP", fields: [["enabled", "Habilitado", "bool"]] }, { feature: "tr069", title: "TR-069", fields: [["url", "URL ACS"]] }, { feature: "firewall", title: "Firewall", fields: [["enabled", "Habilitado", "bool"], ["level", "Nível"]] }];
   var loaded = {};
   function presentation(feature, data) {
-    const rows3 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
-    return fields(rows3[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
+    const rows2 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
+    return fields(rows2[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
   }
   var featureCap = (f) => f === "firewall" && (cap("firewall_level").enabled?.read || cap("firewall_level").enabled?.write) ? cap("firewall_level") : cap(f);
   async function render5() {
@@ -1000,8 +1000,8 @@
   });
   async function render6() {
     const caps = window.__amStore?.capabilities || {};
-    const rows3 = Object.entries(caps);
-    return `<section class="panel"><div class="panel-header"><div><h2>Capabilities</h2><span class="muted">Suporte e evidência são estados separados.</span></div></div>${rows3.length ? rows3.map(([name, c]) => `<div class="capability-row"><strong>${esc(name)}</strong>${capBadge(c.read)}${capBadge(c.write)}<span class="muted">${esc(c.evidence)}${c.source ? ` · ${esc(c.source)}` : ""}</span></div>`).join("") : '<div class="empty-state"><span>Sem capabilities na sessão.</span></div>'}</section>`;
+    const rows2 = Object.entries(caps);
+    return `<section class="panel"><div class="panel-header"><div><h2>Capabilities</h2><span class="muted">Suporte e evidência são estados separados.</span></div></div>${rows2.length ? rows2.map(([name, c]) => `<div class="capability-row"><strong>${esc(name)}</strong>${capBadge(c.read)}${capBadge(c.write)}<span class="muted">${esc(c.evidence)}${c.source ? ` · ${esc(c.source)}` : ""}</span></div>`).join("") : '<div class="empty-state"><span>Sem capabilities na sessão.</span></div>'}</section>`;
   }
 
   // apps/access_manager/static/js/workspaces/views/traffic.js
@@ -1102,10 +1102,10 @@
       try {
         const across = document.querySelector("#traffic-all-sessions").checked;
         const active2 = window.__amStore?.session?.session;
-        const rows3 = await request(across ? "/api/device/traffic/device-history" : "/api/device/traffic/history", { method: "POST", body: JSON.stringify(across ? { host: active2?.host, identifier: active2?.metadata?.device_identity, since: Date.now() / 1e3 - seconds } : { seconds }) });
+        const rows2 = await request(across ? "/api/device/traffic/device-history" : "/api/device/traffic/history", { method: "POST", body: JSON.stringify(across ? { host: active2?.host, identifier: active2?.metadata?.device_identity, since: Date.now() / 1e3 - seconds } : { seconds }) });
         if (token !== generation2) return;
         histories.clear();
-        for (const r of rows3) remember(r);
+        for (const r of rows2) remember(r);
         for (const el of document.querySelector("#traffic-streams").children) {
           const h = histories.get(el.dataset.stream);
           if (h?.length) plot(el, h.at(-1));
@@ -1172,7 +1172,6 @@
   // apps/access_manager/static/js/workspaces/views/complete-diagnostics.js
   var complete_diagnostics_exports = {};
   __export(complete_diagnostics_exports, {
-    health: () => health,
     mount: () => mount7,
     render: () => render8
   });
@@ -1247,156 +1246,183 @@
   }
 
   // apps/access_manager/static/js/workspaces/views/complete-diagnostics.js
-  var rows2 = (v) => Array.isArray(v) ? v : v ? [v] : [];
-  var section = (id, title) => `<section class="panel"><h2>${title}</h2><div id="complete-${id}"><p class="muted">Aguardando coleta.</p></div></section>`;
+  var statusLabels = { success: "Passou", warning: "Atenção", failure: "Falhou", unknown: "Não disponível", partial: "Parcial", timeout: "Sem resposta", normal: "Resposta recebida" };
+  var tests = [["ping", "Ping"], ["dns", "DNS"], ["http", "HTTP/HTTPS"], ["gateway", "Gateway"], ["internet", "Internet"]];
+  var fmt = (v, unit = "") => v == null ? "Não disponível" : `${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}${unit}`;
+  var badge2 = (s) => `<span class="diagnostic-status status-${["success", "warning", "failure"].includes(s) ? s : "unknown"}">${esc(statusLabels[s] || "Não disponível")}</span>`;
+  var panel = (id, title, subtitle = "", wide = false) => `<section class="diagnostic-panel ${wide ? "diagnostic-wide" : ""}"><div class="diagnostic-panel-heading"><div><h2>${title}</h2>${subtitle ? `<p class="muted">${subtitle}</p>` : ""}</div></div><div id="complete-${id}"><p class="muted">Aguardando execução.</p></div></section>`;
   function render8() {
-    return `<section class="panel"><h2>Coleta do equipamento</h2><p class="muted">Leituras atuais e ping. Traceroute é opcional. Falhas de uma seção não interrompem as outras; métricas ausentes não são convertidas em zero.</p><form id="complete-form" class="inline-actions"><div class="field"><label>Destino</label><input name="host" value="8.8.8.8" required></div><label><input name="trace" type="checkbox"> Incluir traceroute</label><label><input name="lookup" type="checkbox"> Incluir DNS lookup</label><div class="field"><label>Nome para resolver</label><input name="hostname" value="example.com"></div><button class="button primary">Coletar diagnóstico completo</button></form><p id="complete-progress" role="status">Pronto para coletar.</p></section>${section("health", "Saúde e evidências")}${section("system", "Resumo e sistema")}${section("wan", "WAN")}${section("optical", "Óptica")}${section("wifi", "Wi-Fi e SSIDs")}${section("radios", "Rádios")}${section("clients", "Clientes")}${section("lan", "LAN")}${section("dhcp", "DHCP")}${section("dns", "DNS")}${section("ping", "Ping")}${section("trace", "Traceroute")}${section("traffic", "Tráfego")}${section("mesh", "Mesh / steering")}${section("topology", "Topologia")}${section("lookup", "DNS lookup")}<section class="panel"><h2>Teste de velocidade nativo</h2><p class="muted">Medição na ONT pelo fluxo AIS ZTE, quando o firmware responder. O início ocorre uma vez; consultas seguintes apenas leem o resultado.</p><button type="button" class="button" id="complete-speedtest" ${cap("speedtest_discovery").enabled?.write ? "" : "disabled"}>Consultar servidores</button><div class="field"><label>Servidor</label><select id="complete-speed-server" disabled></select></div><button type="button" class="button primary" id="complete-speed-start" disabled>Iniciar medição</button><div id="complete-speedtest-result"></div></section><section class="panel"><h2>Diagnóstico do computador do técnico</h2><button class="button" id="complete-workstation">Comparar caminho do PC</button><div id="complete-workstation-result"></div></section><section class="panel"><h2>Superfícies adicionais do runtime</h2><button class="button" id="complete-runtime">Consultar probes conhecidos</button><div id="complete-runtime-result"></div></section><section class="panel"><h2>Registro do atendimento</h2><button class="button" id="complete-save" disabled>Salvar coleta no histórico</button><div id="complete-saved-result"></div></section>`;
+    const device = window.__amStore?.session?.session || {};
+    return `<div class="diagnostic-dashboard"><header class="diagnostic-page-header"><div><p class="diagnostic-breadcrumb">Access Manager / Diagnóstico completo</p><h2>Diagnóstico da rede</h2><p class="muted">Verifique a saúde da conexão, desempenho e qualidade do sinal em um só lugar.</p><p class="diagnostic-device"><span class="connection-dot"></span> ${esc(device.model || "Equipamento")} · ${esc(device.vendor || "")} · ${window.__amStore?.session?.connected ? "Online" : "Não conectado"}</p></div><div class="diagnostic-page-actions"><span id="complete-verified" class="muted">Ainda não verificado</span><div class="inline-actions"><button class="button primary" id="complete-run">Executar diagnóstico</button><button class="button" id="complete-export" disabled>Exportar relatório</button><select id="complete-export-format" aria-label="Formato do relatório"><option value="json">JSON técnico</option><option value="csv">CSV resumido</option></select></div></div></header><details class="diagnostic-settings"><summary>Alvos e opções</summary><form id="complete-form" class="inline-actions"><div class="field"><label>Destino Ping / Internet</label><input name="host" required></div><div class="field"><label>Nome para resolver</label><input name="hostname" required></div><label><input name="trace" type="checkbox" checked> Incluir traceroute</label><button class="button" type="submit">Executar com estes alvos</button></form><p class="muted">Ping, DNS, gateway e traceroute são testes da ONT quando suportados. HTTPS usa o computador do técnico, em paralelo às consultas da ONT.</p></details><p id="complete-progress" role="status">Pronto para executar.</p><div class="diagnostic-metrics">${[["latency", "Latência média"], ["loss", "Perda de pacotes"], ["availability", "Disponibilidade"], ["rate", "Tráfego atual"], ["signal", "Qualidade do sinal"]].map(([id, title]) => `<article class="diagnostic-metric"><span>${title}</span><div class="diagnostic-metric-value tech-value" id="metric-${id}">—</div><small id="metric-${id}-detail">Aguardando dados reais</small></article>`).join("")}</div><div class="diagnostic-dashboard-grid"><section class="diagnostic-panel"><h2>Saúde da conexão</h2><p class="muted">Latência e perda ao longo do tempo · amostras medidas</p><div class="diagnostic-chart-controls"><div><button class="button active" data-chart="latency">Latência</button><button class="button" data-chart="loss">Perda de pacotes</button></div><select id="chart-period" aria-label="Período do gráfico"><option value="168">Amostras disponíveis</option><option value="1" disabled>1h</option><option value="6" disabled>6h</option><option value="24" disabled>24h</option><option value="168" disabled>7d</option></select></div><div id="complete-chart" class="diagnostic-chart"><p class="muted">Nenhuma amostra persistida.</p></div><p id="complete-health" class="muted">Informação insuficiente para classificar a saúde global.</p></section><section class="diagnostic-panel"><h2>Teste de conectividade</h2><div id="complete-connectivity">${tests.map(([id, title]) => `<div class="connectivity-row" id="connectivity-${id}"><strong>${title}</strong><span data-status>${badge2("unknown")}</span><span class="tech-value" data-time>—</span><button class="button" data-retest="${id}">Testar novamente</button><small data-origin>ONT${id === "http" ? " / computador do técnico" : ""}</small></div>`).join("")}</div></section>${panel("trace", "Traceroute", "Saltos intermediários sem resposta não comprovam uma rota quebrada.", true)}${panel("wifi", "Qualidade do Wi-Fi", "RSSI/SNR das associações observadas; interferência não é inferida.", true)}${panel("resources", "Recursos do equipamento")}${panel("alerts", "Alertas e recomendações", "Regras explícitas aplicadas à execução atual.")}<section class="diagnostic-panel diagnostic-wide"><div class="diagnostic-panel-heading"><div><h2>Histórico de diagnósticos</h2><p class="muted">Execuções persistidas deste equipamento · últimos 7 dias</p></div><div class="inline-actions"><select id="diagnostic-history-period" aria-label="Período do histórico"><option value="24">24h</option><option value="1">1h</option><option value="6">6h</option><option value="168">7d</option></select><select id="diagnostic-history-status" aria-label="Resultado do histórico"><option value="">Todos os resultados</option><option value="success">Passou</option><option value="warning">Atenção</option><option value="failure">Falhou</option><option value="partial">Parcial</option></select></div></div><div id="complete-history"><p class="muted">Carregando histórico local…</p></div></section>${panel("evidence", "Detalhes técnicos da coleta", "Leituras normalizadas; sem credenciais, cookies ou tokens.", true)}</div><details class="diagnostic-extras"><summary>Ferramentas adicionais</summary><section class="panel"><h3>Teste de velocidade nativo</h3><p class="muted">Speedtest é uma medição separada do tráfego atual.</p><button class="button" id="complete-speedtest" ${cap("speedtest_discovery").enabled?.write ? "" : "disabled"}>Consultar servidores</button><select id="complete-speed-server" disabled aria-label="Servidor de velocidade"></select><button class="button" id="complete-speed-start" disabled>Iniciar medição</button><div id="complete-speedtest-result"></div></section><button class="button" id="complete-workstation">Comparar caminho do PC</button><div id="complete-workstation-result"></div><button class="button" id="complete-runtime">Consultar probes conhecidos</button><div id="complete-runtime-result"></div></details></div>`;
   }
-  var readers = [
-    ["system", "/api/device", (d) => fields([["Modelo", d.model], ["Firmware", d.firmware], ["Serial", d.serial], ["Uptime", uptime(d.uptime_seconds)], ["CPU (%)", d.cpu_percent], ["RAM (%)", d.memory_percent], ["Temperatura (°C)", d.temperature_c]])],
-    ["wan", "/api/device/wan", (d) => rows2(d).map((w) => fields([["Nome", w.name], ["Estado", linkStatus(w.status)], ["IPv4", w.ipv4], ["IPv6", w.ipv6], ["Gateway", w.gateway], ["DNS", w.dns], ["VLAN", w.vlan]])).join("")],
-    ["optical", "/api/device/optical", (d) => fields([["RX (dBm)", d.rx ?? d.rx_power ?? d.rx_dbm], ["TX (dBm)", d.tx ?? d.tx_power ?? d.tx_dbm], ["Temperatura (°C)", d.temperature_c], ["Voltage (unidade do equipamento)", d.voltage], ["Bias (mA)", d.bias_ma], ["Registro ONU", d.registration_status], ["ONU ID", d.onu_id], ["PON", d.pon], ["OLT", d.olt_state], ["LOS", d.los], ["LOF", d.lof], ["Alarme", d.alarm_state], ["FEC corrigido", d.fec_corrected], ["FEC não corrigido", d.fec_uncorrectable], ["BER", d.ber]])],
-    ["wifi", "/api/device/wifi/ssids", (d) => table([{ label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band", "banda"] }, { label: "Estado", render: (r) => r.enabled === true ? "Ativo" : r.enabled === false ? "Inativo" : "Não disponível" }], rows2(d))],
-    ["radios", "/api/device/wifi/radios", (d) => rows2(d).map((r) => fields([["Banda", r.band ?? r.banda], ["Canal", r.channel ?? r.canal], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais]])).join("")],
-    ["clients", "/api/device/clients", (d) => table([{ label: "Hostname", keys: ["hostname", "name"] }, { label: "IP", keys: ["ip", "ipv4"] }, { label: "MAC", keys: ["mac"] }, { label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band"] }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }], rows2(d))],
-    ["lan", "/api/device/lan", (d) => rows2(d).map((r) => fields([["Porta", r.port ?? r.porta ?? r.name ?? r.nome], ["Estado", r.status], ["Velocidade", r.speed ?? r.velocidade]])).join("")],
-    ["dhcp", "/api/device/dhcp", (d) => fields([["Ativo", d.enabled === true ? "Sim" : d.enabled === false ? "Não" : null], ["IP LAN", d.lan_ip], ["Máscara", d.mask], ["Início do pool", d.pool_start], ["Fim do pool", d.pool_end], ["Lease (s)", d.lease_seconds], ["DNS primário", d.dns1], ["DNS secundário", d.dns2], ["Reservas", d.reservations?.length]])],
-    ["dns", "/api/device/dns", (d) => fields([["DNS IPv4 primário", d.ipv4_1 ?? d.primary], ["DNS IPv4 secundário", d.ipv4_2 ?? d.secondary], ["DNS IPv6 primário", d.ipv6_1], ["DNS IPv6 secundário", d.ipv6_2], ["Hosts estáticos", d.hosts?.length]])],
-    ["mesh", "/api/device/mesh", (d) => fields([["Disponível", d.available ? "Sim" : "Dados insuficientes"], ["Habilitado", d.enabled === true ? "Sim" : d.enabled === false ? "Não" : null], ["Steering", d.steering_enabled], ["Roaming", d.roaming_enabled], ["RSSI limite 2.4 GHz", d.rssi_limit_24g], ["RSSI limite 5 GHz", d.rssi_limit_5g]]) + table([{ label: "Node", keys: ["id"] }, { label: "Parent", keys: ["parent"] }, { label: "Backhaul", keys: ["backhaul"] }, { label: "Banda", keys: ["band"] }, { label: "RSSI", keys: ["rssi"] }], d.nodes || [], "Nenhuma relação de nodes comprovada.")],
-    ["traffic", "/api/device/traffic", (d) => table([{ label: "Interface", render: (r) => esc(r.label || r.ssid || r.source) }, { label: "RX (bytes)", render: (r) => esc(r.counters?.rx_bytes ?? "Não disponível") }, { label: "TX (bytes)", render: (r) => esc(r.counters?.tx_bytes ?? "Não disponível") }, { label: "RX (Mbps)", render: (r) => esc(r.rx_mbps ?? "Aguardando segunda amostra") }, { label: "TX (Mbps)", render: (r) => esc(r.tx_mbps ?? "Aguardando segunda amostra") }], d.sources || [])]
-  ];
-  function health(snapshot) {
-    const states = rows2(snapshot.wan).map((w) => String(w.status ?? "").toLowerCase());
-    const disconnected = states.some((s) => ["disconnected", "down", "desconectado"].includes(s));
-    const loss = snapshot.ping?.loss_percent;
-    if (disconnected || loss === 100) return "Crítico: WAN desconectada ou perda total no ping. Confira as evidências coletadas.";
-    if (typeof loss === "number" && loss > 0) return "Atenção: o equipamento informou perda de pacotes no ping.";
-    return "Informação insuficiente para classificar a saúde global. Leituras e ping disponíveis abaixo; níveis ópticos não recebem limiares genéricos.";
+  function hopsView(rows2) {
+    return `<div class="diagnostic-route">${rows2.map((h, i) => `${i ? '<span class="route-line"></span>' : ""}<span class="route-node ${h.status === "timeout" ? "route-timeout" : ""}" title="${esc(h.address || "Sem resposta")}">${esc(h.hop)}</span>`).join("")}</div>` + table([{ label: "Salto", keys: ["hop"] }, { label: "Host", keys: ["host"] }, { label: "Endereço", render: (h) => `<span class="mono tech-value">${esc(h.address || "—")}</span>` }, { label: "Latência", render: (h) => fmt(h.latency_ms, " ms") }, { label: "Perda", render: (h) => fmt(h.loss_percent, " %") }, { label: "Status", render: (h) => badge2(h.status) }], rows2, "Traceroute não disponível ou não solicitado.");
+  }
+  function resourcesView(r) {
+    return `<div class="resource-grid">${[["cpu_percent", "CPU", "violet"], ["memory_percent", "Memória", "blue"], ["storage_percent", "Armazenamento", "green"]].map(([k, label, color]) => `<div><span>${label}</span><strong class="tech-value">${fmt(r[k], " %")}</strong>${r[k] != null && r[k] >= 0 && r[k] <= 100 ? `<div class="resource-track"><div class="resource-fill ${color}" style="width:${r[k]}%"></div></div>` : ""}</div>`).join("")}</div>` + fields([["Temperatura", r.temperature_c == null ? null : fmt(r.temperature_c, " °C")], ["Uptime", uptime(r.uptime_seconds)], ["Sessões ativas", r.active_sessions], ["Firmware", r.firmware]]);
+  }
+  function wifiView(w, mesh) {
+    return (w.bands || []).map((b) => `<details class="wifi-diagnostic-card"><summary><strong>${esc(b.band || "Rádio")}</strong><span class="tech-value">${fmt(b.avg_rssi, " dBm")}</span><span>${b.clients} associações observadas</span></summary>${fields([["SSID", b.ssids], ["RSSI médio", fmt(b.avg_rssi, " dBm")], ["SNR médio", fmt(b.avg_snr, " dB")], ["Canal", b.radio.channel ?? b.radio.canal], ["Largura", b.radio.bandwidth ?? b.radio.largura], ["Padrão", b.radio.standard ?? b.radio.padrao], ["Potência", b.radio.tx_power ?? b.radio.potencia], ["Estado", b.radio.enabled === true || b.radio.radio_ativo === true ? "Ativo" : b.radio.enabled === false || b.radio.radio_ativo === false ? "Inativo" : null], ["Interferência", null]])}</details>`).join("") + (mesh?.nodes?.length || mesh?.enabled === true ? `<details class="wifi-diagnostic-card"><summary>Mesh · ${mesh.nodes.length} nós observados</summary>${table([{ label: "Nó", keys: ["id"] }, { label: "Pai", keys: ["parent"] }, { label: "Backhaul", keys: ["backhaul"] }], mesh.nodes)}</details>` : "") || '<p class="muted">Não disponível neste equipamento ou nesta execução.</p>';
   }
   function mount7() {
-    const form = document.querySelector("#complete-form"), scope = currentScope();
-    let running = false;
-    mountSpeedtest();
-    let lastCollection = null;
-    const workstation = document.querySelector("#complete-workstation");
-    workstation.onclick = async () => {
-      workstation.disabled = true;
-      const out = document.querySelector("#complete-workstation-result");
-      out.textContent = "Consultando o PC…";
+    const scope = currentScope(), form = document.querySelector("#complete-form");
+    let running = false, current = null, history = [], chartMode = "latency", historyStamp = 0;
+    const put = (id, html) => {
+      if (scopeActive(scope)) {
+        const el = document.querySelector("#complete-" + id);
+        if (el) el.innerHTML = html;
+      }
+    };
+    const showLine = (r) => {
+      const el = document.querySelector("#connectivity-" + r.id);
+      if (!el) return;
+      el.querySelector("[data-status]").innerHTML = badge2(r.status);
+      el.querySelector("[data-time]").textContent = fmt(r.duration_ms, " ms");
+      el.querySelector("[data-origin]").textContent = (r.origin === "host_access_manager" ? "Computador do técnico" : "ONT") + (r.target ? " · " + r.target : "");
+      el.title = r.error || "";
+    };
+    function paint2() {
+      if (!current || !scopeActive(scope)) return;
+      const metric2 = (id, value, detail) => {
+        document.querySelector("#metric-" + id).textContent = value;
+        document.querySelector("#metric-" + id + "-detail").textContent = detail;
+      };
+      metric2("latency", fmt(current.latency_ms, " ms"), "Ping da ONT");
+      metric2("loss", fmt(current.packet_loss_percent, " %"), "Ping da ONT");
+      metric2("availability", "Não calculada", "Execuções pontuais não medem disponibilidade contínua");
+      const rates = current.sections?.traffic?.sources || [], rate2 = rates.find((r) => r.source === "wan");
+      metric2("rate", fmt(rate2?.rx_mbps, " Mbps"), rate2 ? "RX · " + (rate2.label || rate2.source) : "Sem taxa WAN comprovada; não soma LAN/WLAN");
+      metric2("signal", current.wifi_quality?.label || "Não disponível", fmt(current.wifi_quality?.avg_rssi, " dBm") + " · associações observadas");
+      current.connectivity.forEach(showLine);
+      put("trace", hopsView(current.traceroute || []));
+      put("wifi", wifiView(current.wifi_quality || {}, current.sections?.mesh));
+      put("resources", resourcesView(current.resources || {}));
+      put("alerts", (current.alerts || []).map((a) => `<div class="diagnostic-alert status-${a.level}"><strong>${esc(a.title)}</strong><p>${esc(a.detail)}</p></div>`).join("") || '<p class="muted">Nenhum alerta derivado dos dados disponíveis. Isso não comprova saúde das métricas ausentes.</p>');
+      put("evidence", `<details><summary>Leituras e erros por seção</summary><pre>${esc(JSON.stringify({ device: current.device, started_at: current.started_at, finished_at: current.finished_at, sections: current.sections, section_errors: current.section_errors }, null, 2))}</pre></details>`);
+      document.querySelector("#complete-verified").textContent = "Verificado em " + new Date(current.finished_at).toLocaleString("pt-BR");
+      document.querySelector("#complete-export").disabled = !current.history_id;
+      put("health", esc(current.packet_loss_percent === 100 ? "Crítico: perda total no ping." : current.packet_loss_percent > 2 ? "Atenção: perda elevada no ping." : "Dados da execução atual; métricas ausentes não recebem classificação."));
+    }
+    function chart() {
+      const period = Number(document.querySelector("#chart-period").value), since = Date.now() - period * 36e5, points = history.filter((r) => ["complete", "ping"].includes(r.test_type) && new Date(r.finished_at).getTime() >= since).map((r) => ({ time: new Date(r.finished_at).getTime(), value: chartMode === "latency" ? r.latency_ms : r.packet_loss_percent })).filter((r) => Number.isFinite(r.value)).sort((a, b) => a.time - b.time);
+      if (!points.length) {
+        put("chart", '<p class="muted">Nenhuma amostra medida neste período.</p>');
+        return;
+      }
+      const w = 680, h = 210, left = 42, right = 660, top = 16, bottom = 170, min = points[0].time, max = points.at(-1).time, peak = Math.max(1, ...points.map((p) => p.value)), xy = points.map((p) => [left + (p.time - min) / (max - min || 1) * (right - left), bottom - p.value / peak * (bottom - top)]), coords = xy.map((p) => p.join(",")).join(" "), color = chartMode === "latency" ? "#9278c3" : "#48a77c";
+      put("chart", `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${chartMode === "latency" ? "Latência" : "Perda"}: ${points.length} amostras reais"><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="#e6e3ed"/><text x="2" y="24">${peak.toFixed(1)}</text><text x="2" y="174">0</text>${xy.length > 1 ? `<polygon points="${left},${bottom} ${coords} ${xy.at(-1)[0]},${bottom}" fill="${color}22"/><polyline points="${coords}" fill="none" stroke="${color}" stroke-width="2.5"/>` : ""}${xy.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${color}"><title>${esc(new Date(points[i].time).toLocaleString("pt-BR"))} · ${points[i].value}</title></circle>`).join("")}<text x="42" y="200">${esc(new Date(min).toLocaleTimeString("pt-BR"))}</text><text x="540" y="200">${esc(new Date(max).toLocaleTimeString("pt-BR"))}</text></svg><p class="muted">${points.length} amostras persistidas · ${chartMode === "latency" ? "ms" : "%"} · sem interpolação de amostras ausentes</p>`);
+    }
+    async function loadHistory() {
+      const stamp = ++historyStamp;
       try {
-        const d = await request("/api/device/diagnostics/workstation", { scope, method: "POST", body: "{}" });
-        if (scopeActive(scope)) out.innerHTML = fields([["DNS do PC", d.dns?.ok ? "Resolvido" : "Sem resposta"], ["TCP 443 — respostas", d.tcp?.successful], ["Tempo TCP médio (ms)", d.tcp?.mean_connect_ms], ["Variação TCP (ms)", d.tcp?.variation_ms]]) + `<p class="muted">${esc(d.limitations)}</p>`;
+        const data = await request("/api/device/diagnostics/full/history", { scope, method: "POST", body: JSON.stringify({ hours: 168 }) });
+        if (!scopeActive(scope) || stamp !== historyStamp) return;
+        history = data;
+        const hours = Number(document.querySelector("#diagnostic-history-period").value), status2 = document.querySelector("#diagnostic-history-status").value, since = Date.now() - hours * 36e5, filtered = history.filter((r) => new Date(r.finished_at).getTime() >= since && (!status2 || r.status === status2));
+        put("history", table([{ label: "Data", render: (r) => esc(new Date(r.finished_at).toLocaleString("pt-BR")) }, { label: "Teste", render: (r) => esc(r.test_type === "complete" ? "Completo" : tests.find((t) => t[0] === r.test_type)?.[1]) }, { label: "Resultado", render: (r) => badge2(r.status) }, { label: "Latência", render: (r) => fmt(r.latency_ms, " ms") }, { label: "Perda", render: (r) => fmt(r.packet_loss_percent, " %") }, { label: "Ações", render: (r) => `<button class="button" data-diagnostic-load="${r.history_id}">Ver / exportar</button>` }], filtered, "Nenhuma execução neste filtro."));
+        document.querySelectorAll("[data-diagnostic-load]").forEach((b) => b.onclick = () => {
+          current = history.find((r) => r.history_id === Number(b.dataset.diagnosticLoad));
+          paint2();
+        });
+        const measured = history.filter((r) => r.test_type === "complete"), span = measured.length > 1 ? (Date.now() - Math.min(...measured.map((r) => new Date(r.finished_at).getTime()))) / 36e5 : 0;
+        document.querySelectorAll("#chart-period option").forEach((o, i) => {
+          if (i) o.disabled = span < Number(o.value);
+        });
+        chart();
       } catch (e) {
-        if (scopeActive(scope) && !isCancelled(e)) out.textContent = e.message;
-      } finally {
-        if (scopeActive(scope)) workstation.disabled = false;
+        if (scopeActive(scope) && !isCancelled(e)) put("history", `<p class="muted">${esc(e.message)}</p>`);
       }
-    };
-    document.querySelector("#complete-runtime").onclick = async (e) => {
-      e.currentTarget.disabled = true;
-      const out = document.querySelector("#complete-runtime-result");
-      out.textContent = "Consultando superfícies documentadas…";
-      try {
-        const d = await request("/api/device/runtime/diagnostic", { scope, forceRefresh: true });
-        if (scopeActive(scope)) out.innerHTML = table([{ label: "Seção", keys: ["title"] }, { label: "Resultado", render: (r) => r.available ? "Dados retornados" : "Dados ausentes / parciais" }, { label: "Registros", keys: ["record_count"] }], Object.entries(d.sections || {}).map(([title, row]) => ({ title, available: row.available, record_count: row.record_count ?? (Array.isArray(row.data) ? row.data.length : null) })));
-      } catch (e2) {
-        if (scopeActive(scope) && !isCancelled(e2)) out.textContent = e2.message;
-      } finally {
-        if (scopeActive(scope)) e.currentTarget.disabled = false;
-      }
-    };
-    const save = document.querySelector("#complete-save");
-    save.onclick = async () => {
-      save.disabled = true;
-      try {
-        const d = await request("/api/device/diagnostics/collection", { scope, method: "POST", body: JSON.stringify({ session_id: window.__amStore?.session?.session?.session_id, sections: lastCollection }) });
-        if (scopeActive(scope)) document.querySelector("#complete-saved-result").textContent = "Coleta salva: " + d.snapshot_id;
-      } catch (e) {
-        if (scopeActive(scope) && !isCancelled(e)) document.querySelector("#complete-saved-result").textContent = e.message;
-      } finally {
-        if (scopeActive(scope)) save.disabled = false;
-      }
-    };
-    form.onsubmit = async (event) => {
-      event.preventDefault();
+    }
+    async function run(test = null) {
       if (running) return;
       running = true;
-      const button = form.querySelector("button"), progress = document.querySelector("#complete-progress"), snapshot = {};
+      const button = document.querySelector("#complete-run");
       button.disabled = true;
-      const put = (id, html) => {
-        if (scopeActive(scope)) {
-          const el = document.querySelector("#complete-" + id);
-          if (el) el.innerHTML = html;
-        }
-      };
-      const fd = new FormData(form), host = String(fd.get("host") || "").trim();
+      button.textContent = "Executando…";
+      document.querySelector("#complete-progress").textContent = "Executando testes reais; consultas nativas respeitam o contexto da sessão…";
+      document.querySelectorAll("[data-retest]").forEach((b) => b.disabled = true);
       try {
-        for (let i = 0; i < readers.length; i++) {
-          if (!scopeActive(scope)) return;
-          const [id, path, paint2] = readers[i];
-          progress.textContent = `Coletando ${i + 1}/${readers.length}: ${id}`;
-          put(id, '<p class="muted">Coletando…</p>');
-          try {
-            const data = await request(path, { scope, forceRefresh: true });
-            snapshot[id] = data;
-            put(id, paint2(data) || '<p class="muted">Nenhum dado reconhecido.</p>');
-          } catch (e) {
-            if (isCancelled(e)) return;
-            put(id, `<p class="notice warning">${esc(e.message)}</p>`);
-          }
-        }
+        const fd = new FormData(form), data = await request("/api/device/diagnostics/full/run", { scope, method: "POST", signal: scope.controller.signal, body: JSON.stringify({ target: fd.get("host"), hostname: fd.get("hostname"), trace: Boolean(fd.get("trace")), test, session_id: window.__amStore?.session?.session?.session_id }) });
         if (!scopeActive(scope)) return;
-        if (snapshot.clients) {
-          put("topology", topology(rows2(snapshot.clients), snapshot.system?.model));
-          mountDetails();
-        } else put("topology", '<p class="muted">Clientes não disponíveis; nenhuma relação inferida.</p>');
-        for (const [id, enabled] of [["ping", true], ["trace", Boolean(fd.get("trace"))]]) {
-          if (!enabled) {
-            put(id, '<p class="muted">Não solicitado.</p>');
-            continue;
+        if (test && current) {
+          current = { ...current, connectivity: current.connectivity.map((r) => r.id === test ? data.connectivity[0] : r) };
+          showLine(data.connectivity[0]);
+          if (test === "ping") {
+            current.latency_ms = data.latency_ms;
+            current.packet_loss_percent = data.packet_loss_percent;
+            current.alerts = [...(current.alerts || []).filter((a) => !a.title.includes("Perda de pacotes") && !a.title.startsWith("Ping ")), ...data.alerts || []];
           }
-          if (!cap("diagnostics").enabled?.write) {
-            put(id, '<p class="muted">Fluxo não integrado para esta sessão.</p>');
-            continue;
+          current.history_id = null;
+          document.querySelector("#complete-export").disabled = true;
+          document.querySelector("#complete-verified").textContent = "Reteste em " + new Date(data.finished_at).toLocaleString("pt-BR");
+          if (test === "ping") {
+            document.querySelector("#metric-latency").textContent = fmt(data.latency_ms, " ms");
+            document.querySelector("#metric-loss").textContent = fmt(data.packet_loss_percent, " %");
+            put("alerts", (current.alerts || []).map((a) => `<div class="diagnostic-alert status-${a.level}"><strong>${esc(a.title)}</strong><p>${esc(a.detail)}</p></div>`).join("") || '<p class="muted">Nenhum alerta derivado dos dados disponíveis.</p>');
+            put("health", esc(data.packet_loss_percent === 100 ? "Crítico: perda total no ping." : data.packet_loss_percent > 2 ? "Atenção: perda elevada no ping." : "Dados do reteste atual."));
           }
-          put(id, '<p class="muted">Executando…</p>');
-          try {
-            const d = await request("/api/device/diagnostics/" + (id === "trace" ? "traceroute" : "ping"), { scope, method: "POST", body: JSON.stringify({ host, count: 4 }) });
-            snapshot[id] = d;
-            put(id, diagnosticResult(d));
-          } catch (e) {
-            if (isCancelled(e)) return;
-            put(id, `<p class="notice warning">${esc(e.message)}</p>`);
-          }
+        } else {
+          current = data;
+          paint2();
         }
-        if (fd.get("lookup")) {
-          if (cap("dns_lookup").enabled?.write) {
-            put("lookup", '<p class="muted">Resolvendo…</p>');
-            try {
-              const d = await request("/api/device/diagnostics/dns-lookup", { scope, method: "POST", body: JSON.stringify({ hostname: String(fd.get("hostname") || "").trim() }) });
-              put("lookup", fields([["Nome", d.hostname], ["Endereços", d.addresses], ["Resultado", d.message ?? (d.success ? "Resolvido" : "Sem endereço")]]));
-            } catch (e) {
-              if (isCancelled(e)) return;
-              put("lookup", `<p class="notice warning">${esc(e.message)}</p>`);
-            }
-          } else put("lookup", '<p class="muted">Fluxo não integrado para esta sessão.</p>');
-        } else put("lookup", '<p class="muted">Não solicitado.</p>');
-        if (snapshot.traffic && scopeActive(scope)) try {
-          const d = await request("/api/device/traffic", { scope, forceRefresh: true });
-          put("traffic", readers.find((r) => r[0] === "traffic")[2](d));
-        } catch (e) {
-          if (isCancelled(e)) return;
-          put("traffic", `<p class="notice warning">${esc(e.message)}</p>`);
-        }
-        put("health", `<p>${esc(health(snapshot))}</p>`);
-        if (scopeActive(scope)) {
-          lastCollection = snapshot;
-          save.disabled = false;
-        }
-        if (scopeActive(scope)) progress.textContent = "Coleta concluída. Falhas e informações ausentes estão indicadas em cada seção.";
+        document.querySelector("#complete-progress").textContent = "Coleta concluída. Resultados persistidos no histórico local.";
+        await loadHistory();
+      } catch (e) {
+        if (scopeActive(scope) && !isCancelled(e)) document.querySelector("#complete-progress").textContent = e.message;
       } finally {
         running = false;
-        if (scopeActive(scope)) button.disabled = false;
+        if (scopeActive(scope)) {
+          button.disabled = false;
+          button.textContent = "Executar diagnóstico";
+          document.querySelectorAll("[data-retest]").forEach((b) => b.disabled = false);
+        }
+      }
+    }
+    document.querySelector("#complete-run").onclick = () => run();
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      run();
+    };
+    document.querySelectorAll("[data-retest]").forEach((b) => b.onclick = () => run(b.dataset.retest));
+    document.querySelectorAll("[data-chart]").forEach((b) => b.onclick = () => {
+      chartMode = b.dataset.chart;
+      document.querySelectorAll("[data-chart]").forEach((n) => n.classList.toggle("active", n === b));
+      chart();
+    });
+    document.querySelector("#chart-period").onchange = chart;
+    document.querySelector("#diagnostic-history-period").onchange = loadHistory;
+    document.querySelector("#diagnostic-history-status").onchange = loadHistory;
+    document.querySelector("#complete-export").onclick = async () => {
+      try {
+        const format = document.querySelector("#complete-export-format").value, r = await request("/api/device/diagnostics/full/export", { scope, method: "POST", body: JSON.stringify({ id: current.history_id, format }) });
+        if (!scopeActive(scope)) return;
+        const blob = new Blob([format === "json" ? JSON.stringify(r.data, null, 2) : r.content], { type: format === "json" ? "application/json" : "text/csv;charset=utf-8" }), url = URL.createObjectURL(blob), a = document.createElement("a");
+        a.href = url;
+        a.download = r.filename;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1e3);
+      } catch (e) {
+        if (!isCancelled(e) && scopeActive(scope)) document.querySelector("#complete-progress").textContent = e.message;
+      }
+    };
+    request("/api/device/diagnostics/full/config", { scope }).then((c) => {
+      if (scopeActive(scope)) {
+        if (!form.elements.host.value) form.elements.host.value = c.target;
+        if (!form.elements.hostname.value) form.elements.hostname.value = c.hostname;
+      }
+    }).catch(() => {
+    });
+    loadHistory();
+    mountSpeedtest();
+    for (const [id, path] of [["workstation", "/api/device/diagnostics/workstation"], ["runtime", "/api/device/runtime/diagnostic"]]) document.querySelector("#complete-" + id).onclick = async (e) => {
+      e.currentTarget.disabled = true;
+      try {
+        const data = await request(path, { scope, ...id === "workstation" ? { method: "POST", body: "{}" } : { forceRefresh: true } });
+        if (scopeActive(scope)) put(id + "-result", id === "runtime" ? table([{ label: "Seção", keys: ["title"] }, { label: "Disponível", render: (r) => r.available ? "Dados retornados" : "Não disponível" }, { label: "Registros", keys: ["count"] }], Object.entries(data.sections || {}).map(([title, row]) => ({ title, available: row.available, count: row.record_count ?? (Array.isArray(row.data) ? row.data.length : null) }))) : fields([["DNS do PC", data.dns?.ok ? "Resolvido" : "Sem resposta"], ["TCP 443 — respostas", data.tcp?.successful], ["Tempo médio TCP (ms)", data.tcp?.mean_connect_ms], ["Limitações", data.limitations]]));
+      } catch (e2) {
+        if (!isCancelled(e2)) put(id + "-result", esc(e2.message));
+      } finally {
+        if (scopeActive(scope)) document.querySelector("#complete-" + id).disabled = false;
       }
     };
   }
