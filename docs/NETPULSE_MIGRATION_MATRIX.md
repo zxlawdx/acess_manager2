@@ -263,3 +263,9 @@ Validação atual: Python 269 passed + 30 subtests; DOM 25 passed; frontend sync
 Branch feat/full-diagnostic-dashboard, base main b36c8fc (PR #8 integrado). A tela de coleta anterior foi reorganizada no painel solicitado. FullDiagnosticService reutiliza buses e histórico diagnostic_run; execuções/retestes reais, HTTPS explícito do host em paralelo, resultados normalizados, gráficos de amostras persistidas, filtros por equipamento/período/status e export JSON/CSV sem secrets. UNKNOWN não vira falha nem sucesso. Shell/Diagnóstico simples preservados. Relatório: FULL_DIAGNOSTIC_DASHBOARD_REPORT.md.
 
 Validação: 295 Python + 30 subtests, 28 DOM; Chromium e Vela real Qt nas três resoluções, dados de equipamento sintéticos. Capturas diagnostic-dashboard-* em docs/screenshots/vela. Nenhuma validação física/Windows nova; migração integral continua com as pendências de RESEARCH_IMPLEMENTATION_CLOSURE.md.
+
+## Referências diretas — Login / Overview / Tráfego / Diagnóstico completo
+
+Branch feat/direct-visual-references, base main 09e6fce com PR #9 integrado. HTMLs A/B e capturas C/D conferidos. Login separado do shell, credenciais removidas do dashboard. Overview com hierarquia completa da referência; Tráfego com gráfico principal e ranking lateral; renderer SVG/polling compartilhado; Diagnóstico completo adaptado à referência HTML B. Fontes locais, nenhum mock/CDN novo, backend preservado.
+
+Validação: 295 Python + 30 subtests; 31 frontend; Chromium e Vela real Qt nas três resoluções. Capturas login/overview/traffic/complete-diagnostics em docs/screenshots/vela. Detalhes: DIRECT_VISUAL_REFERENCES_REPORT.md. Dados de equipamento sintéticos nos testes; nenhum teste físico/Windows novo.

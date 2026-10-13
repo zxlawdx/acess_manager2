@@ -15,6 +15,7 @@ import {patchHTML} from '../shared/patch.js';
 
 let mountedRoot = null;
 let workspace = null;
+let connectionBusy=false;
 const viewStates=new Map();
 
 const meta = {
@@ -32,6 +33,9 @@ const views = {
 
 function syncContext() {
   const s = store.session?.session;
+  const connected=Boolean(store.session?.connected);
+  document.querySelector('#login-page').hidden=connected;
+  document.querySelector('.app-shell').hidden=!connected;
   const disconnect = document.querySelector('#disconnect-button');
   const updated = document.querySelector('#ctx-updated');
   if (disconnect) disconnect.disabled = !s;
@@ -49,6 +53,7 @@ async function render(name = store.view,background=false) {
   const titleEl = document.querySelector('#page-title');
   if (kickerEl) kickerEl.textContent = kicker;
   if (titleEl) titleEl.textContent = title;
+  document.querySelector('.page-heading').hidden=['overview','traffic','completeDiagnostics'].includes(name);
 
   if (!store.session?.connected && name !== 'profiles') {
     state.loading=false;
@@ -56,6 +61,7 @@ async function render(name = store.view,background=false) {
     return;
   }
 
+  if(!background)document.querySelector('.app-main').scrollTop=0;
   if(!background)workspace.innerHTML='<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
   try {
     const view = views[name] || views.overview;
@@ -91,7 +97,10 @@ function normalizeConnectionPayload(form) {
 async function connectFromForm(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  if (!form.reportValidity()) return;
+  if (connectionBusy || !form.reportValidity()) return;
+  connectionBusy=true;
+  document.querySelector('#connection-feedback').textContent='';
+  document.querySelector('#connection-status').textContent='Conectando…';
 
   const button = document.querySelector('#connect-button');
   const originalLabel = button?.textContent || 'Conectar';
@@ -112,8 +121,7 @@ async function connectFromForm(event) {
     store.setCapabilities(s.session?.capabilities || {});
     syncContext();
 
-    // A senha sai do DOM após autenticação bem-sucedida; host/usuário/HTTPS ficam
-    // visíveis para o analista saber exatamente como a sessão foi aberta.
+    // Login is hidden after authentication; credentials never enter the dashboard.
     const password = form.querySelector('[name="password"]');
     if (password) password.value = '';
 
@@ -122,9 +130,12 @@ async function connectFromForm(event) {
   } catch (err) {
     // Em erro, nenhum campo é resetado. Isso evita redigitar IP/usuário/senha
     // ao testar HTTP vs HTTPS ou corrigir apenas uma credencial.
+    document.querySelector('#connection-feedback').textContent=err?.message||'Não foi possível conectar ao equipamento.';
+    document.querySelector('#connection-status').textContent='Conexão não confirmada';
     toast(err?.message || 'Não foi possível conectar ao equipamento.');
     console.error('[Access Manager] Falha de conexão:', err);
   } finally {
+    connectionBusy=false;
     if (button) {
       button.disabled = false;
       button.textContent = originalLabel;
@@ -154,6 +165,7 @@ export async function mountApp() {
   const form = document.querySelector('#connect-form');
   if (!form) throw new Error('Formulário de conexão não foi encontrado.');
   form.addEventListener('submit', connectFromForm);
+  document.querySelector('[data-toggle-password]').onclick=e=>{const input=form.elements.password;input.type=input.type==='password'?'text':'password';e.currentTarget.textContent=input.type==='password'?'Mostrar':'Ocultar'};
 
   const disconnect = document.querySelector('#disconnect-button');
   if (disconnect) {
@@ -162,6 +174,10 @@ export async function mountApp() {
       finally {
         store.setSession({connected:false, session:null});
         store.setCapabilities({});
+        views[store.view]?.unmount?.();beginView('login');
+        form.elements.password.value='';form.elements.password.type='password';
+        document.querySelector('[data-toggle-password]').textContent='Mostrar';
+        document.querySelector('#connection-status').textContent='Pronto para conectar';
         syncContext();
         render(store.view);
       }
@@ -170,7 +186,7 @@ export async function mountApp() {
 
   document.addEventListener('refresh-view', () => render(store.view));
   let refreshTimer;
-  document.addEventListener('snapshot-updated',event=>{if(event.detail.generation!==currentScope()?.generation||['wifi','profiles','traffic'].includes(store.view))return;clearTimeout(refreshTimer);const scope=currentScope();refreshTimer=setTimeout(()=>{if(scopeActive(scope))render(store.view,true)},16)});
+  document.addEventListener('snapshot-updated',event=>{if(event.detail.generation!==currentScope()?.generation||['wifi','profiles','traffic','overview','completeDiagnostics'].includes(store.view))return;clearTimeout(refreshTimer);const scope=currentScope();refreshTimer=setTimeout(()=>{if(scopeActive(scope))render(store.view,true)},16)});
 
   try {
     const s = await request('/api/session');
