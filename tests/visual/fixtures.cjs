@@ -5,4 +5,5 @@ responses['/api/device/wifi/ssids']=responses['/api/device/wifi'].networks;respo
 responses['/api/management/artifacts']=[];
 responses['/api/device/configuration/catalog']=[];
 responses['/api/device/mesh']={available:false,nodes:[]};
+Object.assign(responses,require('./diagnostic-fixture.cjs').responses);
 module.exports={caps,responses};

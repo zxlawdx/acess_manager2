@@ -69,3 +69,15 @@ def test_vela_http_split_wifi_read_does_not_fetch_the_other_component(monkeypatc
     assert ssids[0]['ssid']=='Home' and calls==['ssids']
     _,radios=http(server.app,'GET','/api/device/wifi/radios')
     assert radios[0]['banda']=='5GHz' and calls==['ssids','radios']
+
+def test_full_diagnostic_http_routes_decode_run_filter_and_export(monkeypatch):
+    import apps.access_manager.composition as composition
+    calls=[]
+    service=SimpleNamespace(run=lambda c:(calls.append(('run',c)) or {'kind':'full_diagnostic'}),history_rows=lambda c:(calls.append(('history',c)) or []),export=lambda c:(calls.append(('export',c)) or {'filename':'access-manager-diagnostic.json'}))
+    monkeypatch.setattr(composition,'full_diagnostics',service)
+    router=ApiRouter()
+    for path,fn in [('run',endpoints.full_diagnostic_run),('history',endpoints.full_diagnostic_history),('export',endpoints.full_diagnostic_export)]:router.post('/device/diagnostics/full/'+path)(fn)
+    server=ApiServer(router,port=0,docs_enabled=False);server.register_routes()
+    for path,payload in [('run',{'target':'1.1.1.1','test':'dns'}),('history',{'hours':6,'status':'partial'}),('export',{'id':1,'format':'csv'})]:
+        status,_=http(server.app,'POST','/api/device/diagnostics/full/'+path,payload)
+        assert status.startswith('200') and calls[-1]==(path,payload)

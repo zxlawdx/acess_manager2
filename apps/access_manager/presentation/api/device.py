@@ -153,3 +153,20 @@ def factory_reset_preview(context=None): return safe(commands.factory_reset_prev
 
 @api.post("/device/factory-reset/apply")
 def factory_reset_apply(context=None): return safe(lambda: commands.factory_reset_apply(body(context)))
+
+@api.get("/device/diagnostics/full/config")
+def full_diagnostic_config(context=None):
+    from apps.access_manager.composition import full_diagnostics
+    return safe(full_diagnostics.config)
+@api.post("/device/diagnostics/full/run")
+def full_diagnostic_run(context=None):
+    from apps.access_manager.composition import full_diagnostics
+    return safe(lambda: full_diagnostics.run(body(context)))
+@api.post("/device/diagnostics/full/history")
+def full_diagnostic_history(context=None):
+    from apps.access_manager.composition import full_diagnostics
+    return safe(lambda: full_diagnostics.history_rows(body(context)))
+@api.post("/device/diagnostics/full/export")
+def full_diagnostic_export(context=None):
+    from apps.access_manager.composition import full_diagnostics
+    return safe(lambda: full_diagnostics.export(body(context)))
