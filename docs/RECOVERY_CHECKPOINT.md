@@ -40,3 +40,13 @@ Branch `fix/vela-shell-profile-layout`, sobre main `8e4a551` após os PRs anteri
 Branch fix/navigation-latency-technical-values sobre main 148365e. Geração/abort centralizados impedem render/erro/modal de navegação antiga; Wi-Fi e Perfis abrem imediatamente e carregam componentes em background. Cache por sessão em memória (15 s, revalidação após 3 s), sem secrets, invalidado após escrita. Formulários dirty preservados. Readers de SSIDs/rádios separados, memo Huawei limitado à operação e view de opções ZTE sem duplicação. Writer/protocolo não foi refeito. Valores técnicos roxos; status verdes/vermelhos e títulos preservados.
 
 Suíte Python: 143 + 2 subtestes. QA no Vela/pywebview/Qt real, três resoluções, reproduziu os bugs anteriores e confirmou a correção. Cenário controlado 2 s: Wi-Fi shell 2003→1,9 ms; SSIDs 2003→104 ms; reabertura 2002→1,4 ms; Novo Perfil 2013→4,9 ms. Nenhuma medição física nova. Relatório: NAVIGATION_PERFORMANCE_REPORT.md; números exatos: performance-before.json/performance-after.json.
+
+## Atualização: integração do relatório integral
+
+Branch feat/report-runtime-integration, base aad35f0 (main com PR #6). Working tree anterior preservado, sem reclone/auditoria repetida. Anexos (1)(1)/(1)(2) idênticos.
+
+Novos arquivos: infrastructure/zte/traffic.py; workspaces/views/complete-diagnostics.js. Provider ZTE ligado a probes WAN/LAN/WLAN por IDs; DNS lookup/discovery speedtest no CommandBus/API/UI. UPnP Huawei integrado com preservação de estado parcial e verificação por ambos os objetos. Sidebar Diagnóstico completo progressivo, reads forçados, ping e opcionais. Shell/Perfis/latência anteriores preservados.
+
+Suíte atual: 162 Python + 2 subtests; 24 DOM. QA Chromium e Vela real Qt três resoluções, dados sintéticos; nenhuma validação física/Windows nova. Capturas complete-diagnostics-*.
+
+Próximas pendências independentes: integrar F6201B full_forms/workbench (14 formulários) sem inventar campos ausentes; Huawei SNTP/WAN/IPv4filters; gerenciamento backup/restore/firmware/reset e speed start comprovados; Wi-Fi avançado; Mesh somente relações observadas. A migração integral continua pendente e não deve ser declarada concluída. Preservar afinidade TCP Huawei existente e política sem retry de mutations. ZTE DNS Delete continua sem writer comprovado.

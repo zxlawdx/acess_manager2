@@ -35,7 +35,7 @@
       const url = new URL(path, window.location.origin);
       const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
       const text = await res.text(), data = parseResponseBody(text);
-      if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute"].includes(path)) clearSnapshots();
+      if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery"].includes(path)) clearSnapshots();
       if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
       if (!res.ok) throw new Error(data?.error?.message || data?.message || `HTTP ${res.status} ao acessar ${url.pathname}`);
       if (data?.success === false) throw new Error(data?.error?.message || "Falha na operação");
@@ -186,9 +186,9 @@
     const items = Object.entries(data || {}).filter(([, v]) => v !== void 0 && v !== null && typeof v !== "object");
     return `<div class="kv-grid">${items.map(([k, v]) => `<div class="kv"><label>${esc(k.replaceAll("_", " "))}</label><span>${valueMarkup(typeof v === "boolean" ? v ? "Ativo" : "Inativo" : v, k)}</span></div>`).join("")}</div>`;
   }
-  function table(columns2, rows2, empty = "Nenhum registro encontrado") {
-    if (!Array.isArray(rows2) || !rows2.length) return `<div class="empty-state"><span>${esc(empty)}</span></div>`;
-    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows2.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  function table(columns2, rows3, empty = "Nenhum registro encontrado") {
+    if (!Array.isArray(rows3) || !rows3.length) return `<div class="empty-state"><span>${esc(empty)}</span></div>`;
+    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows3.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
   function cap(feature) {
     return window.__amStore?.capabilities?.[feature] || { read: "UNKNOWN", write: "UNKNOWN", enabled: { read: false, write: false }, evidence: "UNKNOWN" };
@@ -763,8 +763,8 @@
   var definitions = [{ feature: "dmz", title: "DMZ", fields: [["enabled", "Habilitado", "bool"], ["internal_client", "IP do cliente"]] }, { feature: "upnp", title: "UPnP", fields: [["enabled", "Habilitado", "bool"]] }, { feature: "tr069", title: "TR-069", fields: [["url", "URL ACS"]] }, { feature: "firewall", title: "Firewall", fields: [["enabled", "Habilitado", "bool"], ["level", "Nível"]] }];
   var loaded = {};
   function presentation(feature, data) {
-    const rows2 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
-    return fields(rows2[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
+    const rows3 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
+    return fields(rows3[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
   }
   var featureCap = (f) => f === "firewall" && (cap("firewall_level").enabled?.read || cap("firewall_level").enabled?.write) ? cap("firewall_level") : cap(f);
   async function render5() {
@@ -813,8 +813,8 @@
   });
   async function render6() {
     const caps = window.__amStore?.capabilities || {};
-    const rows2 = Object.entries(caps);
-    return `<section class="panel"><div class="panel-header"><div><h2>Capabilities</h2><span class="muted">Suporte e evidência são estados separados.</span></div></div>${rows2.length ? rows2.map(([name, c]) => `<div class="capability-row"><strong>${esc(name)}</strong>${capBadge(c.read)}${capBadge(c.write)}<span class="muted">${esc(c.evidence)}${c.source ? ` · ${esc(c.source)}` : ""}</span></div>`).join("") : '<div class="empty-state"><span>Sem capabilities na sessão.</span></div>'}</section>`;
+    const rows3 = Object.entries(caps);
+    return `<section class="panel"><div class="panel-header"><div><h2>Capabilities</h2><span class="muted">Suporte e evidência são estados separados.</span></div></div>${rows3.length ? rows3.map(([name, c]) => `<div class="capability-row"><strong>${esc(name)}</strong>${capBadge(c.read)}${capBadge(c.write)}<span class="muted">${esc(c.evidence)}${c.source ? ` · ${esc(c.source)}` : ""}</span></div>`).join("") : '<div class="empty-state"><span>Sem capabilities na sessão.</span></div>'}</section>`;
   }
 
   // apps/access_manager/static/js/workspaces/views/traffic.js
@@ -837,7 +837,7 @@
     histories.set(k, h.slice(-2e3));
   }
   function card(s) {
-    return `<section class="panel" data-stream="${esc(key(s))}"><h3>${esc({ wan: "WAN", lan: "LAN", wifi: "Wi-Fi", wifi_client: "Cliente Wi-Fi" }[s.source] || s.source)}</h3><p class="muted mono">${esc(s.identity)}</p><div class="grid">${[["Taxa RX", "rx_mbps"], ["Taxa TX", "tx_mbps"], ["Recebido", "rx_bytes"], ["Enviado", "tx_bytes"]].map(([label, k]) => `<article class="metric"><label>${label}</label><strong class="tech-value" data-value="${k}"></strong></article>`).join("")}</div><p data-sample-status class="muted"></p><svg class="sparkline" viewBox="0 0 600 140" role="img" aria-label="Taxas RX e TX"><polyline data-rx></polyline><polyline data-tx class="upload"></polyline></svg><p class="muted" data-chart-label></p><div class="human-fields">${["rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"].map((k) => `<div class="human-field"><span>${{ rx_packets: "Pacotes RX", tx_packets: "Pacotes TX", rx_errors: "Erros RX", tx_errors: "Erros TX", rx_discard: "Descartes RX", tx_discard: "Descartes TX" }[k]}</span><strong class="tech-value" data-value="${k}"></strong></div>`).join("")}</div></section>`;
+    return `<section class="panel" data-stream="${esc(key(s))}"><h3>${esc({ wan: "WAN", lan: "LAN", wifi: "Wi-Fi", wifi_client: "Cliente Wi-Fi" }[s.source] || s.source)}</h3><p class="muted">${esc(s.label || s.ssid || s.interface || "Interface")}</p><details><summary>Identificação técnica</summary><span class="mono">${esc(s.identity)}</span></details><div class="grid">${[["Taxa RX", "rx_mbps"], ["Taxa TX", "tx_mbps"], ["Recebido", "rx_bytes"], ["Enviado", "tx_bytes"]].map(([label, k]) => `<article class="metric"><label>${label}</label><strong class="tech-value" data-value="${k}"></strong></article>`).join("")}</div><p data-sample-status class="muted"></p><svg class="sparkline" viewBox="0 0 600 140" role="img" aria-label="Taxas RX e TX"><polyline data-rx></polyline><polyline data-tx class="upload"></polyline></svg><p class="muted" data-chart-label></p><div class="human-fields">${["rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"].map((k) => `<div class="human-field"><span>${{ rx_packets: "Pacotes RX", tx_packets: "Pacotes TX", rx_errors: "Erros RX", tx_errors: "Erros TX", rx_discard: "Descartes RX", tx_discard: "Descartes TX" }[k]}</span><strong class="tech-value" data-value="${k}"></strong></div>`).join("")}</div></section>`;
   }
   function setText(el, value) {
     if (el) {
@@ -913,10 +913,10 @@
     period.onchange = async () => {
       seconds = Number(period.value);
       try {
-        const rows2 = await request("/api/device/traffic/history", { method: "POST", body: JSON.stringify({ seconds }) });
+        const rows3 = await request("/api/device/traffic/history", { method: "POST", body: JSON.stringify({ seconds }) });
         if (token !== generation2) return;
         histories.clear();
-        for (const r of rows2) remember(r);
+        for (const r of rows3) remember(r);
         for (const el of document.querySelector("#traffic-streams").children) {
           const h = histories.get(el.dataset.stream);
           if (h?.length) plot(el, h.at(-1));
@@ -979,6 +979,135 @@
     return `<section class="panel"><div class="panel-header"><h2>Implantação</h2></div><div class="notice warning">Workspace destinado a modelo/firmware desconhecido ou capability candidata. Ele não é uma autorização de escrita para operações já suportadas.</div></section>`;
   }
 
+  // apps/access_manager/static/js/workspaces/views/complete-diagnostics.js
+  var complete_diagnostics_exports = {};
+  __export(complete_diagnostics_exports, {
+    health: () => health,
+    mount: () => mount7,
+    render: () => render8
+  });
+  var rows2 = (v) => Array.isArray(v) ? v : v ? [v] : [];
+  var section = (id, title) => `<section class="panel"><h2>${title}</h2><div id="complete-${id}"><p class="muted">Aguardando coleta.</p></div></section>`;
+  function render8() {
+    return `<section class="panel"><h2>Coleta do equipamento</h2><p class="muted">Leituras atuais e ping. Traceroute é opcional. Falhas de uma seção não interrompem as outras; métricas ausentes não são convertidas em zero.</p><form id="complete-form" class="inline-actions"><div class="field"><label>Destino</label><input name="host" value="8.8.8.8" required></div><label><input name="trace" type="checkbox"> Incluir traceroute</label><label><input name="lookup" type="checkbox"> Incluir DNS lookup</label><div class="field"><label>Nome para resolver</label><input name="hostname" value="example.com"></div><button class="button primary">Coletar diagnóstico completo</button></form><p id="complete-progress" role="status">Pronto para coletar.</p></section>${section("health", "Saúde e evidências")}${section("system", "Resumo e sistema")}${section("wan", "WAN")}${section("optical", "Óptica")}${section("wifi", "Wi-Fi e SSIDs")}${section("radios", "Rádios")}${section("clients", "Clientes")}${section("lan", "LAN")}${section("dhcp", "DHCP")}${section("dns", "DNS")}${section("ping", "Ping")}${section("trace", "Traceroute")}${section("traffic", "Tráfego")}${section("topology", "Topologia")}${section("lookup", "DNS lookup")}<section class="panel"><h2>Teste de velocidade nativo</h2><p class="muted">Descoberta de servidores pelo fluxo AIS do provider ZTE. Não inicia medição de velocidade.</p><button type="button" class="button" id="complete-speedtest" ${cap("speedtest_discovery").enabled?.write ? "" : "disabled"}>Consultar servidores</button><div id="complete-speedtest-result"></div></section>`;
+  }
+  var readers = [
+    ["system", "/api/device", (d) => fields([["Modelo", d.model], ["Firmware", d.firmware], ["Serial", d.serial], ["Uptime", uptime(d.uptime_seconds)], ["CPU (%)", d.cpu_percent], ["RAM (%)", d.memory_percent], ["Temperatura (°C)", d.temperature_c]])],
+    ["wan", "/api/device/wan", (d) => rows2(d).map((w) => fields([["Nome", w.name], ["Estado", linkStatus(w.status)], ["IPv4", w.ipv4], ["IPv6", w.ipv6], ["Gateway", w.gateway], ["DNS", w.dns], ["VLAN", w.vlan]])).join("")],
+    ["optical", "/api/device/optical", (d) => fields([["RX (dBm)", d.rx ?? d.rx_power ?? d.rx_dbm], ["TX (dBm)", d.tx ?? d.tx_power ?? d.tx_dbm], ["Temperatura (°C)", d.temperature ?? d.temperatura], ["Estado", d.status]])],
+    ["wifi", "/api/device/wifi/ssids", (d) => table([{ label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band", "banda"] }, { label: "Estado", render: (r) => r.enabled === true ? "Ativo" : r.enabled === false ? "Inativo" : "Não disponível" }], rows2(d))],
+    ["radios", "/api/device/wifi/radios", (d) => rows2(d).map((r) => fields([["Banda", r.band ?? r.banda], ["Canal", r.channel ?? r.canal], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais]])).join("")],
+    ["clients", "/api/device/clients", (d) => table([{ label: "Hostname", keys: ["hostname", "name"] }, { label: "IP", keys: ["ip", "ipv4"] }, { label: "MAC", keys: ["mac"] }, { label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band"] }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }], rows2(d))],
+    ["lan", "/api/device/lan", (d) => rows2(d).map((r) => fields([["Porta", r.port ?? r.porta ?? r.name ?? r.nome], ["Estado", r.status], ["Velocidade", r.speed ?? r.velocidade]])).join("")],
+    ["dhcp", "/api/device/dhcp", (d) => fields([["Ativo", d.enabled === true ? "Sim" : d.enabled === false ? "Não" : null], ["IP LAN", d.lan_ip], ["Máscara", d.mask], ["Início do pool", d.pool_start], ["Fim do pool", d.pool_end], ["Lease (s)", d.lease_seconds], ["DNS primário", d.dns1], ["DNS secundário", d.dns2], ["Reservas", d.reservations?.length]])],
+    ["dns", "/api/device/dns", (d) => fields([["DNS IPv4 primário", d.ipv4_1 ?? d.primary], ["DNS IPv4 secundário", d.ipv4_2 ?? d.secondary], ["DNS IPv6 primário", d.ipv6_1], ["DNS IPv6 secundário", d.ipv6_2], ["Hosts estáticos", d.hosts?.length]])],
+    ["traffic", "/api/device/traffic", (d) => table([{ label: "Interface", render: (r) => esc(r.label || r.ssid || r.source) }, { label: "RX (bytes)", render: (r) => esc(r.counters?.rx_bytes ?? "Não disponível") }, { label: "TX (bytes)", render: (r) => esc(r.counters?.tx_bytes ?? "Não disponível") }, { label: "RX (Mbps)", render: (r) => esc(r.rx_mbps ?? "Aguardando segunda amostra") }, { label: "TX (Mbps)", render: (r) => esc(r.tx_mbps ?? "Aguardando segunda amostra") }], d.sources || [])]
+  ];
+  function health(snapshot) {
+    const states = rows2(snapshot.wan).map((w) => String(w.status ?? "").toLowerCase());
+    const disconnected = states.some((s) => ["disconnected", "down", "desconectado"].includes(s));
+    const loss = snapshot.ping?.loss_percent;
+    if (disconnected || loss === 100) return "Crítico: WAN desconectada ou perda total no ping. Confira as evidências coletadas.";
+    if (typeof loss === "number" && loss > 0) return "Atenção: o equipamento informou perda de pacotes no ping.";
+    return "Informação insuficiente para classificar a saúde global. Leituras e ping disponíveis abaixo; níveis ópticos não recebem limiares genéricos.";
+  }
+  function mount7() {
+    const form = document.querySelector("#complete-form"), scope = currentScope();
+    let running = false;
+    const speed = document.querySelector("#complete-speedtest");
+    speed.onclick = async () => {
+      speed.disabled = true;
+      const out = document.querySelector("#complete-speedtest-result");
+      out.textContent = "Consultando…";
+      try {
+        const d = await request("/api/device/diagnostics/speedtest-discovery", { scope, method: "POST", body: "{}" });
+        if (scopeActive(scope)) out.innerHTML = table([{ label: "Nome", keys: ["name"] }, { label: "Endereço", keys: ["url"] }], d.servers || [], "Nenhum servidor retornado.");
+      } catch (e) {
+        if (scopeActive(scope) && !isCancelled(e)) out.textContent = e.message;
+      } finally {
+        if (scopeActive(scope)) speed.disabled = false;
+      }
+    };
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      if (running) return;
+      running = true;
+      const button = form.querySelector("button"), progress = document.querySelector("#complete-progress"), snapshot = {};
+      button.disabled = true;
+      const put = (id, html) => {
+        if (scopeActive(scope)) {
+          const el = document.querySelector("#complete-" + id);
+          if (el) el.innerHTML = html;
+        }
+      };
+      const fd = new FormData(form), host = String(fd.get("host") || "").trim();
+      try {
+        for (let i = 0; i < readers.length; i++) {
+          if (!scopeActive(scope)) return;
+          const [id, path, paint2] = readers[i];
+          progress.textContent = `Coletando ${i + 1}/${readers.length}: ${id}`;
+          put(id, '<p class="muted">Coletando…</p>');
+          try {
+            const data = await request(path, { scope, forceRefresh: true });
+            snapshot[id] = data;
+            put(id, paint2(data) || '<p class="muted">Nenhum dado reconhecido.</p>');
+          } catch (e) {
+            if (isCancelled(e)) return;
+            put(id, `<p class="notice warning">${esc(e.message)}</p>`);
+          }
+        }
+        if (!scopeActive(scope)) return;
+        if (snapshot.clients) {
+          put("topology", topology(rows2(snapshot.clients), snapshot.system?.model));
+          mountDetails();
+        } else put("topology", '<p class="muted">Clientes não disponíveis; nenhuma relação inferida.</p>');
+        for (const [id, enabled] of [["ping", true], ["trace", Boolean(fd.get("trace"))]]) {
+          if (!enabled) {
+            put(id, '<p class="muted">Não solicitado.</p>');
+            continue;
+          }
+          if (!cap("diagnostics").enabled?.write) {
+            put(id, '<p class="muted">Fluxo não integrado para esta sessão.</p>');
+            continue;
+          }
+          put(id, '<p class="muted">Executando…</p>');
+          try {
+            const d = await request("/api/device/diagnostics/" + (id === "trace" ? "traceroute" : "ping"), { scope, method: "POST", body: JSON.stringify({ host, count: 4 }) });
+            snapshot[id] = d;
+            put(id, diagnosticResult(d));
+          } catch (e) {
+            if (isCancelled(e)) return;
+            put(id, `<p class="notice warning">${esc(e.message)}</p>`);
+          }
+        }
+        if (fd.get("lookup")) {
+          if (cap("dns_lookup").enabled?.write) {
+            put("lookup", '<p class="muted">Resolvendo…</p>');
+            try {
+              const d = await request("/api/device/diagnostics/dns-lookup", { scope, method: "POST", body: JSON.stringify({ hostname: String(fd.get("hostname") || "").trim() }) });
+              put("lookup", fields([["Nome", d.hostname], ["Endereços", d.addresses], ["Resultado", d.message ?? (d.success ? "Resolvido" : "Sem endereço")]]));
+            } catch (e) {
+              if (isCancelled(e)) return;
+              put("lookup", `<p class="notice warning">${esc(e.message)}</p>`);
+            }
+          } else put("lookup", '<p class="muted">Fluxo não integrado para esta sessão.</p>');
+        } else put("lookup", '<p class="muted">Não solicitado.</p>');
+        if (snapshot.traffic && scopeActive(scope)) try {
+          const d = await request("/api/device/traffic", { scope, forceRefresh: true });
+          put("traffic", readers.find((r) => r[0] === "traffic")[2](d));
+        } catch (e) {
+          if (isCancelled(e)) return;
+          put("traffic", `<p class="notice warning">${esc(e.message)}</p>`);
+        }
+        put("health", `<p>${esc(health(snapshot))}</p>`);
+        if (scopeActive(scope)) progress.textContent = "Coleta concluída. Falhas e informações ausentes estão indicadas em cada seção.";
+      } finally {
+        running = false;
+        if (scopeActive(scope)) button.disabled = false;
+      }
+    };
+  }
+
   // apps/access_manager/static/js/workspaces/app.js
   var mountedRoot = null;
   var workspace = null;
@@ -992,6 +1121,7 @@
     lan: ["REDE", "LAN"],
     dhcpdns: ["REDE", "DHCP e DNS"],
     diagnostics: ["OPERAÇÕES", "Diagnóstico"],
+    completeDiagnostics: ["OPERAÇÕES", "Diagnóstico completo"],
     profiles: ["OPERAÇÕES", "Perfis"],
     management: ["OPERAÇÕES", "Gerenciamento"],
     capabilities: ["AVANÇADO", "Capabilities"],
@@ -1004,6 +1134,7 @@
     profiles: profiles_exports,
     management: management_exports,
     capabilities: capabilities_exports,
+    completeDiagnostics: complete_diagnostics_exports,
     traffic: traffic_exports,
     diagnostics: { render: diagnostics, mount: mountDiagnostics },
     deployment: { render: deployment },
@@ -1018,7 +1149,7 @@
     if (disconnect) disconnect.disabled = !s;
     if (updated) updated.textContent = s?.updated_at ? `Atualizado ${new Date(s.updated_at).toLocaleTimeString()}` : "—";
   }
-  async function render8(name = store.view, background = false) {
+  async function render9(name = store.view, background = false) {
     const scope = background ? currentScope() : beginView(name);
     if (!background) {
       views[store.view]?.unmount?.();
@@ -1095,7 +1226,7 @@
       const password = form.querySelector('[name="password"]');
       if (password) password.value = "";
       toast(`Conectado via ${payload.https ? "HTTPS" : "HTTP"} em ${s.session.model || s.session.vendor || payload.host}.`);
-      await render8("overview");
+      await render9("overview");
     } catch (err) {
       toast(err?.message || "Não foi possível conectar ao equipamento.");
       console.error("[Access Manager] Falha de conexão:", err);
@@ -1117,7 +1248,7 @@
     document.querySelectorAll(".nav").forEach((b) => {
       b.onclick = () => {
         document.querySelector("#sidebar")?.classList.remove("open");
-        render8(b.dataset.view);
+        render9(b.dataset.view);
       };
     });
     const mobileNav = document.querySelector("#mobile-nav");
@@ -1134,18 +1265,18 @@
           store.setSession({ connected: false, session: null });
           store.setCapabilities({});
           syncContext();
-          render8(store.view);
+          render9(store.view);
         }
       };
     }
-    document.addEventListener("refresh-view", () => render8(store.view));
+    document.addEventListener("refresh-view", () => render9(store.view));
     let refreshTimer;
     document.addEventListener("snapshot-updated", (event) => {
       if (event.detail.generation !== currentScope()?.generation || ["wifi", "profiles", "traffic"].includes(store.view)) return;
       clearTimeout(refreshTimer);
       const scope = currentScope();
       refreshTimer = setTimeout(() => {
-        if (scopeActive(scope)) render8(store.view, true);
+        if (scopeActive(scope)) render9(store.view, true);
       }, 16);
     });
     try {
@@ -1153,10 +1284,10 @@
       store.setSession(s);
       store.setCapabilities(s.session?.capabilities || {});
       syncContext();
-      await render8(s.connected ? currentScope() ? store.view : "overview" : store.view);
+      await render9(s.connected ? currentScope() ? store.view : "overview" : store.view);
     } catch (error) {
       console.error("[Access Manager] Falha ao consultar sessão inicial:", error);
-      await render8(store.view);
+      await render9(store.view);
     }
   }
 

@@ -231,3 +231,21 @@ Branch `fix/vela-shell-profile-layout`, sobre main `8e4a551` após os PRs anteri
 Branch fix/navigation-latency-technical-values sobre main 148365e. Geração/abort centralizados impedem render/erro/modal de navegação antiga; Wi-Fi e Perfis abrem imediatamente e carregam componentes em background. Cache por sessão em memória (15 s, revalidação após 3 s), sem secrets, invalidado após escrita. Formulários dirty preservados. Readers de SSIDs/rádios separados, memo Huawei limitado à operação e view de opções ZTE sem duplicação. Writer/protocolo não foi refeito. Valores técnicos roxos; status verdes/vermelhos e títulos preservados.
 
 Suíte Python: 143 + 2 subtestes. QA no Vela/pywebview/Qt real, três resoluções, reproduziu os bugs anteriores e confirmou a correção. Cenário controlado 2 s: Wi-Fi shell 2003→1,9 ms; SSIDs 2003→104 ms; reabertura 2002→1,4 ms; Novo Perfil 2013→4,9 ms. Nenhuma medição física nova. Relatório: NAVIGATION_PERFORMANCE_REPORT.md; números exatos: performance-before.json/performance-after.json.
+
+## Delta do relatório integral (base aad35f0)
+
+| Superfície | Estado após esta rodada | Evidência / limite |
+|---|---|---|
+| Tráfego ZTE H3600P-style | Reader integrado com probes + fallback | Fonte pinada ZTE-Exporter; testes de protocolo/joins/ausência; hardware local pendente |
+| Diagnóstico completo | Sidebar + coleta progressiva integrada | Reads existentes, ping, trace/lookup opcionais; falhas parciais e geração de navegação |
+| DNS lookup ZTE nativo | Provider/CommandBus/API/UI disponíveis | Fluxo legado; hostname validado; F6201B/Huawei UNKNOWN nesta integração |
+| Speed test AIS | Descoberta de servidores disponível | Fluxo legado; start/medição ainda não integrados; não universal por fabricante |
+| UPnP Huawei | Writer/provider e UI Gerenciamento conectados | Mapped writer + estados por domínio + readback de ambos; perfis comprovados |
+| Huawei affinity | Preservado existente | Afinidade TCP já conectada antes desta rodada; nenhuma alegação de nova implementação |
+| F6201B 14 full forms | Núcleo migrado; integração operacional pendente | Preview/nonce/full payload/readback presentes; falta provider/API/UI completa |
+| Huawei WAN/SNTP/IPv4 filters | Integração adicional pendente | Núcleos mapeados presentes; não liberar payload genérico a qualquer firmware |
+| DHCP/DNS estáticos X6 | Disponível por probes, anterior | Sem gate de teste físico; mantendo leitores/writers anteriores |
+| ZTE excluir host DNS | UNKNOWN | Writer/ação de exclusão ainda não comprovado; Apply não prova Delete |
+| Mesh | Relações não comprovadas continuam ausentes | Nenhum parent/backhaul deduzido por nomes/modelos |
+| Reset/backup/restore/firmware | Integração pendente | Não inventar multipart/configuração/ação; confirmação de alto impacto necessária na UI |
+| Windows/WebView2 e hardware | Validação pendente | Qt real + dados sintéticos não equivalem a equipamento físico ou Windows |

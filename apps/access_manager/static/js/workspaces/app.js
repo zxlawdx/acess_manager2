@@ -9,6 +9,7 @@ import * as management from './views/management.js';
 import * as capabilities from './views/capabilities.js';
 import * as traffic from './views/traffic.js';
 import * as misc from './views/misc.js';
+import * as completeDiagnostics from './views/complete-diagnostics.js';
 import {esc,toast} from '../shared/ui.js';
 import {patchHTML} from '../shared/patch.js';
 
@@ -20,11 +21,11 @@ const meta = {
   overview:['VISÃO OPERACIONAL','Visão geral'], clients:['VISÃO OPERACIONAL','Clientes'],
   traffic:['VISÃO OPERACIONAL','Tráfego'], wifi:['REDE','Wi-Fi e SSIDs'], wan:['REDE','WAN'],
   lan:['REDE','LAN'], dhcpdns:['REDE','DHCP e DNS'], diagnostics:['OPERAÇÕES','Diagnóstico'],
-  profiles:['OPERAÇÕES','Perfis'], management:['OPERAÇÕES','Gerenciamento'],
+  completeDiagnostics:['OPERAÇÕES','Diagnóstico completo'], profiles:['OPERAÇÕES','Perfis'], management:['OPERAÇÕES','Gerenciamento'],
   capabilities:['AVANÇADO','Capabilities'], deployment:['AVANÇADO','Implantação']
 };
 const views = {
-  overview, clients, wifi, profiles, management, capabilities,
+  overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
   traffic, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
   wan:{render:network.wan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
 };

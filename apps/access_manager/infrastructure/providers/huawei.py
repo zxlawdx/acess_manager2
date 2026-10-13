@@ -186,7 +186,7 @@ class HuaweiProvider:
                 }.get(name, name)
                 wired = {
                     "wifi", "wifi_radio", "dns", "dhcp", "dmz", "tr069",
-                    "firewall_level", "dhcp_reservations", "dns_hosts",
+                    "firewall_level", "dhcp_reservations", "dns_hosts", "upnp",
                 }
                 write = (
                     S.SUPPORTED
@@ -419,3 +419,40 @@ class HuaweiProvider:
     def delete_dns_host(self, identifier):
         self.capabilities.require_write('dns_hosts_delete')
         return self.captured.delete_dns_host(identifier)
+
+    def get_upnp(self):
+        from apps.access_manager.domain.presentation import boolean
+        data=self.mapped.read_feature('upnp')
+        states={}
+        for page in data.get('pages') or []:
+            for row in page.get('records') or []:
+                domain=row.get('domain') or row.get('Domain')
+                for key,suffix in (('main_enabled','X_HW_MainUPnP'),('slave_enabled','X_HW_SlvUPnP')):
+                    if domain=='InternetGatewayDevice.'+suffix:
+                        states[key]=boolean(row.get('Enable'))
+        main,slave=states.get('main_enabled'),states.get('slave_enabled')
+        return {'available':main is not None and slave is not None,
+                'enabled':main if main is not None and main==slave else None,
+                'main_enabled':main,'slave_enabled':slave}
+
+    def set_upnp(self, config):
+        self.capabilities.require_write('upnp')
+        values=dict(config or {})
+        if set(values)-{'enabled','main_enabled','slave_enabled'}:
+            raise ValueError('Unsupported UPnP field')
+        if not values or any(type(v) is not bool for v in values.values()):
+            raise ValueError('UPnP requires boolean states')
+        current=self.get_upnp()
+        if not current['available']:
+            raise RuntimeError('UPnP object graph not recognized in this session')
+        main=values.get('main_enabled',values.get('enabled',current['main_enabled']))
+        slave=values.get('slave_enabled',values.get('enabled',current['slave_enabled']))
+        result=self.mapped.write_feature('upnp',{'x.Enable':'1' if main else '0','y.Enable':'1' if slave else '0'})
+        if result.get('accepted') or result.get('success'):
+            try:
+                after=self.get_upnp()
+                verified=after['available'] and after['main_enabled']==main and after['slave_enabled']==slave
+                result={**result,'success':bool(verified),'verified':bool(verified),'uncertain':not verified}
+            except Exception as error:
+                result={**result,'success':False,'verified':False,'uncertain':True,'readback_error':type(error).__name__}
+        return result

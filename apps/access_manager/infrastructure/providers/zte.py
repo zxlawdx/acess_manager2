@@ -67,6 +67,7 @@ class ZTEProvider:
             destructive=True,source='zte_device_management.reboot' if is_native else 'writer_not_proven_for_active_model'
         ))
         items.extend([Capability('dns_hosts',S.SUPPORTED if is_native else S.UNKNOWN,S.SUPPORTED if is_native else S.UNKNOWN,E.IMPLEMENTED,source='legacy_dns_host_upsert_readback'),Capability('dns_hosts_delete',S.UNKNOWN,S.UNKNOWN,E.UNKNOWN,source='delete_writer_not_proven')])
+        items.extend([Capability('dns_lookup',S.SUPPORTED if is_native else S.UNKNOWN,S.SUPPORTED if is_native else S.UNKNOWN,E.AUTOMATED_TESTED,source='legacy_nslookup_request_poll'),Capability('speedtest_discovery',S.SUPPORTED if is_native else S.UNKNOWN,S.SUPPORTED if is_native else S.UNKNOWN,E.IMPLEMENTED,source='legacy_ais_speedtest_server_discovery')])
         return CapabilitySet(items)
     def _need(self):
         if self.client is None: raise RuntimeError('ZTE session is not connected')
@@ -117,9 +118,15 @@ class ZTEProvider:
     def get_optical(self): return self._need().optical_status()
     def get_traffic(self):
         c=self._need()
-        wan=list(c.wan_status() or [])
-        lan=list(c.lan_ports() or [])
-        wifi=list(c.wifi_clients() or [])
+        legacy_errors=[]
+        def read_legacy(method):
+            try: return list(getattr(c,method)() or [])
+            except Exception:
+                legacy_errors.append(method)
+                return []
+        wan=read_legacy('wan_status')
+        lan=read_legacy('lan_ports')
+        wifi=read_legacy('wifi_clients')
         sources=[]
         keys=('rx_bytes','tx_bytes','rx_packets','tx_packets','rx_errors','tx_errors','rx_discard','tx_discard')
         for source, rows in (('wan',wan),('lan',lan),('wifi_client',wifi)):
@@ -127,9 +134,15 @@ class ZTEProvider:
                 counters={k:row.get(k) for k in keys if row.get(k) not in (None,'')}
                 if counters:
                     sources.append({'source':source,'identity':row.get('id') or row.get('port') or row.get('mac') or row.get('nome') or '', 'counters':counters})
+        from apps.access_manager.infrastructure.zte.traffic import read_counter_surfaces
+        probes = read_counter_surfaces(c) if hasattr(c, 'get_view') and hasattr(c, 'get_menu') else {'sources': [], 'unavailable_scopes': ['wan', 'lan', 'wifi']}
+        scopes = {row['source'] for row in probes['sources']}
+        sources = probes['sources'] + [row for row in sources if row['source'] not in scopes]
         return {
+            'unavailable_scopes': probes['unavailable_scopes'],
+            'legacy_unavailable': legacy_errors,
             'supported':bool(sources),
-            'partial':not bool(sources),
+            'partial':bool(probes['unavailable_scopes']),
             'sources':sources,
             'wan':wan,
             'lan':lan,
@@ -209,3 +222,20 @@ class ZTEProvider:
         result=zte_dns._upsert_host(self._need(),{'nome':config['name'],'ip':config['ip']})
         actual=zte_dns._wait_host_applied(self._need(),config['name'],config['ip'])
         return {**result,'verified':True,'after':actual}
+
+    def dns_lookup(self, config):
+        self.capabilities.require_write('dns_lookup')
+        values=dict(config or {})
+        if set(values)-{'hostname'}: raise ValueError('Unsupported DNS lookup option')
+        hostname=str(values.get('hostname') or '').strip().rstrip('.')
+        if not hostname or len(hostname)>253 or not all(re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?',label) for label in hostname.split('.')):
+            raise ValueError('Nome DNS inválido')
+        result=self._need().nslookup(hostname)
+        return {'success':result.get('success'), 'hostname':hostname,
+                'hostname_returned':result.get('hostname_returned'),
+                'addresses':result.get('addresses'), 'message':result.get('message')}
+
+    def discover_speedtest(self):
+        self.capabilities.require_write('speedtest_discovery')
+        result=self._need().native_speedtest_servers()
+        return {'servers':result.get('servers') or []}

@@ -80,3 +80,9 @@ def reservation_delete(context=None): return safe(lambda: commands.delete_reserv
 def dns_host_save(context=None): return safe(lambda: commands.save_dns_host(body(context)))
 @api.delete("/device/dns/hosts")
 def dns_host_delete(context=None): return safe(lambda: commands.delete_dns_host(body(context)))
+
+@api.post("/device/diagnostics/dns-lookup")
+def diagnostic_dns_lookup(context=None): return safe(lambda: commands.dns_lookup(body(context)))
+
+@api.post("/device/diagnostics/speedtest-discovery")
+def speedtest_discovery(context=None): return safe(commands.discover_speedtest)
