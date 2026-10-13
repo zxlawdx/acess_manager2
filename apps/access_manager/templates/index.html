@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="{{ static('access_manager/css/app.css') }}">
 
 <div class="app-shell">
-  <header class="context-bar" aria-label="Contexto do equipamento">
+  <header class="app-topbar context-bar" aria-label="Contexto do equipamento">
     <button id="mobile-nav" class="icon-button mobile-only" aria-label="Abrir navegação">☰</button>
     <div class="brand">Access <b>Manager</b></div>
     <span class="vendor-badge" id="ctx-vendor">—</span>
@@ -13,7 +13,7 @@
   </header>
 
   <div class="layout">
-    <aside id="sidebar" aria-label="Navegação principal">
+    <aside class="app-sidebar" id="sidebar" aria-label="Navegação principal">
       <div class="nav-group">VISÃO OPERACIONAL</div>
       <button class="nav active" data-view="overview">01 <span>Visão geral</span></button>
       <button class="nav" data-view="clients">02 <span>Clientes</span></button>
@@ -29,7 +29,8 @@
       <button class="nav" data-view="management">10 <span>Gerenciamento</span></button>
     </aside>
 
-    <main>
+    <main class="app-main">
+      <div class="page-content">
       <section class="connect-strip" aria-label="Conexão">
         <form id="connect-form" class="connect-form" novalidate>
           <input name="host" autocomplete="off" placeholder="IP / host[:porta]" aria-label="IP ou host" required>
@@ -53,6 +54,7 @@
       <section id="workspace" aria-live="polite">
         <div class="empty-state"><strong>Nenhum equipamento conectado</strong><span>Informe IP, usuário e senha para iniciar uma sessão.</span></div>
       </section>
+      </div>
     </main>
   </div>
 </div>

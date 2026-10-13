@@ -415,70 +415,65 @@
   var profiles = [];
   async function render4() {
     profiles = await request("/api/profiles");
-    return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section>${table([{ label: "Nome", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Wi-Fi", render: (r) => esc((r.wifi?.ssids || []).map((s) => s.ssid || s.id).join(", ") || "—") }, { label: "DNS", render: (r) => Object.keys(r.dns || {}).length ? "Configurado" : "—" }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-edit-profile="${esc(r.name)}">Editar</button><button class="button" data-preview-profile="${esc(r.name)}">Preview / aplicar</button><button class="button danger" data-delete-profile="${esc(r.name)}">Excluir</button></div>` }], profiles, "Nenhum perfil salvo.")}`;
+    return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section>${table([{ label: "Nome", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Rádios", render: (r) => esc((r.wifi?.radios || (r.wifi?.radio ? [r.wifi.radio] : [])).map((r2) => r2.band).join(", ") || "—") }, { label: "DNS", render: (r) => Object.keys(r.dns || {}).length ? "Configurado" : "—" }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-edit-profile="${esc(r.name)}">Editar</button><button class="button" data-preview-profile="${esc(r.name)}">Preview / aplicar</button><button class="button danger" data-delete-profile="${esc(r.name)}">Excluir</button></div>` }], profiles, "Nenhum perfil salvo.")}`;
   }
   var field = (label, name, value = "") => `<div class="field"><label>${label}</label><input name="${name}" value="${esc(value ?? "")}"></div>`;
   function choice(label, name, value, options) {
-    return `<div class="field"><label>${label}</label><select name="${name}" ${options?.length ? "" : "disabled"}><option value="${esc(value ?? "")}">${esc(value ?? "Não disponível")}</option>${(options || []).filter((o) => String(o.value) !== String(value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select></div>`;
+    return `<div class="field"><label>${label}</label><select name="${name}" ${options?.length ? "" : "disabled"}><option value="${esc(value ?? "")}">${esc((options || []).find((o) => String(o.value) === String(value))?.label ?? value ?? "Não disponível")}</option>${(options || []).filter((o) => String(o.value) !== String(value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select></div>`;
   }
   async function edit(profile = {}) {
-    const live = await request("/api/device/wifi").catch(() => ({ networks: [], radios: [] }));
-    const networks2 = live.networks || [], radios2 = Array.isArray(live.radios) ? live.radios : [];
-    const savedSsids = profile.wifi?.ssids || [], savedRadios = profile.wifi?.radios || (profile.wifi?.radio ? [profile.wifi.radio] : []);
-    const unseenSsids = savedSsids.filter((s) => !networks2.some((r) => String(r.id) === String(s.id))), unseenRadios = savedRadios.filter((s) => !radios2.some((r) => (r.band ?? r.banda) === s.band));
-    const dns = profile.dns || {};
-    const servers = dns.servers || [dns.ipv4_1 || dns.primary, dns.ipv4_2 || dns.secondary, dns.ipv6_1, dns.ipv6_2].filter(Boolean);
-    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<form id="profile-form"><div class="form-grid">${field("Nome", "name", profile.name)}${field("Descrição", "description", profile.description)}</div><h3>DNS</h3><p class="muted">Até dois DNS IPv4 e dois IPv6. Senhas Wi-Fi são informadas apenas ao aplicar.</p><div id="profile-dns-list">${(servers.length ? servers : [""]).map((s) => `<div class="toolbar"><input name="dns-server" value="${esc(s)}" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>`).join("")}</div><button class="button" type="button" id="add-profile-dns">Adicionar DNS</button><h3>Redes Wi-Fi</h3>${networks2.length ? networks2.map((r, i) => {
-      const stored = savedSsids.find((s) => String(s.id) === String(r.id));
-      return `<section class="panel"><label><input type="checkbox" name="include-ssid-${i}" ${stored ? "checked" : ""}> Incluir ${esc(r.ssid || r.id)}</label><div class="form-grid">${field("SSID", `ssid-${i}`, stored?.ssid ?? r.ssid)}${choice("Estado", `enabled-${i}`, stored?.enabled ?? r.enabled ?? r.ativo, [{ value: "true", label: "Ativo" }, { value: "false", label: "Inativo" }])}${choice("Broadcast", `broadcast-${i}`, stored?.broadcast ?? r.broadcast, [{ value: "true", label: "Ativo" }, { value: "false", label: "Inativo" }])}</div></section>`;
-    }).join("") : '<p class="muted">Conecte um equipamento para vincular redes e rádios ao perfil.</p>'}${unseenSsids.map((s, i) => `<p><label><input type="checkbox" name="keep-ssid-${i}" checked> Manter rede do perfil ${esc(s.ssid || s.id)} (não observada nesta conexão)</label></p>`).join("")}<h3>Rádios</h3>${radios2.map((r, i) => {
+    const live = await request("/api/device/wifi").catch(() => ({ radios: [] }));
+    const savedRadios = profile.wifi?.radios || (profile.wifi?.radio ? [profile.wifi.radio] : []);
+    const radios2 = [...Array.isArray(live.radios) ? live.radios : []];
+    for (const saved of savedRadios) if (!radios2.some((r) => (r.band ?? r.banda) === saved.band)) radios2.push({ ...saved, options: {} });
+    const dns = profile.dns || {}, servers = dns.servers || [dns.ipv4_1 || dns.primary, dns.ipv4_2 || dns.secondary, dns.ipv6_1, dns.ipv6_2].filter(Boolean);
+    const dhcpWritable = Boolean(cap("dhcp").enabled?.write);
+    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><section class="profile-section"><h3>DNS estáticos</h3><p class="muted">Até dois endereços IPv4 e dois IPv6, conforme o contrato do provider.</p><div id="profile-dns-list">${(servers.length ? servers : [""]).map((s) => `<div class="toolbar"><input name="dns-server" value="${esc(s)}" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>`).join("")}</div><button class="button" type="button" id="add-profile-dns">Adicionar DNS</button></section>${radios2.map((r, i) => {
       const band2 = r.band ?? r.banda, stored = savedRadios.find((s) => s.band === band2);
-      return `<section class="panel"><label><input type="checkbox" name="include-radio-${i}" ${stored ? "checked" : ""}> Incluir ${esc(band2)}</label><div class="form-grid">${[["Canal", "channel", r.channel ?? r.canal], ["Largura", "bandwidth", r.bandwidth ?? r.largura], ["Padrão", "standard", r.standard ?? r.padrao], ["Potência", "tx_power", r.tx_power ?? r.potencia], ["País", "country", r.country ?? r.pais]].map(([label, key2, current]) => choice(label, `${key2}-${i}`, stored?.[key2] ?? current, r.options?.[key2] || [])).join("")}${choice("Canal automático", `auto_channel-${i}`, stored?.auto_channel ?? r.auto_channel ?? r.canal_automatico, [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}</div></section>`;
-    }).join("")}${unseenRadios.map((r, i) => `<p><label><input type="checkbox" name="keep-radio-${i}" checked> Manter rádio ${esc(r.band)} do perfil (não observado nesta conexão)</label></p>`).join("")}<h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease (segundos)", "lease", profile.dhcp?.lease_time)}</div><div class="dialog-footer"><button class="button primary">Salvar perfil</button></div></form>`);
+      return `<section class="profile-section"><h3>Rádio ${esc(band2)}</h3><label class="profile-include"><input type="checkbox" name="include-radio-${i}" ${stored ? "checked" : ""}> Incluir no perfil</label><div class="form-grid">${[["Canal", "channel", r.channel ?? r.canal], ["Largura", "bandwidth", r.bandwidth ?? r.largura], ["Padrão", "standard", r.standard ?? r.padrao], ["Potência", "tx_power", r.tx_power ?? r.potencia], ["País", "country", r.country ?? r.pais]].map(([label, key2, current]) => choice(label, `${key2}-${i}`, stored?.[key2] ?? current, r.options?.[key2] || [])).join("")}${choice("Canal automático", `auto_channel-${i}`, stored?.auto_channel ?? r.auto_channel ?? r.canal_automatico, [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}</div></section>`;
+    }).join("") || '<section class="profile-section"><p class="muted">Conecte um equipamento para carregar os rádios e suas opções.</p></section>'}${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time)}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">Salvar perfil</button>`);
+    d.classList.add("profile-dialog");
+    d.addEventListener("close", () => d.classList.remove("profile-dialog"), { once: true });
+    d.querySelector("[data-cancel-profile]").onclick = () => d.close();
     const form = d.querySelector("form");
     if (profile.name) form.querySelector('[name="name"]').readOnly = true;
     const wireRemove = () => d.querySelectorAll("[data-remove-dns]").forEach((b) => b.onclick = () => b.parentElement.remove());
     wireRemove();
     d.querySelector("#add-profile-dns").onclick = () => {
+      if (d.querySelectorAll('[name="dns-server"]').length >= 4) {
+        toast("O provider suporta até dois DNS por família de IP.");
+        return;
+      }
       d.querySelector("#profile-dns-list").insertAdjacentHTML("beforeend", '<div class="toolbar"><input name="dns-server" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>');
       wireRemove();
     };
     form.onsubmit = async (e) => {
       e.preventDefault();
       const fd = new FormData(form), wifi = { ...profile.wifi }, dhcp = { ...profile.dhcp };
-      wifi.ssids = [...unseenSsids.filter((s, i) => fd.get(`keep-ssid-${i}`)), ...networks2.flatMap((r, i) => {
-        if (!fd.get(`include-ssid-${i}`)) return [];
-        const stored = savedSsids.find((s) => String(s.id) === String(r.id)) || {};
-        const out = { ...stored, id: r.id, ssid: String(fd.get(`ssid-${i}`) || "") };
-        for (const k of ["enabled", "broadcast"]) {
+      wifi.radios = radios2.flatMap((r, i) => {
+        if (!fd.get(`include-radio-${i}`)) return [];
+        const band2 = r.band ?? r.banda, out = { ...savedRadios.find((s) => s.band === band2) || {}, band: band2 };
+        for (const k of ["channel", "bandwidth", "standard", "tx_power", "country"]) {
           const v = fd.get(`${k}-${i}`);
-          if (v === "true" || v === "false") out[k] = v === "true";
+          if (v != null && v !== "") out[k] = String(v);
         }
+        const auto = fd.get(`auto_channel-${i}`);
+        if (auto === "true" || auto === "false") out.auto_channel = auto === "true";
         return [out];
-      })];
-      {
-        wifi.radios = [...unseenRadios.filter((r, i) => fd.get(`keep-radio-${i}`)), ...radios2.flatMap((r, i) => {
-          if (!fd.get(`include-radio-${i}`)) return [];
-          const band2 = r.band ?? r.banda, out = { ...savedRadios.find((s) => s.band === band2) || {}, band: band2 };
-          for (const k of ["channel", "bandwidth", "standard", "tx_power", "country"]) {
-            const v = fd.get(`${k}-${i}`);
-            if (v != null && v !== "") out[k] = String(v);
-          }
-          const auto = fd.get(`auto_channel-${i}`);
-          if (auto === "true" || auto === "false") out.auto_channel = auto === "true";
-          return [out];
-        })];
-        delete wifi.radio;
-      }
-      for (const [input, key2] of [["pool-start", "min_address"], ["pool-end", "max_address"], ["lease", "lease_time"]]) {
+      });
+      delete wifi.radio;
+      if (dhcpWritable) for (const [input, key2] of [["pool-start", "min_address"], ["pool-end", "max_address"], ["lease", "lease_time"], ["dhcp-dns1", "dns1"], ["dhcp-dns2", "dns2"]]) {
         const v = String(fd.get(input) || "").trim();
         if (v) dhcp[key2] = v;
         else delete dhcp[key2];
       }
       const nextDns = { ...dns, servers: fd.getAll("dns-server").map((v) => String(v).trim()).filter(Boolean) };
+      if (nextDns.servers.filter((v) => v.includes(":")).length > 2 || nextDns.servers.filter((v) => !v.includes(":")).length > 2) {
+        toast("Limite do provider: dois DNS IPv4 e dois IPv6.");
+        return;
+      }
       for (const k of ["primary", "secondary", "ipv4_1", "ipv4_2", "ipv6_1", "ipv6_2"]) delete nextDns[k];
-      const payload = { ...profile, name: String(fd.get("name") || "").trim(), description: fd.get("description"), wifi, dns: nextDns, dhcp };
-      const b = form.querySelector('[type="submit"]') || form.querySelector(".dialog-footer button");
+      const payload = { ...profile, name: String(fd.get("name") || "").trim(), description: fd.get("description"), wifi, dns: nextDns, dhcp }, b = d.querySelector("#save-profile");
       b.disabled = true;
       try {
         await request("/api/profiles", { method: "POST", body: JSON.stringify(payload) });
