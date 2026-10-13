@@ -1883,6 +1883,7 @@ def restore_configuration(
                 )
             },
             timeout=120,
+            allow_redirects=False,
         )
 
     response.raise_for_status()
@@ -1959,6 +1960,7 @@ def upload_firmware(
                 )
             },
             timeout=180,
+            allow_redirects=False,
         )
 
     response.raise_for_status()

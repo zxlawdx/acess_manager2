@@ -1,4 +1,7 @@
 from __future__ import annotations
+from apps.access_manager.infrastructure.zte.firmware_operations import FactoryReset, conntrack_status
+from apps.access_manager.infrastructure.zte.native_speedtest import NativeSpeedtest
+from apps.access_manager.infrastructure.configuration_adapters import OperationalConfigurations
 import re
 from apps.access_manager.domain.capabilities import Capability, CapabilitySet, EvidenceLevel as E, SupportStatus as S
 from apps.access_manager.infrastructure.zte.protocol.device import ZTE
@@ -9,6 +12,7 @@ from apps.access_manager.infrastructure.zte.f6201b.f6201b_diagnostics import F62
 class ZTEProvider:
     vendor='zte'
     def __init__(self, client_factory=ZTE):
+        self._surfaces=OperationalConfigurations(self);self._speedtest=NativeSpeedtest();self._reset=FactoryReset()
         self.client_factory=client_factory; self.client=None; self.host=None; self.model=None; self.firmware=None; self._caps=CapabilitySet(); self._f6201b_wifi=F6201BWrites(); self._f6201b_dns=F6201BDNS(); self._f6201b_diag=F6201BDiagnostics()
     @property
     def connected(self): return self.client is not None
@@ -22,6 +26,7 @@ class ZTEProvider:
         if self.client is not None:
             try: self.client.logout()
             except Exception: pass
+        self._surfaces.clear();self._speedtest.clear();self._reset.clear()
         self.client=None; self.host=None; self.model=None; self.firmware=None; self._caps=CapabilitySet(); self._f6201b_wifi.clear(); self._f6201b_dns.clear()
     def _build_caps(self):
         compact=self._compact(self.model)
@@ -53,8 +58,10 @@ class ZTEProvider:
             items.extend([
                 Capability('wifi',S.SUPPORTED,S.SUPPORTED,E.AUTOMATED_TESTED,source='f6201b_captured_ssid_writer'),
                 Capability('dns',S.SUPPORTED,S.SUPPORTED,E.AUTOMATED_TESTED,source='f6201b_captured_dns_writer'),
+                Capability('dhcp',S.SUPPORTED,S.SUPPORTED,E.FIXTURE_VALIDATED,source='f6201b_complete_captured_dhcp'),
+                Capability('wifi_radio',S.SUPPORTED,S.SUPPORTED,E.FIXTURE_VALIDATED,source='f6201b_complete_captured_rf'),
             ])
-            for name in [x for x in generic if x not in {'wifi','dns'}]:
+            for name in [x for x in generic if x not in {'wifi','dns','dhcp','wifi_radio'}]:
                 items.append(Capability(name,S.SUPPORTED,S.PARTIAL,E.FIXTURE_VALIDATED,source='f6201b_captured_surface_not_yet_wired'))
         else:
             for name in generic:
@@ -68,6 +75,13 @@ class ZTEProvider:
         ))
         items.extend([Capability('dns_hosts',S.SUPPORTED if is_native else S.UNKNOWN,S.SUPPORTED if is_native else S.UNKNOWN,E.IMPLEMENTED,source='legacy_dns_host_upsert_readback'),Capability('dns_hosts_delete',S.UNKNOWN,S.UNKNOWN,E.UNKNOWN,source='delete_writer_not_proven')])
         items.extend([Capability('dns_lookup',S.SUPPORTED if is_native else S.UNKNOWN,S.SUPPORTED if is_native else S.UNKNOWN,E.AUTOMATED_TESTED,source='legacy_nslookup_request_poll'),Capability('speedtest_discovery',S.SUPPORTED if is_native else S.UNKNOWN,S.SUPPORTED if is_native else S.UNKNOWN,E.IMPLEMENTED,source='legacy_ais_speedtest_server_discovery')])
+        items.append(Capability('configuration_surfaces',S.SUPPORTED,S.SUPPORTED,E.FIXTURE_VALIDATED,source='known_schema_operational_adapters'))
+        items.append(Capability('speedtest',S.SUPPORTED,S.SUPPORTED,E.SOURCE_CONFIRMED,source='legacy_ais_start_and_poll'))
+        items.append(Capability('mesh_read',S.SUPPORTED,S.UNKNOWN,E.SOURCE_CONFIRMED,source='legacy_netsphere_probe'))
+        for name in ('backup','restore','firmware','accounts'):items.append(Capability(name,S.SUPPORTED,S.SUPPORTED,E.SOURCE_CONFIRMED,destructive=name in {'restore','firmware'},source='legacy_management_workflows'))
+        items.append(Capability('runtime_diagnostic',S.SUPPORTED,S.UNKNOWN,E.SOURCE_CONFIRMED,source='ported_model_shape_probe'))
+        items.append(Capability('factory_reset',S.SUPPORTED,S.SUPPORTED,E.FIRMWARE_CONFIRMED,destructive=True,source='recognized_reset_template_handler'))
+        items.append(Capability('nat_sessions',S.SUPPORTED,S.UNKNOWN,E.FIRMWARE_CONFIRMED,source='conntrack_counts_only'))
         return CapabilitySet(items)
     def _need(self):
         if self.client is None: raise RuntimeError('ZTE session is not connected')
@@ -113,7 +127,11 @@ class ZTEProvider:
         return radios
     def get_wan(self): return self._read('wan_status')
     def get_lan(self): return self._read('lan_ports')
-    def get_dhcp(self): return self._read('dhcp_status')
+    def get_dhcp(self):
+        if self._is_f6201b():
+            from apps.access_manager.infrastructure.zte.f6201b.f6201b_dhcp import status
+            return status(self._need())
+        return self._read('dhcp_status')
     def get_dns(self): return self._f6201b_dns.read(self._need()) if self._is_f6201b() else self._need().dns_status()
     def get_optical(self): return self._need().optical_status()
     def get_traffic(self):
@@ -156,12 +174,27 @@ class ZTEProvider:
     def set_wifi_radio(self, config):
         self.capabilities.require_write('wifi_radio'); values=dict(config or {}); band=values.pop('band', values.pop('banda', None))
         if not band: raise ValueError('band is required for Wi-Fi radio configuration')
+        if self._is_f6201b():
+            from apps.access_manager.infrastructure.configuration_adapters import NativeRadio
+            driver=NativeRadio(self);driver.read();raw=next((r for r in driver.raw if r.get('Band')==band),None)
+            if raw is None:raise ValueError('Rádio não encontrado')
+            mapping={k:f'field_{i}' for i,k in enumerate(driver.fields)}
+            if set(values)-set(mapping):raise ValueError('Campo de rádio fora da captura F6201B')
+            changes={mapping[k]:('1' if v else '0') if type(v) is bool else str(v) for k,v in values.items()}
+            proposal=self._surfaces.preview(self._need(),self.host,'wifi_advanced',raw['_InstID'],changes)
+            return self._surfaces.apply(self._need(),self.host,proposal['nonce'],'APLICAR')
         return self._need().set_radio_config(band, values)
     def set_dns(self, config):
         self.capabilities.require_write('dns'); c=self._need()
         if self._is_f6201b(): return self._f6201b_dns.apply_changes(c,host=self.host,firmware=self.firmware or '',changes=config,original_post=c.session.post)
         return c.set_dns(config)
-    def set_dhcp(self, config): self.capabilities.require_write('dhcp'); return self._need().set_dhcp_basic(config)
+    def set_dhcp(self, config):
+        self.capabilities.require_write('dhcp')
+        if self._is_f6201b():
+            from apps.access_manager.infrastructure.zte.f6201b.f6201b_dhcp import change
+            forms=self._surfaces.f6201b
+            return change(forms.workbench,self._need(),config=config,host=self.host,revision=forms.revision,attendant='access-manager',original_post=self._need().session.post)
+        return self._need().set_dhcp_basic(config)
     def set_wps(self, config):
         self.capabilities.require_write('wps'); values=dict(config or {}); band=values.get('band') or values.get('banda'); mode=values.get('mode')
         if band is None or mode is None: raise ValueError('band and mode are required for WPS')
@@ -238,4 +271,37 @@ class ZTEProvider:
     def discover_speedtest(self):
         self.capabilities.require_write('speedtest_discovery')
         result=self._need().native_speedtest_servers()
-        return {'servers':result.get('servers') or []}
+        self._speedtest.servers=result.get('servers') or []
+        return {'servers':self._speedtest.servers}
+
+    def surface_catalog(self): return self._surfaces.catalog()
+    def surface_read(self, feature): return self._surfaces.inspect(self._need(),feature)
+    def surface_preview(self, config): return self._surfaces.preview(self._need(),self.host,config['feature'],config['instance'],config.get('changes') or {},config.get('action','update'))
+    def surface_apply(self, config): return self._surfaces.apply(self._need(),self.host,config['nonce'],config.get('confirmation'))
+
+    def speedtest_start(self, config): return self._speedtest.start(self._need(),config.get('server_url'))
+    def speedtest_poll(self, identity): return self._speedtest.poll(self._need(),identity)
+
+    def get_mesh(self):
+        from apps.access_manager.domain.mesh import normalize_mesh
+        return normalize_mesh(self._need().mesh_status())
+
+    def export_backup(self): return self._need().export_user_configuration(device=self.get_device_info())
+    def restore_backup(self, path):
+        try: return self._need().restore_configuration(path)
+        except Exception as error:return {'success':False,'uncertain':True,'error_type':type(error).__name__,'message':'Restore sem confirmação. Não reenviar automaticamente; confira o equipamento.'}
+    def upload_firmware(self, path):
+        try:return self._need().upload_firmware(path)
+        except Exception as error:return {'success':False,'uncertain':True,'error_type':type(error).__name__,'message':'Upload sem confirmação. Não reenviar automaticamente; confira o equipamento.'}
+    def get_firmware(self):
+        data=self._need().firmware_management_status()
+        return {'available':bool(data.get('objects')), 'states':[{k:v for k,v in row.items() if k in {'State','Status','Progress','Version','Error'}} for rows in data.get('objects',{}).values() for row in rows]}
+    def get_accounts(self): return self._need().account_status()
+
+    def runtime_diagnostic(self):
+        from apps.access_manager.infrastructure.zte.discovery.diagnostic import diagnostic
+        return diagnostic(self._need(),self.model,include_clients=False)
+
+    def factory_reset_preview(self): return self._reset.preview(self._need(),self.host)
+    def factory_reset_apply(self, config): return self._reset.apply(self._need(),self.host,config.get("nonce"),config.get("confirmation"))
+    def get_nat_sessions(self): return conntrack_status(self._need())

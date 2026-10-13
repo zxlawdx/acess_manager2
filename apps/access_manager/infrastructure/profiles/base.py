@@ -37,6 +37,12 @@ class BaseProfileTranslator:
             dns=dict(profile.dns)
             if 'primary' in dns: dns['ipv4_1']=dns.pop('primary')
             if 'secondary' in dns: dns['ipv4_2']=dns.pop('secondary')
+            hosts=dns.pop('hosts',[])
+            host_operations=[]
+            for host in hosts:
+                name=str(host.get('name') or '').strip();address=str(ip_address(str(host.get('ip') or '')))
+                if not name:raise ValueError('Nome do host DNS é obrigatório')
+                host_operations.append(ProfileOperation(feature='dns_hosts',method='save_dns_host',args=({'name':name,'ip':address},),label='Host DNS '+name))
             servers=dns.pop('servers',None)
             if servers is not None:
                 groups={4:[],6:[]}
@@ -53,6 +59,8 @@ class BaseProfileTranslator:
                     args=(dns,),
                     label="DNS",
                 ))
+
+            operations.extend(host_operations)
 
         if profile.dhcp:
             operations.append(ProfileOperation(

@@ -542,7 +542,7 @@ class HuaweiWebClient:
                 headers=request_headers,
                 data=payload,
                 timeout=(5, self.timeout),
-                allow_redirects=True,
+                allow_redirects=False,
             )
             _trace_response_exchange(
                 response,

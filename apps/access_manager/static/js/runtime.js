@@ -35,7 +35,7 @@
       const url = new URL(path, window.location.origin);
       const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
       const text = await res.text(), data = parseResponseBody(text);
-      if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery"].includes(path)) clearSnapshots();
+      if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path)) clearSnapshots();
       if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
       if (!res.ok) throw new Error(data?.error?.message || data?.message || `HTTP ${res.status} ao acessar ${url.pathname}`);
       if (data?.success === false) throw new Error(data?.error?.message || "Falha na operação");
@@ -613,8 +613,9 @@
     const savedRadios = profile.wifi?.radios || (profile.wifi?.radio ? [profile.wifi.radio] : []);
     let radios2 = [];
     const dns = profile.dns || {}, servers = dns.servers || [dns.ipv4_1 || dns.primary, dns.ipv4_2 || dns.secondary, dns.ipv6_1, dns.ipv6_2].filter(Boolean);
+    const hosts = dns.hosts || [];
     const dhcpWritable = Boolean(cap("dhcp").enabled?.write);
-    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><section class="profile-section"><h3>DNS estáticos</h3><p class="muted">Até dois endereços IPv4 e dois IPv6, conforme o contrato do provider.</p><div id="profile-dns-list">${(servers.length ? servers : [""]).map((s) => `<div class="toolbar"><input name="dns-server" value="${esc(s)}" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>`).join("")}</div><button class="button" type="button" id="add-profile-dns">Adicionar DNS</button></section><div id="profile-radios"><section class="profile-section" role="status"><h3>Rádios</h3><p class="muted">Carregando canal, largura, padrão, potência e país…</p><div class="skeleton"></div></section></div>${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time)}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">Salvar perfil</button>`);
+    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><div id="profile-radios"><section class="profile-section" role="status"><h3>Rádios</h3><p class="muted">Carregando canal, largura, padrão, potência e país…</p><div class="skeleton"></div></section></div><section class="profile-section"><h3>DNS estáticos</h3><p class="muted">Até dois endereços IPv4 e dois IPv6, conforme o contrato do provider.</p><div id="profile-dns-list">${(servers.length ? servers : [""]).map((s) => `<div class="toolbar"><input name="dns-server" value="${esc(s)}" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>`).join("")}</div><button class="button" type="button" id="add-profile-dns">Adicionar DNS</button></section><section class="profile-section"><h3>Hosts DNS estáticos</h3><div id="profile-host-list">${hosts.map((h) => `<div class="toolbar"><input name="host-name" aria-label="Nome do host" value="${esc(h.name)}"><input name="host-ip" aria-label="IP do host" value="${esc(h.ip)}"><button type="button" class="button" data-remove-host>Remover</button></div>`).join("")}</div><button type="button" class="button" id="add-profile-host">Adicionar host DNS</button></section>${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time)}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">Salvar perfil</button>`);
     d.classList.add("profile-dialog");
     d.addEventListener("close", () => {
       if (!d.open) d.classList.remove("profile-dialog");
@@ -628,7 +629,7 @@
       const host = d.querySelector("#profile-radios");
       if (host.querySelector('[data-dirty="true"]')) return;
       radios2 = Array.isArray(value) ? [...value] : value?.radios || [];
-      for (const saved of savedRadios) if (!radios2.some((r) => (r.band ?? r.banda) === saved.band)) radios2.push({ ...saved, options: {} });
+      for (const saved2 of savedRadios) if (!radios2.some((r) => (r.band ?? r.banda) === saved2.band)) radios2.push({ ...saved2, options: {} });
       radiosReady = true;
       patchHTML(host, ` ${radios2.map((r, i) => {
         const band2 = r.band ?? r.banda, stored = savedRadios.find((s) => s.band === band2);
@@ -644,6 +645,12 @@
       note.textContent = e.message;
       d.querySelector("#profile-radios").prepend(note);
     } });
+    const wireHosts = () => d.querySelectorAll("[data-remove-host]").forEach((b) => b.onclick = () => b.parentElement.remove());
+    wireHosts();
+    d.querySelector("#add-profile-host").onclick = () => {
+      d.querySelector("#profile-host-list").insertAdjacentHTML("beforeend", '<div class="toolbar"><input name="host-name" aria-label="Nome do host"><input name="host-ip" aria-label="IP do host"><button type="button" class="button" data-remove-host>Remover</button></div>');
+      wireHosts();
+    };
     const wireRemove = () => d.querySelectorAll("[data-remove-dns]").forEach((b) => b.onclick = () => b.parentElement.remove());
     wireRemove();
     d.querySelector("#add-profile-dns").onclick = () => {
@@ -676,7 +683,9 @@
         if (v) dhcp[key2] = v;
         else delete dhcp[key2];
       }
-      const nextDns = { ...dns, servers: fd.getAll("dns-server").map((v) => String(v).trim()).filter(Boolean) };
+      const names = fd.getAll("host-name"), ips = fd.getAll("host-ip");
+      const nextHosts = names.map((name, i) => ({ name: String(name).trim(), ip: String(ips[i] || "").trim() })).filter((h) => h.name || h.ip);
+      const nextDns = { ...dns, hosts: nextHosts, servers: fd.getAll("dns-server").map((v) => String(v).trim()).filter(Boolean) };
       if (nextDns.servers.filter((v) => v.includes(":")).length > 2 || nextDns.servers.filter((v) => !v.includes(":")).length > 2) {
         toast("Limite do provider: dois DNS IPv4 e dois IPv6.");
         return;
@@ -760,6 +769,181 @@
     mount: () => mount5,
     render: () => render5
   });
+
+  // apps/access_manager/static/js/shared/factory-reset.js
+  var resetHost = () => cap("factory_reset").enabled?.write ? `<div class="capability-row"><strong>Restaurar configuração de fábrica</strong><button class="button danger" id="factory-reset-button">Restaurar fábrica</button></div>` : "";
+  function mountReset() {
+    const button = document.querySelector("#factory-reset-button");
+    if (!button) return;
+    const scope = currentScope();
+    button.onclick = async () => {
+      button.disabled = true;
+      try {
+        const p = await request("/api/device/factory-reset/preview", { scope, method: "POST", body: "{}" });
+        if (!scopeActive(scope)) return;
+        const d = dialog("Restaurar configuração de fábrica?", `<p class="notice danger">${esc(p.impact)}</p><div class="field"><label>Digite RESETAR</label><input id="reset-word" autocomplete="off"></div><p id="reset-result" aria-live="polite"></p>`, `<button class="button" data-cancel>Cancelar</button><button class="button danger" id="reset-apply" disabled>Restaurar fábrica</button>`), apply = d.querySelector("#reset-apply"), word = d.querySelector("#reset-word");
+        d.querySelector("[data-cancel]").onclick = () => d.close();
+        word.oninput = () => {
+          apply.disabled = word.value !== "RESETAR";
+        };
+        apply.onclick = async () => {
+          apply.disabled = true;
+          word.disabled = true;
+          try {
+            const r = await request("/api/device/factory-reset/apply", { scope: d._requestScope, method: "POST", body: JSON.stringify({ nonce: p.nonce, confirmation: word.value }) });
+            if (d.open) d.querySelector("#reset-result").textContent = r.message;
+          } catch (e) {
+            if (!isCancelled(e) && d.open) d.querySelector("#reset-result").textContent = e.message;
+          }
+        };
+      } catch (e) {
+        if (!isCancelled(e)) toast(e.message);
+      } finally {
+        if (scopeActive(scope)) button.disabled = false;
+      }
+    };
+  }
+
+  // apps/access_manager/static/js/shared/management-artifacts.js
+  var artifactsHost = () => `<section class="panel"><h2>Backups e arquivos</h2><div class="inline-actions"><button class="button" id="artifact-backup" ${cap("backup").enabled?.write ? "" : "disabled"}>Criar backup do equipamento</button><button class="button" id="artifact-upload">Importar arquivo</button></div><p class="muted">Arquivos ficam no armazenamento local do aplicativo. Restore e firmware exigem confirmação de compatibilidade e impacto.</p><div id="artifact-list"></div></section>`;
+  function mountArtifacts() {
+    const host = document.querySelector("#artifact-list");
+    if (!host) return;
+    const scope = currentScope();
+    let items = [];
+    const refresh = async () => {
+      try {
+        items = await request("/api/management/artifacts", { scope, forceRefresh: true });
+        if (!scopeActive(scope)) return;
+        host.innerHTML = table([{ label: "Arquivo", keys: ["filename"] }, { label: "Tipo", keys: ["kind"] }, { label: "Modelo", render: (r) => esc(r.device?.model) }, { label: "Firmware", render: (r) => esc(r.device?.firmware) }, { label: "Criado", keys: ["created_at"] }, { label: "Bytes", keys: ["size"] }, { label: "Ações", render: (r) => `<button class="button" data-artifact-download="${r.id}">Download</button> <button class="button danger" data-artifact-apply="${r.id}" ${cap(r.kind === "firmware" ? "firmware" : "restore").enabled?.write ? "" : "disabled"}>${r.kind === "firmware" ? "Atualizar" : "Restaurar"}</button>` }], items);
+        host.querySelectorAll("[data-artifact-download]").forEach((b) => b.onclick = async () => {
+          try {
+            const d = await request("/api/management/artifacts/download", { scope, method: "POST", body: JSON.stringify({ id: b.dataset.artifactDownload }) });
+            const bytes = Uint8Array.from(atob(d.content_base64), (c) => c.charCodeAt(0)), url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" })), a = document.createElement("a");
+            a.href = url;
+            a.download = d.filename;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1e3);
+          } catch (e) {
+            if (!isCancelled(e)) toast(e.message);
+          }
+        });
+        host.querySelectorAll("[data-artifact-apply]").forEach((b) => b.onclick = () => apply(items.find((r) => r.id === b.dataset.artifactApply)));
+      } catch (e) {
+        if (scopeActive(scope) && !isCancelled(e)) host.textContent = e.message;
+      }
+    };
+    document.querySelector("#artifact-backup").onclick = async (e) => {
+      e.currentTarget.disabled = true;
+      try {
+        await request("/api/management/artifacts/backup", { scope, method: "POST", body: "{}" });
+        await refresh();
+      } catch (err) {
+        if (!isCancelled(err)) toast(err.message);
+      } finally {
+        if (scopeActive(scope)) e.currentTarget.disabled = false;
+      }
+    };
+    document.querySelector("#artifact-upload").onclick = () => {
+      const current = window.__amStore?.session?.session || {}, d = dialog("Importar configuração ou firmware", `<form id="artifact-upload-form"><div class="form-grid"><div class="field"><label>Tipo</label><select name="kind"><option value="backup">Configuração para restore</option><option value="firmware">Firmware</option></select></div><div class="field"><label>Arquivo (até 32 MiB)</label><input name="file" type="file" required></div><div class="field"><label>Fabricante declarado do arquivo</label><input name="vendor" value="${esc(current.vendor)}" required></div><div class="field"><label>Modelo declarado do arquivo</label><input name="model" value="${esc(current.model)}" required></div><div class="field"><label>Firmware do arquivo, se conhecido</label><input name="firmware"></div></div><p class="notice warning">O hash verifica integridade, não comprova compatibilidade de um binário. Confirme a origem do arquivo antes de restaurar ou atualizar.</p></form>`, `<button class="button primary" type="submit" form="artifact-upload-form">Importar arquivo</button>`);
+      d.querySelector("form").onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget), file = fd.get("file");
+        if (!file?.size || file.size > 32 * 1024 * 1024) {
+          toast("Arquivo vazio ou maior que 32 MiB");
+          return;
+        }
+        const uploadScope = d._requestScope, reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            await request("/api/management/artifacts/upload", { scope: uploadScope, method: "POST", body: JSON.stringify({ kind: fd.get("kind"), filename: file.name, content_base64: String(reader.result).split(",")[1], device: { vendor: fd.get("vendor"), model: fd.get("model"), firmware: fd.get("firmware") } }) });
+            d.close();
+            refresh();
+          } catch (err) {
+            if (!isCancelled(err)) toast(err.message);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+    };
+    function apply(item) {
+      const critical = item.kind === "firmware", word = critical ? "ATUALIZAR" : "RESTAURAR", d = dialog(critical ? "Atualizar firmware?" : "Restaurar configuração?", `<p class="notice danger">${critical ? "Não desligue o equipamento durante a atualização." : "As configurações atuais serão substituídas."} A sessão pode cair e o equipamento pode reiniciar.</p><p>Arquivo: ${esc(item.filename)} · Modelo: ${esc(item.device?.model)} · Firmware: ${esc(item.device?.firmware || "não comprovado")}</p><p>Origem dos metadados: ${item.metadata_provenance === "authenticated_device_export" ? "exportação autenticada" : "declaração do operador; cabeçalho não verificado"}</p><label><input id="artifact-ack" type="checkbox"> Confirmo compatibilidade e impacto</label><div class="field"><label>Digite ${word}</label><input id="artifact-confirm" autocomplete="off"></div><div id="artifact-result"></div>`, `<button class="button danger" id="artifact-submit">${critical ? "Atualizar" : "Restaurar"}</button>`);
+      d.querySelector("#artifact-submit").onclick = async (e) => {
+        e.currentTarget.disabled = true;
+        try {
+          const r = await request("/api/management/artifacts/apply", { scope: d._requestScope, method: "POST", body: JSON.stringify({ id: item.id, confirmation: d.querySelector("#artifact-confirm").value, compatibility_ack: d.querySelector("#artifact-ack").checked }) });
+          if (d.open) d.querySelector("#artifact-result").textContent = r.message || "Arquivo enviado uma vez. Confira o estado do equipamento.";
+        } catch (err) {
+          if (!isCancelled(err)) toast(err.message);
+        }
+      };
+    }
+    refresh();
+  }
+
+  // apps/access_manager/static/js/shared/configuration-surfaces.js
+  var surfaceHost = () => `<section class="panel"><h2>Configurações de rede e serviços</h2><p class="muted">Formulários específicos do firmware, com leitura, prévia e confirmação antes de aplicar.</p><div id="configuration-surfaces" role="status">Carregando configurações disponíveis…</div></section>`;
+  async function mountSurfaces() {
+    const host = document.querySelector("#configuration-surfaces");
+    if (!host) return;
+    const scope = currentScope();
+    try {
+      const catalog = await request("/api/device/configuration/catalog", { scope });
+      if (!scopeActive(scope) || !host.isConnected) return;
+      host.innerHTML = `<div class="field"><label>Configuração</label><select id="surface-feature"><option value="">Selecione…</option>${catalog.map((s) => `<option value="${esc(s.id)}">${esc(s.category)} · ${esc(s.title)}</option>`).join("")}</select></div><div id="surface-current"></div>`;
+      host.querySelector("select").onchange = async (event) => {
+        const feature = event.target.value, out = host.querySelector("#surface-current");
+        if (!feature) {
+          out.innerHTML = "";
+          return;
+        }
+        const stamp = feature;
+        out.innerHTML = '<p class="muted">Lendo configuração atual…</p>';
+        try {
+          const data = await request("/api/device/configuration/read", { scope, method: "POST", body: JSON.stringify({ feature }) });
+          if (!scopeActive(scope) || host.querySelector("select").value !== stamp) return;
+          out.innerHTML = (data.instances || []).map((row, i) => `<section class="panel"><h3>${esc(row.label)}</h3>${row.missing?.length ? `<p class="notice warning">Campos ainda não retornados pelo equipamento: ${row.missing.map(esc).join(", ")}.</p>` : ""}<button class="button" data-surface-instance="${i}">Editar / visualizar</button></section>`).join("") || '<p class="muted">Nenhuma instância reconhecida nesta sessão.</p>';
+          out.querySelectorAll("[data-surface-instance]").forEach((b) => b.onclick = () => editSurface(catalog.find((s) => s.id === feature), data.instances[Number(b.dataset.surfaceInstance)]));
+        } catch (e) {
+          if (scopeActive(scope) && !isCancelled(e) && host.querySelector("select").value === stamp) out.innerHTML = `<p class="notice warning">${esc(e.message)}</p>`;
+        }
+      };
+    } catch (e) {
+      if (scopeActive(scope) && !isCancelled(e)) host.textContent = e.message;
+    }
+  }
+  function editSurface(feature, row) {
+    const d = dialog(feature.title, `<div class="profile-content"><form id="surface-form"><p class="muted">Marque apenas os campos que deseja alterar. Campos não selecionados serão preservados.</p><div class="field"><label>Operação</label><select name="operation">${(row.actions || ["update"]).map((a) => `<option value="${a}">${{ update: "Editar", create: "Criar", delete: "Excluir" }[a]}</option>`).join("")}</select></div><div class="form-grid">${row.fields.map((f) => `<div class="field"><label><input type="checkbox" data-change="${esc(f.key)}" ${f.select && !f.options?.length ? "disabled" : ""}> ${esc(f.label)}</label>${f.options?.length || f.select ? `<select ${f.select && !f.options?.length ? "disabled" : ""} name="${esc(f.key)}">${(f.options?.length ? f.options : [{ value: f.value ?? "", label: f.value ?? "Opções não disponíveis" }]).map((o) => `<option value="${esc(o.value)}" ${String(o.value) === String(f.value) ? "selected" : ""}>${esc(o.label)}</option>`).join("")}</select>` : `<input name="${esc(f.key)}" type="${f.secret ? "password" : "text"}" value="${f.secret ? "" : esc(f.value ?? "")}" autocomplete="${f.secret ? "new-password" : "off"}" ${f.secret ? 'placeholder="Manter valor atual"' : ""}>`}</div>`).join("")}</div></form><div id="surface-preview"></div></div>`, `<button type="submit" form="surface-form" class="button primary">Gerar prévia</button>`);
+    d.classList.add("profile-dialog");
+    const form = d.querySelector("form");
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const changes = {};
+      for (const checkbox of form.querySelectorAll("[data-change]:checked")) changes[checkbox.dataset.change] = form.elements.namedItem(checkbox.dataset.change).value;
+      const out = d.querySelector("#surface-preview");
+      out.innerHTML = '<p class="muted">Preparando prévia…</p>';
+      try {
+        const preview = await request("/api/device/configuration/preview", { scope: d._requestScope, method: "POST", body: JSON.stringify({ feature: feature.id, instance: row.id, changes, action: form.elements.namedItem("operation").value }) });
+        if (!d.open) return;
+        out.innerHTML = table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["before"] }, { label: "Novo", keys: ["after"] }], preview.changes || []) + `<p class="notice warning">A alteração pode interromper a conexão. A prévia expira em ${esc(preview.expires_in_seconds)} segundos.</p><div class="field"><label>Digite APLICAR para confirmar</label><input id="surface-confirm" autocomplete="off"></div><button type="button" class="button danger" id="surface-apply">Aplicar configuração</button>`;
+        out.querySelector("button").onclick = async (e) => {
+          e.currentTarget.disabled = true;
+          try {
+            const result = await request("/api/device/configuration/apply", { scope: d._requestScope, method: "POST", body: JSON.stringify({ nonce: preview.nonce, confirmation: out.querySelector("input").value }) });
+            if (!d.open) return;
+            out.innerHTML = `<p class="notice ${result.uncertain ? "warning" : ""}">${esc(result.detail || result.message || (result.verified ? "Alteração verificada." : result.uncertain ? "Sem confirmação; não reenviar automaticamente." : "Comando enviado; verificação manual necessária."))}</p>`;
+            toast("Operação concluída. Confira o resultado.");
+          } catch (err) {
+            if (!isCancelled(err)) toast(err.message);
+          }
+        };
+      } catch (e) {
+        if (d.open && !isCancelled(e)) out.innerHTML = `<p class="notice warning">${esc(e.message)}</p>`;
+      }
+    };
+  }
+
+  // apps/access_manager/static/js/workspaces/views/management.js
   var definitions = [{ feature: "dmz", title: "DMZ", fields: [["enabled", "Habilitado", "bool"], ["internal_client", "IP do cliente"]] }, { feature: "upnp", title: "UPnP", fields: [["enabled", "Habilitado", "bool"]] }, { feature: "tr069", title: "TR-069", fields: [["url", "URL ACS"]] }, { feature: "firewall", title: "Firewall", fields: [["enabled", "Habilitado", "bool"], ["level", "Nível"]] }];
   var loaded = {};
   function presentation(feature, data) {
@@ -776,14 +960,17 @@
     const reboot = cap("reboot");
     const device = await request("/api/device").catch(() => null);
     if (!scopeActive(scope)) throw cancelled();
-    return `<section class="panel"><h2>Telemetria do equipamento</h2>${device ? fields([["Tempo ligado", uptime(device.uptime_seconds)], ["CPU", device.cpu_percent == null ? null : device.cpu_percent + " %"], ["Memória", device.memory_percent == null ? null : device.memory_percent + " %"], ["Temperatura", device.temperature_c == null ? null : device.temperature_c + " °C"]]) : '<p class="muted">Telemetria não disponível.</p>'}</section><section class="panel"><h2>Manutenção</h2><div class="capability-row"><strong>Reiniciar equipamento</strong>${capBadge(reboot.read)}${capBadge(reboot.write)}<button id="reboot-button" class="button danger" ${reboot.enabled?.write ? "" : "disabled"}>Reiniciar</button></div></section><div class="split">${definitions.map((d, i) => {
+    return `<section class="panel"><h2>Telemetria do equipamento</h2>${device ? fields([["Tempo ligado", uptime(device.uptime_seconds)], ["CPU", device.cpu_percent == null ? null : device.cpu_percent + " %"], ["Memória", device.memory_percent == null ? null : device.memory_percent + " %"], ["Temperatura", device.temperature_c == null ? null : device.temperature_c + " °C"]]) : '<p class="muted">Telemetria não disponível.</p>'}</section><section class="panel"><h2>Manutenção</h2><div class="capability-row"><strong>Reiniciar equipamento</strong>${capBadge(reboot.read)}${capBadge(reboot.write)}<button id="reboot-button" class="button danger" ${reboot.enabled?.write ? "" : "disabled"}>Reiniciar</button></div>${resetHost()}</section><div class="split">${definitions.map((d, i) => {
       const result = results[i];
       const value = result.status === "fulfilled" ? result.value : null;
       if (value) loaded[d.feature] = value;
       return `<section class="panel"><div class="panel-header"><h2>${d.title}</h2>${capBadge(featureCap(d.feature).write)}</div>${value ? presentation(d.feature, value) : `<p class="muted">${result.status === "rejected" ? esc(result.reason.message) : "Leitura não comprovada nesta sessão."}</p>`}<button class="button" data-config="${d.feature}" ${value && value.available !== false && featureCap(d.feature).enabled?.write ? "" : "disabled"}>Editar</button></section>`;
-    }).join("")}</div><section class="panel"><h2>Histórico de operações</h2>${history ? table([{ label: "Data", keys: ["created_at"] }, { label: "Operação", keys: ["operation"] }, { label: "Alvo", keys: ["target"] }, { label: "Resultado", keys: ["outcome"] }], (history.changes || []).map((row) => ({ ...row, created_at: row.created_at ? new Date(row.created_at).toLocaleString("pt-BR") : null, outcome: { attempted: "Solicitado", accepted: "Aceito", verified: "Verificado", uncertain: "Sem confirmação", failed: "Falhou" }[row.outcome] || row.outcome }))) : '<p class="muted">Histórico não disponível.</p>'}</section>`;
+    }).join("")}</div>${cap("configuration_surfaces").enabled?.read ? surfaceHost() : ""}${artifactsHost()}<section class="panel"><h2>Histórico de operações</h2>${history ? table([{ label: "Data", keys: ["created_at"] }, { label: "Operação", keys: ["operation"] }, { label: "Alvo", keys: ["target"] }, { label: "Resultado", keys: ["outcome"] }], (history.changes || []).map((row) => ({ ...row, created_at: row.created_at ? new Date(row.created_at).toLocaleString("pt-BR") : null, outcome: { attempted: "Solicitado", accepted: "Aceito", verified: "Verificado", uncertain: "Sem confirmação", failed: "Falhou" }[row.outcome] || row.outcome }))) : '<p class="muted">Histórico não disponível.</p>'}</section>`;
   }
   function mount5() {
+    mountReset();
+    mountSurfaces();
+    mountArtifacts();
     document.querySelectorAll("[data-config]").forEach((b2) => b2.onclick = () => {
       const definition = definitions.find((d) => d.feature === b2.dataset.config), data = loaded[definition.feature];
       editConfig("Editar " + definition.title, "/api/device/" + definition.feature, definition.fields.map(([key2, label, type]) => ({ key: key2, label, type, value: data[key2] })));
@@ -796,7 +983,7 @@
       d.querySelector("[data-confirm]").onclick = async (e) => {
         e.currentTarget.disabled = true;
         try {
-          await request("/api/device/reboot", { method: "POST", body: "{}" });
+          await request("/api/device/reboot", { method: "POST", body: JSON.stringify({ confirm: true }) });
           d.close();
           toast("Reboot solicitado. Aguarde a reconexão.");
         } catch (err) {
@@ -869,7 +1056,7 @@
       plot(el, s);
     }
     const ranked = sources.filter((s) => ["client", "wifi_client"].includes(s.source)).filter((s) => s.counters?.rx_bytes != null || s.counters?.tx_bytes != null).sort((a, b) => Number(b.counters?.rx_bytes || 0) + Number(b.counters?.tx_bytes || 0) - (Number(a.counters?.rx_bytes || 0) + Number(a.counters?.tx_bytes || 0)));
-    setText(document.querySelector("#traffic-ranking"), ranked.length ? ranked.slice(0, 5).map((s) => `${s.identity}: ${formatBytes(Number(s.counters?.rx_bytes || 0) + Number(s.counters?.tx_bytes || 0))}`).join(" · ") : "Ranking de clientes não disponível: o firmware não retornou contadores individuais.");
+    setText(document.querySelector("#traffic-ranking"), ranked.length ? ranked.slice(0, 5).map((s) => `${s.hostname || s.label || s.identity}${s.ip ? " (" + s.ip + ")" : ""}: ${formatBytes(Number(s.counters?.rx_bytes || 0) + Number(s.counters?.tx_bytes || 0))}`).join(" · ") : "Ranking de clientes não disponível: o firmware não retornou contadores individuais.");
   }
   function plot(el, s) {
     const cutoff = Date.now() / 1e3 - seconds;
@@ -886,7 +1073,7 @@
       session = id;
       histories.clear();
     }
-    return `<section class="panel"><div class="panel-header"><h2>Tráfego</h2><div class="toolbar"><select id="traffic-period" aria-label="Período"><option value="300">Últimos minutos</option><option value="3600">1 hora</option><option value="86400">24 horas</option></select><button class="button" id="traffic-refresh">Atualizar amostra</button></div></div><p class="muted" id="traffic-status">Aguardando leitura.</p><p class="muted">Contadores por interface; WAN/LAN/Wi-Fi não são somados.</p></section><div id="traffic-streams"></div><section class="panel"><h3>Consumo acumulado por cliente</h3><p id="traffic-ranking" class="muted"></p></section>`;
+    return `<section class="panel"><div class="panel-header"><h2>Tráfego</h2><div class="toolbar"><select id="traffic-period" aria-label="Período"><option value="300">Últimos minutos</option><option value="3600">1 hora</option><option value="86400">24 horas</option><option value="604800">7 dias</option></select><label><input id="traffic-all-sessions" type="checkbox"> Entre sessões deste endereço</label><button class="button" id="traffic-refresh">Atualizar amostra</button></div></div><p class="muted" id="traffic-status">Aguardando leitura.</p><p class="muted">Contadores por interface; WAN/LAN/Wi-Fi não são somados.</p></section><div id="traffic-streams"></div><section class="panel"><h3>Consumo acumulado por cliente</h3><p id="traffic-ranking" class="muted"></p></section>`;
   }
   function mount6() {
     const token = ++generation2;
@@ -913,7 +1100,9 @@
     period.onchange = async () => {
       seconds = Number(period.value);
       try {
-        const rows3 = await request("/api/device/traffic/history", { method: "POST", body: JSON.stringify({ seconds }) });
+        const across = document.querySelector("#traffic-all-sessions").checked;
+        const active2 = window.__amStore?.session?.session;
+        const rows3 = await request(across ? "/api/device/traffic/device-history" : "/api/device/traffic/history", { method: "POST", body: JSON.stringify(across ? { host: active2?.host, identifier: active2?.metadata?.device_identity, since: Date.now() / 1e3 - seconds } : { seconds }) });
         if (token !== generation2) return;
         histories.clear();
         for (const r of rows3) remember(r);
@@ -925,6 +1114,7 @@
         setText(document.querySelector("#traffic-status"), err.message);
       }
     };
+    document.querySelector("#traffic-all-sessions").onchange = period.onchange;
     poll();
   }
   function unmount() {
@@ -986,21 +1176,93 @@
     mount: () => mount7,
     render: () => render8
   });
+
+  // apps/access_manager/static/js/shared/native-speedtest.js
+  var saved = null;
+  function mountSpeedtest() {
+    const scope = currentScope(), discover = document.querySelector("#complete-speedtest"), select = document.querySelector("#complete-speed-server"), start = document.querySelector("#complete-speed-start"), out = document.querySelector("#complete-speedtest-result");
+    if (!discover) return;
+    let timer2 = null, running = false;
+    scope?.controller.signal.addEventListener("abort", () => clearTimeout(timer2), { once: true });
+    const show = (d) => {
+      if (scopeActive(scope)) out.innerHTML = fields([["Estado", { running: "Em andamento", finished: "Finalizado", timeout: "Tempo excedido", uncertain: "Sem confirmação" }[d.status] || d.status], ["Estado informado pelo firmware", d.native_state], ["Download (Mbps)", d.download_mbps], ["Upload (Mbps)", d.upload_mbps], ["Progresso (%)", d.progress], ["Latência (ms)", d.latency_ms]]);
+    };
+    const poll = async () => {
+      if (!saved || !scopeActive(scope)) return;
+      try {
+        const d = await request("/api/device/diagnostics/speedtest/poll", { scope, method: "POST", body: JSON.stringify({ run_id: saved.id }) });
+        if (!scopeActive(scope)) return;
+        show(d);
+        if (d.status === "running") timer2 = setTimeout(poll, 1e3);
+        else {
+          running = false;
+          start.disabled = false;
+        }
+      } catch (e) {
+        if (scopeActive(scope) && !isCancelled(e)) {
+          out.textContent = e.message;
+          running = false;
+          start.disabled = true;
+        }
+      }
+    };
+    discover.onclick = async () => {
+      discover.disabled = true;
+      out.textContent = "Consultando servidores…";
+      try {
+        const d = await request("/api/device/diagnostics/speedtest-discovery", { scope, method: "POST", body: "{}" });
+        if (!scopeActive(scope)) return;
+        select.innerHTML = (d.servers || []).map((s) => `<option value="${esc(s.url)}">${esc(s.name)}</option>`).join("");
+        select.disabled = !d.servers?.length;
+        start.disabled = !d.servers?.length || running;
+        out.textContent = d.servers?.length ? "Selecione o servidor e inicie uma medição." : "Nenhum servidor retornado.";
+      } catch (e) {
+        if (scopeActive(scope) && !isCancelled(e)) out.textContent = e.message;
+      } finally {
+        if (scopeActive(scope)) discover.disabled = false;
+      }
+    };
+    start.onclick = async () => {
+      if (running) return;
+      running = true;
+      start.disabled = true;
+      try {
+        const d = await request("/api/device/diagnostics/speedtest/start", { scope, method: "POST", body: JSON.stringify({ server_url: select.value }) });
+        if (!scopeActive(scope)) return;
+        saved = { id: d.run_id, session: window.__amStore?.session?.session?.session_id };
+        show(d);
+        if (d.status === "running") poll();
+        else running = false;
+      } catch (e) {
+        if (scopeActive(scope) && !isCancelled(e)) {
+          toast(e.message);
+          running = false;
+        }
+      }
+    };
+    if (saved?.session === window.__amStore?.session?.session?.session_id) {
+      running = true;
+      poll();
+    } else saved = null;
+  }
+
+  // apps/access_manager/static/js/workspaces/views/complete-diagnostics.js
   var rows2 = (v) => Array.isArray(v) ? v : v ? [v] : [];
   var section = (id, title) => `<section class="panel"><h2>${title}</h2><div id="complete-${id}"><p class="muted">Aguardando coleta.</p></div></section>`;
   function render8() {
-    return `<section class="panel"><h2>Coleta do equipamento</h2><p class="muted">Leituras atuais e ping. Traceroute é opcional. Falhas de uma seção não interrompem as outras; métricas ausentes não são convertidas em zero.</p><form id="complete-form" class="inline-actions"><div class="field"><label>Destino</label><input name="host" value="8.8.8.8" required></div><label><input name="trace" type="checkbox"> Incluir traceroute</label><label><input name="lookup" type="checkbox"> Incluir DNS lookup</label><div class="field"><label>Nome para resolver</label><input name="hostname" value="example.com"></div><button class="button primary">Coletar diagnóstico completo</button></form><p id="complete-progress" role="status">Pronto para coletar.</p></section>${section("health", "Saúde e evidências")}${section("system", "Resumo e sistema")}${section("wan", "WAN")}${section("optical", "Óptica")}${section("wifi", "Wi-Fi e SSIDs")}${section("radios", "Rádios")}${section("clients", "Clientes")}${section("lan", "LAN")}${section("dhcp", "DHCP")}${section("dns", "DNS")}${section("ping", "Ping")}${section("trace", "Traceroute")}${section("traffic", "Tráfego")}${section("topology", "Topologia")}${section("lookup", "DNS lookup")}<section class="panel"><h2>Teste de velocidade nativo</h2><p class="muted">Descoberta de servidores pelo fluxo AIS do provider ZTE. Não inicia medição de velocidade.</p><button type="button" class="button" id="complete-speedtest" ${cap("speedtest_discovery").enabled?.write ? "" : "disabled"}>Consultar servidores</button><div id="complete-speedtest-result"></div></section>`;
+    return `<section class="panel"><h2>Coleta do equipamento</h2><p class="muted">Leituras atuais e ping. Traceroute é opcional. Falhas de uma seção não interrompem as outras; métricas ausentes não são convertidas em zero.</p><form id="complete-form" class="inline-actions"><div class="field"><label>Destino</label><input name="host" value="8.8.8.8" required></div><label><input name="trace" type="checkbox"> Incluir traceroute</label><label><input name="lookup" type="checkbox"> Incluir DNS lookup</label><div class="field"><label>Nome para resolver</label><input name="hostname" value="example.com"></div><button class="button primary">Coletar diagnóstico completo</button></form><p id="complete-progress" role="status">Pronto para coletar.</p></section>${section("health", "Saúde e evidências")}${section("system", "Resumo e sistema")}${section("wan", "WAN")}${section("optical", "Óptica")}${section("wifi", "Wi-Fi e SSIDs")}${section("radios", "Rádios")}${section("clients", "Clientes")}${section("lan", "LAN")}${section("dhcp", "DHCP")}${section("dns", "DNS")}${section("ping", "Ping")}${section("trace", "Traceroute")}${section("traffic", "Tráfego")}${section("mesh", "Mesh / steering")}${section("topology", "Topologia")}${section("lookup", "DNS lookup")}<section class="panel"><h2>Teste de velocidade nativo</h2><p class="muted">Medição na ONT pelo fluxo AIS ZTE, quando o firmware responder. O início ocorre uma vez; consultas seguintes apenas leem o resultado.</p><button type="button" class="button" id="complete-speedtest" ${cap("speedtest_discovery").enabled?.write ? "" : "disabled"}>Consultar servidores</button><div class="field"><label>Servidor</label><select id="complete-speed-server" disabled></select></div><button type="button" class="button primary" id="complete-speed-start" disabled>Iniciar medição</button><div id="complete-speedtest-result"></div></section><section class="panel"><h2>Diagnóstico do computador do técnico</h2><button class="button" id="complete-workstation">Comparar caminho do PC</button><div id="complete-workstation-result"></div></section><section class="panel"><h2>Superfícies adicionais do runtime</h2><button class="button" id="complete-runtime">Consultar probes conhecidos</button><div id="complete-runtime-result"></div></section><section class="panel"><h2>Registro do atendimento</h2><button class="button" id="complete-save" disabled>Salvar coleta no histórico</button><div id="complete-saved-result"></div></section>`;
   }
   var readers = [
     ["system", "/api/device", (d) => fields([["Modelo", d.model], ["Firmware", d.firmware], ["Serial", d.serial], ["Uptime", uptime(d.uptime_seconds)], ["CPU (%)", d.cpu_percent], ["RAM (%)", d.memory_percent], ["Temperatura (°C)", d.temperature_c]])],
     ["wan", "/api/device/wan", (d) => rows2(d).map((w) => fields([["Nome", w.name], ["Estado", linkStatus(w.status)], ["IPv4", w.ipv4], ["IPv6", w.ipv6], ["Gateway", w.gateway], ["DNS", w.dns], ["VLAN", w.vlan]])).join("")],
-    ["optical", "/api/device/optical", (d) => fields([["RX (dBm)", d.rx ?? d.rx_power ?? d.rx_dbm], ["TX (dBm)", d.tx ?? d.tx_power ?? d.tx_dbm], ["Temperatura (°C)", d.temperature ?? d.temperatura], ["Estado", d.status]])],
+    ["optical", "/api/device/optical", (d) => fields([["RX (dBm)", d.rx ?? d.rx_power ?? d.rx_dbm], ["TX (dBm)", d.tx ?? d.tx_power ?? d.tx_dbm], ["Temperatura (°C)", d.temperature_c], ["Voltage (unidade do equipamento)", d.voltage], ["Bias (mA)", d.bias_ma], ["Registro ONU", d.registration_status], ["ONU ID", d.onu_id], ["PON", d.pon], ["OLT", d.olt_state], ["LOS", d.los], ["LOF", d.lof], ["Alarme", d.alarm_state], ["FEC corrigido", d.fec_corrected], ["FEC não corrigido", d.fec_uncorrectable], ["BER", d.ber]])],
     ["wifi", "/api/device/wifi/ssids", (d) => table([{ label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band", "banda"] }, { label: "Estado", render: (r) => r.enabled === true ? "Ativo" : r.enabled === false ? "Inativo" : "Não disponível" }], rows2(d))],
     ["radios", "/api/device/wifi/radios", (d) => rows2(d).map((r) => fields([["Banda", r.band ?? r.banda], ["Canal", r.channel ?? r.canal], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais]])).join("")],
     ["clients", "/api/device/clients", (d) => table([{ label: "Hostname", keys: ["hostname", "name"] }, { label: "IP", keys: ["ip", "ipv4"] }, { label: "MAC", keys: ["mac"] }, { label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band"] }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }], rows2(d))],
     ["lan", "/api/device/lan", (d) => rows2(d).map((r) => fields([["Porta", r.port ?? r.porta ?? r.name ?? r.nome], ["Estado", r.status], ["Velocidade", r.speed ?? r.velocidade]])).join("")],
     ["dhcp", "/api/device/dhcp", (d) => fields([["Ativo", d.enabled === true ? "Sim" : d.enabled === false ? "Não" : null], ["IP LAN", d.lan_ip], ["Máscara", d.mask], ["Início do pool", d.pool_start], ["Fim do pool", d.pool_end], ["Lease (s)", d.lease_seconds], ["DNS primário", d.dns1], ["DNS secundário", d.dns2], ["Reservas", d.reservations?.length]])],
     ["dns", "/api/device/dns", (d) => fields([["DNS IPv4 primário", d.ipv4_1 ?? d.primary], ["DNS IPv4 secundário", d.ipv4_2 ?? d.secondary], ["DNS IPv6 primário", d.ipv6_1], ["DNS IPv6 secundário", d.ipv6_2], ["Hosts estáticos", d.hosts?.length]])],
+    ["mesh", "/api/device/mesh", (d) => fields([["Disponível", d.available ? "Sim" : "Dados insuficientes"], ["Habilitado", d.enabled === true ? "Sim" : d.enabled === false ? "Não" : null], ["Steering", d.steering_enabled], ["Roaming", d.roaming_enabled], ["RSSI limite 2.4 GHz", d.rssi_limit_24g], ["RSSI limite 5 GHz", d.rssi_limit_5g]]) + table([{ label: "Node", keys: ["id"] }, { label: "Parent", keys: ["parent"] }, { label: "Backhaul", keys: ["backhaul"] }, { label: "Banda", keys: ["band"] }, { label: "RSSI", keys: ["rssi"] }], d.nodes || [], "Nenhuma relação de nodes comprovada.")],
     ["traffic", "/api/device/traffic", (d) => table([{ label: "Interface", render: (r) => esc(r.label || r.ssid || r.source) }, { label: "RX (bytes)", render: (r) => esc(r.counters?.rx_bytes ?? "Não disponível") }, { label: "TX (bytes)", render: (r) => esc(r.counters?.tx_bytes ?? "Não disponível") }, { label: "RX (Mbps)", render: (r) => esc(r.rx_mbps ?? "Aguardando segunda amostra") }, { label: "TX (Mbps)", render: (r) => esc(r.tx_mbps ?? "Aguardando segunda amostra") }], d.sources || [])]
   ];
   function health(snapshot) {
@@ -1014,18 +1276,45 @@
   function mount7() {
     const form = document.querySelector("#complete-form"), scope = currentScope();
     let running = false;
-    const speed = document.querySelector("#complete-speedtest");
-    speed.onclick = async () => {
-      speed.disabled = true;
-      const out = document.querySelector("#complete-speedtest-result");
-      out.textContent = "Consultando…";
+    mountSpeedtest();
+    let lastCollection = null;
+    const workstation = document.querySelector("#complete-workstation");
+    workstation.onclick = async () => {
+      workstation.disabled = true;
+      const out = document.querySelector("#complete-workstation-result");
+      out.textContent = "Consultando o PC…";
       try {
-        const d = await request("/api/device/diagnostics/speedtest-discovery", { scope, method: "POST", body: "{}" });
-        if (scopeActive(scope)) out.innerHTML = table([{ label: "Nome", keys: ["name"] }, { label: "Endereço", keys: ["url"] }], d.servers || [], "Nenhum servidor retornado.");
+        const d = await request("/api/device/diagnostics/workstation", { scope, method: "POST", body: "{}" });
+        if (scopeActive(scope)) out.innerHTML = fields([["DNS do PC", d.dns?.ok ? "Resolvido" : "Sem resposta"], ["TCP 443 — respostas", d.tcp?.successful], ["Tempo TCP médio (ms)", d.tcp?.mean_connect_ms], ["Variação TCP (ms)", d.tcp?.variation_ms]]) + `<p class="muted">${esc(d.limitations)}</p>`;
       } catch (e) {
         if (scopeActive(scope) && !isCancelled(e)) out.textContent = e.message;
       } finally {
-        if (scopeActive(scope)) speed.disabled = false;
+        if (scopeActive(scope)) workstation.disabled = false;
+      }
+    };
+    document.querySelector("#complete-runtime").onclick = async (e) => {
+      e.currentTarget.disabled = true;
+      const out = document.querySelector("#complete-runtime-result");
+      out.textContent = "Consultando superfícies documentadas…";
+      try {
+        const d = await request("/api/device/runtime/diagnostic", { scope, forceRefresh: true });
+        if (scopeActive(scope)) out.innerHTML = table([{ label: "Seção", keys: ["title"] }, { label: "Resultado", render: (r) => r.available ? "Dados retornados" : "Dados ausentes / parciais" }, { label: "Registros", keys: ["record_count"] }], Object.entries(d.sections || {}).map(([title, row]) => ({ title, available: row.available, record_count: row.record_count ?? (Array.isArray(row.data) ? row.data.length : null) })));
+      } catch (e2) {
+        if (scopeActive(scope) && !isCancelled(e2)) out.textContent = e2.message;
+      } finally {
+        if (scopeActive(scope)) e.currentTarget.disabled = false;
+      }
+    };
+    const save = document.querySelector("#complete-save");
+    save.onclick = async () => {
+      save.disabled = true;
+      try {
+        const d = await request("/api/device/diagnostics/collection", { scope, method: "POST", body: JSON.stringify({ session_id: window.__amStore?.session?.session?.session_id, sections: lastCollection }) });
+        if (scopeActive(scope)) document.querySelector("#complete-saved-result").textContent = "Coleta salva: " + d.snapshot_id;
+      } catch (e) {
+        if (scopeActive(scope) && !isCancelled(e)) document.querySelector("#complete-saved-result").textContent = e.message;
+      } finally {
+        if (scopeActive(scope)) save.disabled = false;
       }
     };
     form.onsubmit = async (event) => {
@@ -1100,6 +1389,10 @@
           put("traffic", `<p class="notice warning">${esc(e.message)}</p>`);
         }
         put("health", `<p>${esc(health(snapshot))}</p>`);
+        if (scopeActive(scope)) {
+          lastCollection = snapshot;
+          save.disabled = false;
+        }
         if (scopeActive(scope)) progress.textContent = "Coleta concluída. Falhas e informações ausentes estão indicadas em cada seção.";
       } finally {
         running = false;

@@ -22,8 +22,8 @@ def test_f6201b_only_promotes_wired_captured_writes():
     p=ZTEProvider(client_factory=FakeF6201B); p.connect('x','u','p')
     assert p.capabilities.get('wifi').write.value == 'SUPPORTED'
     assert p.capabilities.get('dns').write.value == 'SUPPORTED'
-    assert p.capabilities.get('dhcp').write.value == 'PARTIAL'
-    assert p.capabilities.get('dhcp').public()['enabled']['write'] is False
+    assert p.capabilities.get('dhcp').write.value == 'SUPPORTED'
+    assert p.capabilities.get('dhcp').public()['enabled']['write'] is True
     assert p.capabilities.get('reboot').write.value == 'UNKNOWN'
 
 def test_known_zte_diagnostics_are_command_capable_not_read_only():

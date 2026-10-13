@@ -23,3 +23,6 @@ profiles=ProfileService(
     repository=JsonProfileRepository(data_dir()/"profiles.json"),
     translators={"huawei": HuaweiProfileTranslator(), "zte": ZTEProfileTranslator()},
 )
+
+from apps.access_manager.infrastructure.artifacts import ManagementArtifacts
+artifacts=ManagementArtifacts(sessions,commands)

@@ -55,6 +55,7 @@ def export_user_configuration(
             ),
         },
         timeout=60,
+        allow_redirects=False,
     )
 
     response.raise_for_status()
@@ -140,6 +141,7 @@ def export_user_configuration(
     path.write_bytes(
         response.content
     )
+    path.chmod(0o600)
 
     return {
         "success": True,

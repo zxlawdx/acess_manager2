@@ -111,6 +111,7 @@ def post_menu(
         data=body,
         headers=headers,
         timeout=60,
+        allow_redirects=False,
     )
 
     print("URL:", resposta.url)

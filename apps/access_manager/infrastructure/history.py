@@ -539,10 +539,12 @@ class HistoryRepository:
 
         return result
 
-    def save_traffic(self, session_id, sources, timestamp):
+    def save_traffic(self, session_id, sources, timestamp, *, host=None, identifier=None, vendor=None):
         with self._lock, self._connection() as db:
             db.execute('CREATE TABLE IF NOT EXISTS traffic_sample (session_id TEXT, timestamp REAL, source TEXT, identity TEXT, payload TEXT)')
             db.execute('CREATE INDEX IF NOT EXISTS traffic_lookup ON traffic_sample(session_id,timestamp)')
+            db.execute('CREATE TABLE IF NOT EXISTS traffic_device (session_id TEXT PRIMARY KEY, host TEXT, identifier TEXT, vendor TEXT)')
+            if host is not None:db.execute('INSERT INTO traffic_device VALUES (?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET identifier=COALESCE(excluded.identifier,traffic_device.identifier)',(str(session_id),host,identifier,vendor))
             db.executemany('INSERT INTO traffic_sample VALUES (?,?,?,?,?)', [(str(session_id),timestamp,r.get('source'),str(r.get('identity') or ''),_json(r)) for r in sources])
             # Bound both age and volume; no counter stream can grow forever.
             db.execute('DELETE FROM traffic_sample WHERE timestamp < ?', (timestamp-7*86400,))
@@ -564,4 +566,20 @@ class HistoryRepository:
                   FROM samples
                 ) SELECT timestamp,payload,rx,tx FROM ranked WHERE n=1 ORDER BY timestamp LIMIT 20000
                 """,(since,bucket,str(session_id),since)).fetchall()
+            return [{'timestamp':r['timestamp'],**json.loads(r['payload']),'rx_mbps':r['rx'],'tx_mbps':r['tx'],'aggregation_seconds':bucket} for r in rows]
+
+    def traffic_by_device(self, *, host=None, identifier=None, since, until):
+        if not host and not identifier:raise ValueError('Informe endereço ou identificador do equipamento')
+        bucket=max(5,int((until-since)/180))
+        with self._lock,self._connection() as db:
+            db.execute('CREATE TABLE IF NOT EXISTS traffic_device (session_id TEXT PRIMARY KEY, host TEXT, identifier TEXT, vendor TEXT)')
+            db.execute('CREATE TABLE IF NOT EXISTS traffic_sample (session_id TEXT, timestamp REAL, source TEXT, identity TEXT, payload TEXT)')
+            rows=db.execute("""WITH samples AS (
+              SELECT s.*, CAST((timestamp-?)/? AS INTEGER) AS bucket
+              FROM traffic_sample s JOIN traffic_device d ON s.session_id=d.session_id
+              WHERE timestamp>=? AND timestamp<=? AND (? IS NULL OR d.host=?) AND (? IS NULL OR d.identifier=?)
+            ), ranked AS (SELECT *,ROW_NUMBER() OVER (PARTITION BY source,identity,bucket ORDER BY timestamp DESC) AS n,
+              AVG(json_extract(payload,'$.rx_mbps')) OVER (PARTITION BY source,identity,bucket) AS rx,
+              AVG(json_extract(payload,'$.tx_mbps')) OVER (PARTITION BY source,identity,bucket) AS tx FROM samples)
+            SELECT timestamp,payload,rx,tx FROM ranked WHERE n=1 ORDER BY timestamp LIMIT 20000""",(since,bucket,since,until,host,host,identifier,identifier)).fetchall()
             return [{'timestamp':r['timestamp'],**json.loads(r['payload']),'rx_mbps':r['rx'],'tx_mbps':r['tx'],'aggregation_seconds':bucket} for r in rows]

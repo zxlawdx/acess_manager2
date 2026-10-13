@@ -34,6 +34,17 @@ class DeviceCommandBus:
             return result
     def dns_lookup(self, config): return self.execute('dns_lookup','dns_lookup',config)
     def discover_speedtest(self): return self.execute('speedtest_discovery','discover_speedtest')
+    def surface_preview(self, config):
+        with getattr(self.sessions,'operation_lock',nullcontext()):
+            self.sessions.provider.capabilities.require_write('configuration_surfaces')
+            return self.sessions.provider.surface_preview(config)
+    def surface_apply(self, config): return self.execute('configuration_surfaces','surface_apply',config)
+    def speedtest_start(self, config): return self.execute('speedtest','speedtest_start',config)
+    def factory_reset_preview(self):
+        with getattr(self.sessions,'operation_lock',nullcontext()):
+            self.sessions.provider.capabilities.require_write('factory_reset')
+            return self.sessions.provider.factory_reset_preview()
+    def factory_reset_apply(self, config): return self.execute('factory_reset','factory_reset_apply',config)
     def reboot(self): return self.execute('reboot','reboot')
     def set_ssid(self, ssid_id, config): return self.execute('wifi','set_ssid_config',ssid_id,config)
     def set_wifi_radio(self, config): return self.execute('wifi_radio','set_wifi_radio',config)
@@ -73,3 +84,19 @@ class DeviceCommandBus:
     def delete_dns_host(self, config):
         if config.get('confirm') is not True or not config.get('id'): raise ValueError('Informe o ID e confirme a exclusão')
         return self.execute('dns_hosts_delete','delete_dns_host',str(config['id']))
+
+    def save_collection(self, config):
+        from apps.access_manager.domain.redaction import redact_sensitive
+        with getattr(self.sessions,'operation_lock',nullcontext()):
+            session=self.sessions.session
+            if session is None or str(config.get('session_id'))!=str(session.session_id):raise ValueError('A coleta pertence a outra sessão')
+            history=getattr(self.sessions,'history',None)
+            if history is None:raise RuntimeError('Histórico local indisponível')
+            def clean(value):
+                if isinstance(value,dict):return {k:clean(v) for k,v in redact_sensitive(value).items() if k!='advanced' and not k.startswith('_')}
+                if isinstance(value,list):return [clean(v) for v in value]
+                return value
+            allowed={'system','wan','optical','wifi','radios','clients','lan','dhcp','dns','traffic','mesh','ping','trace','lookup'}
+            data={k:clean(v) for k,v in (config.get('sections') or {}).items() if k in allowed}
+            identity=history.save_snapshot(getattr(self.sessions,'_history_session',None),'complete_diagnostics',{'source':'ui_collection','device':{'host':session.host,'model':session.model,'firmware':session.firmware},'sections':data})
+            return {'success':True,'snapshot_id':identity}

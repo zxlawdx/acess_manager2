@@ -249,3 +249,11 @@ Suíte Python: 143 + 2 subtestes. QA no Vela/pywebview/Qt real, três resoluçõ
 | Mesh | Relações não comprovadas continuam ausentes | Nenhum parent/backhaul deduzido por nomes/modelos |
 | Reset/backup/restore/firmware | Integração pendente | Não inventar multipart/configuração/ação; confirmação de alto impacto necessária na UI |
 | Windows/WebView2 e hardware | Validação pendente | Qt real + dados sintéticos não equivalem a equipamento físico ou Windows |
+
+## Retomada de fechamento — 2026-10-13
+
+Branch `feat/research-implementation-closure`, base main `236518f2e017a14b6042458667c7d4a53638a1b2`. Working tree preservado após desconexão do runtime. Entregas e limites dos 30 conjuntos estão detalhados em [RESEARCH_IMPLEMENTATION_CLOSURE.md](RESEARCH_IMPLEMENTATION_CLOSURE.md); esse registro atualiza o estado dos conjuntos anteriores sem apagar as pendências da migração integral.
+
+14 full forms F6201B, adapters operacionais ZTE/Huawei, speedtest start/poll, backup/restore/firmware ZTE, reboot Huawei por família, Wi-Fi avançado comprovado, discovery, normalização óptica/Mesh, histórico entre sessões e UI correspondente integrados localmente. Acrescentados ALG, acesso remoto IPv4/IPv6, Telnet, portas administrativas em vetor e reset de fábrica com fingerprint de formulário/nonce/RESETAR. NAT fornece somente contadores comprovados.
+
+Validação atual: Python 269 passed + 30 subtests; DOM 25 passed; frontend sync, collectstatic --no-tailwind, compileall e diff check passaram. QA Chromium e WebView Vela real Qt/offscreen passou em 1366×768, 1600×900 e 1920×1080: bordas, overflow, modal, navegação e resize/maximize. Polling Chromium preservou cards/SVG/página/scroll. Sem teste físico ou Windows novo. Nenhum novo PR publicado até este checkpoint; alterações na branch local. A migração integral NÃO está concluída; limites concretos estão no closure.
