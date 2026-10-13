@@ -907,11 +907,16 @@ class HuaweiCapturedFeatureService:
                     )
                 )
             except Exception:
-                continue
+                try: chunks.append(self._page(endpoint))
+                except Exception: continue
 
         association_records = parse_huawei_js_records(
             "\n".join(chunks)
         )
+        from apps.access_manager.infrastructure.huawei.telemetry import association_records as schema_associations, ssid_inventory
+        source = "\n".join(chunks)
+        association_records.extend(schema_associations(source))
+        ssids = ssid_inventory(source)
         try:
             lan_records = self._lan_client_records()
         except Exception:
@@ -954,14 +959,17 @@ class HuaweiCapturedFeatureService:
                 lan,
                 "HostName", "hostname", "DeviceName", "Name",
             )
+            wlan_match = re.search(r"WLANConfiguration\.(\d+)", _record_domain(item))
+            ssid_meta = ssids.get(int(wlan_match.group(1)), {}) if wlan_match else {}
             clients[mac] = {
                 "hostname": hostname,
+                "band": _record_text(item, "Band", "FrequencyBand") or ssid_meta.get("band", ""),
                 "ip": ip,
                 "mac": mac,
                 "ssid": _record_text(
                     item,
                     "SSID", "SSIDName", "WlanName", "NetworkName",
-                ),
+                ) or ssid_meta.get("ssid", ""),
                 "rssi": _record_text(
                     item,
                     "SignalStrength", "RSSI", "Rssi", "Signal",
@@ -1762,23 +1770,14 @@ class HuaweiCapturedFeatureService:
             item
             for item in records
             if (
-                "SearList" in _record_domain(item)
-                or (
-                    item.get("DNSServer") not in (None, "")
-                    and item.get("Interface") not in (None, "")
-                )
+                re.fullmatch(r"InternetGatewayDevice\.X_HW_DNS\.SearList\.\d+", _record_domain(item)) is not None
             )
         ]
         host_rows = [
             item
             for item in records
             if (
-                "X_HW_DNS.HOSTS" in _record_domain(item)
-                or (
-                    item.get("IPAddress") not in (None, "")
-                    and item.get("DomainName") not in (None, "")
-                    and item not in search_rows
-                )
+                re.fullmatch(r"InternetGatewayDevice\.X_HW_DNS\.HOSTS\.\d+", _record_domain(item)) is not None
             )
         ]
         ipv4 = [

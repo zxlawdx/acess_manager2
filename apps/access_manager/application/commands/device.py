@@ -46,3 +46,28 @@ class DeviceCommandBus:
     def set_firewall(self, config):
         feature = 'firewall_level' if self.sessions.provider.vendor == 'huawei' else 'firewall'
         return self.execute(feature,'set_firewall',config)
+
+    def save_reservation(self, config):
+        from ipaddress import IPv4Address
+        import re
+        values=dict(config)
+        values['ip']=str(IPv4Address(str(values.get('ip') or '')))
+        mac=str(values.get('mac') or '')
+        if not re.fullmatch(r'(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}|[0-9A-Fa-f]{12}',mac):
+            raise ValueError('MAC inválido')
+        compact=re.sub(r'[:-]','',mac).upper()
+        values['mac']=':'.join(compact[i:i+2] for i in range(0,12,2))
+        return self.execute('dhcp_reservations','save_dhcp_reservation',values)
+    def delete_reservation(self, config):
+        if config.get('confirm') is not True: raise ValueError('Confirme a exclusão da reserva')
+        if not config.get('id'): raise ValueError('ID da reserva é obrigatório')
+        return self.execute('dhcp_reservations','delete_dhcp_reservation',str(config['id']))
+
+    def save_dns_host(self, config):
+        from ipaddress import ip_address
+        values=dict(config);values['ip']=str(ip_address(str(values.get('ip') or '')))
+        if not str(values.get('name') or '').strip(): raise ValueError('Nome do host DNS é obrigatório')
+        return self.execute('dns_hosts','save_dns_host',values)
+    def delete_dns_host(self, config):
+        if config.get('confirm') is not True or not config.get('id'): raise ValueError('Informe o ID e confirme a exclusão')
+        return self.execute('dns_hosts_delete','delete_dns_host',str(config['id']))

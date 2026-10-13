@@ -63,3 +63,16 @@ def firewall_write(context=None): return safe(lambda: commands.set_firewall(body
 def operation_history(context=None):
     from apps.access_manager.composition import history
     return safe(history.recent)
+
+@api.post("/device/traffic/history")
+def traffic_history(context=None): return safe(lambda: queries.traffic_history(body(context).get('seconds',3600)))
+
+@api.post("/device/dhcp/reservations")
+def reservation_save(context=None): return safe(lambda: commands.save_reservation(body(context)))
+@api.delete("/device/dhcp/reservations")
+def reservation_delete(context=None): return safe(lambda: commands.delete_reservation(body(context)))
+
+@api.post("/device/dns/hosts")
+def dns_host_save(context=None): return safe(lambda: commands.save_dns_host(body(context)))
+@api.delete("/device/dns/hosts")
+def dns_host_delete(context=None): return safe(lambda: commands.delete_dns_host(body(context)))

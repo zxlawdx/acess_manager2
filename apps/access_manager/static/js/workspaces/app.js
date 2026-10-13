@@ -36,6 +36,7 @@ function syncContext() {
 }
 
 async function render(name = store.view) {
+  views[store.view]?.unmount?.();
   store.view = name;
   document.querySelectorAll('.nav').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   const [kicker,title] = meta[name] || meta.overview;
@@ -106,7 +107,7 @@ async function connectFromForm(event) {
     if (password) password.value = '';
 
     toast(`Conectado via ${payload.https ? 'HTTPS' : 'HTTP'} em ${s.session.model || s.session.vendor || payload.host}.`);
-    await render(s.session?.mode === 'deployment' ? 'deployment' : 'overview');
+    await render('overview');
   } catch (err) {
     // Em erro, nenhum campo é resetado. Isso evita redigitar IP/usuário/senha
     // ao testar HTTP vs HTTPS ou corrigir apenas uma credencial.
@@ -163,7 +164,7 @@ export async function mountApp() {
     store.setSession(s);
     store.setCapabilities(s.session?.capabilities || {});
     syncContext();
-    await render(s.connected ? (s.session?.mode === 'deployment' ? 'deployment' : 'overview') : store.view);
+    await render(s.connected ? ('overview') : store.view);
   } catch (error) {
     console.error('[Access Manager] Falha ao consultar sessão inicial:', error);
     await render(store.view);

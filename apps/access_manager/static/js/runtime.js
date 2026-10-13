@@ -112,6 +112,32 @@
     return d;
   }
 
+  // apps/access_manager/static/js/shared/presentation.js
+  var unavailable = "Não disponível";
+  var bool = (v) => v === true ? "Ativo" : v === false ? "Inativo" : unavailable;
+  function formatBytes(v) {
+    if (v == null || v === "") return unavailable;
+    let x = Number(v), i = 0;
+    const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+    if (!Number.isFinite(x)) return unavailable;
+    while (x >= 1024 && i < 4) {
+      x /= 1024;
+      i++;
+    }
+    return `${x.toFixed(i ? 2 : 0)} ${units[i]}`;
+  }
+  function fields(items) {
+    return `<div class="human-fields">${items.map(([label, value]) => `<div class="human-field"><span class="muted">${esc(label)}</span><strong>${esc(Array.isArray(value) ? value.join(", ") || unavailable : value ?? unavailable)}</strong></div>`).join("")}</div>`;
+  }
+  function uptime(v) {
+    if (v == null || v === "") return "—";
+    const n = Number(v);
+    if (!Number.isFinite(n)) return String(v);
+    const days = Math.floor(n / 86400), hours = Math.floor(n % 86400 / 3600), minutes = Math.floor(n % 3600 / 60);
+    return `${days ? days + "d " : ""}${hours}h ${minutes}min`;
+  }
+  var linkStatus = (v) => ({ connected: "Conectado", disconnected: "Desconectado", up: "Ativo", down: "Sem link", unknown: "Desconhecido", associated: "Associado", enabled: "Habilitado", disabled: "Desabilitado", "1": "Ativo", "0": "Inativo" })[String(v ?? "").toLowerCase()] || v || "Não disponível";
+
   // apps/access_manager/static/js/workspaces/views/clients.js
   var clients_exports = {};
   __export(clients_exports, {
@@ -126,7 +152,7 @@
     if (v === "—") return badge("Não disponível");
     if (v === false || /^(offline|disconnected|false|0)$/i.test(String(v))) return badge("Offline", "bad");
     if (v === true || /^(online|connected|true|1)$/i.test(String(v))) return badge("Online", "ok");
-    return badge(v);
+    return badge(linkStatus(v));
   };
   var connection = (r) => pick(r, "connection_type", "tipo", "interface");
   var band = (r) => pick(r, "band", "banda");
@@ -140,9 +166,9 @@
     for (const r of data) {
       const c = String(connection(r)).toLowerCase();
       const b = String(band(r));
-      let key = /mesh/.test(c) ? "Mesh" : /wi.fi|wlan|wifi/.test(c) ? /2[.,]4/.test(b) ? "Wi-Fi 2.4 GHz" : /5/.test(b) ? "Wi-Fi 5 GHz" : "Wi-Fi — banda não disponível" : /ethernet|lan|eth/.test(c) ? "Ethernet" : "Conexão não disponível";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(r);
+      let key2 = /mesh/.test(c) ? "Mesh" : /wi.fi|wlan|wifi/.test(c) ? /2[.,]4/.test(b) ? "Wi-Fi 2.4 GHz" : /5/.test(b) ? "Wi-Fi 5 GHz" : "Wi-Fi — banda não disponível" : /ethernet|lan|eth/.test(c) ? "Ethernet" : "Conexão não disponível";
+      if (!groups.has(key2)) groups.set(key2, []);
+      groups.get(key2).push(r);
     }
     return `<section class="panel"><h2>Topologia da rede</h2><div class="topology-root">${esc(device)}</div><div class="topology-branches">${[...groups].map(([k, v]) => `<div class="topology-branch"><h3>${esc(k)} · ${v.length}</h3>${cards(v)}</div>`).join("")}</div>${data.length ? "" : '<p class="muted">Nenhum cliente observado nesta sessão.</p>'}</section>`;
   }
@@ -150,7 +176,7 @@
     document.querySelectorAll("[data-client]").forEach((btn) => btn.onclick = () => {
       const r = rows[Number(btn.dataset.client)];
       if (!r) return;
-      const data = { Hostname: pick(r, "hostname", "nome"), IP: pick(r, "ip"), MAC: pick(r, "mac"), Conexão: connection(r), Interface: pick(r, "interface", "port"), SSID: pick(r, "ssid"), Banda: band(r), RSSI: pick(r, "rssi"), SNR: pick(r, "snr"), "RX bytes": pick(r, "rx_bytes"), "TX bytes": pick(r, "tx_bytes"), "Taxa RX": pick(r, "rx_rate"), "Taxa TX": pick(r, "tx_rate"), Fabricante: pick(r, "manufacturer"), Estado: pick(r, "status", "online"), Lease: pick(r, "lease") };
+      const data = { Hostname: pick(r, "hostname", "nome"), IP: pick(r, "ip"), MAC: pick(r, "mac"), Conexão: connection(r), Interface: pick(r, "interface", "port"), SSID: pick(r, "ssid"), Banda: band(r), RSSI: pick(r, "rssi"), SNR: pick(r, "snr"), "RX bytes": pick(r, "rx_bytes"), "TX bytes": pick(r, "tx_bytes"), "Taxa RX": pick(r, "rx_rate"), "Taxa TX": pick(r, "tx_rate"), Fabricante: pick(r, "manufacturer"), Estado: linkStatus(pick(r, "status", "online")), Lease: pick(r, "lease") };
       const d = dialog("Detalhes do cliente", kv(data));
       d.classList.add("drawer");
       d.addEventListener("close", () => {
@@ -166,7 +192,7 @@
     return `<section class="panel"><div class="toolbar"><input id="client-search" placeholder="Buscar hostname, IP ou MAC" aria-label="Buscar clientes"><select id="client-filter" aria-label="Conexão"><option value="">Todas as conexões</option><option>Wi-Fi</option><option>Ethernet</option><option>Mesh</option></select><select id="client-band" aria-label="Banda"><option value="">Todas as bandas</option><option value="2.4">2.4 GHz</option><option value="5">5 GHz</option></select><select id="client-ssid" aria-label="SSID"><option value="">Todos os SSIDs</option>${ssids.map((s) => `<option>${esc(s)}</option>`).join("")}</select><select id="client-view" aria-label="Visualização"><option value="table">Tabela</option><option value="cards">Cards</option><option value="topology">Topologia</option></select></div><div id="client-results"></div></section>`;
   }
   function mount() {
-    const paint = () => {
+    const paint2 = () => {
       const q = document.querySelector("#client-search").value.toLowerCase(), type = document.querySelector("#client-filter").value, b = document.querySelector("#client-band").value, ssid = document.querySelector("#client-ssid").value, view = document.querySelector("#client-view").value;
       const filtered = rows.filter((r) => (!q || [r.hostname, r.ip, r.mac].some((v) => String(v || "").toLowerCase().includes(q))) && (!type || String(connection(r)).includes(type)) && (!b || String(band(r)).replace(",", ".").includes(b)) && (!ssid || r.ssid === ssid));
       const all = rows;
@@ -174,19 +200,23 @@
       rows = all;
       mountDetails();
     };
-    document.querySelectorAll("#client-search,#client-filter,#client-band,#client-ssid,#client-view").forEach((e) => e.addEventListener("input", paint));
-    paint();
+    document.querySelectorAll("#client-search,#client-filter,#client-band,#client-ssid,#client-view").forEach((e) => e.addEventListener("input", paint2));
+    paint2();
   }
 
   // apps/access_manager/static/js/workspaces/views/overview.js
   async function render2() {
-    const endpoints = ["/api/device", "/api/device/wan", "/api/device/optical", "/api/device/clients"];
+    const endpoints = ["/api/device", "/api/device/wan", "/api/device/optical", "/api/device/clients", "/api/device/traffic"];
     const results = await Promise.allSettled(endpoints.map((p) => request(p)));
-    const [device, wan2, optical, clients] = results.map((r) => r.status === "fulfilled" ? r.value : null);
+    const [device, wan2, optical, clients, traffic] = results.map((r) => r.status === "fulfilled" ? r.value : null);
     const w = Array.isArray(wan2) ? wan2[0] || {} : wan2 || {}, o = optical || {}, d = device || {};
-    const failures = results.map((r, i) => r.status === "rejected" ? `<div class="notice warning">${esc(["Equipamento", "WAN", "Óptica", "Clientes"][i])}: ${esc(r.reason.message)}</div>` : "").join("");
-    const cpu = typeof d.cpu === "object" ? Object.values(d.cpu || {}).filter((x) => x !== null && x !== void 0).join(" / ") : d.cpu;
-    return `${failures}<div class="grid">${metric("Internet", pick(w, "status", "connection_status"))}${metric("IP WAN", pick(w, "ip", "ipv4", "ip_address"))}${metric("Clientes", Array.isArray(clients) ? clients.length : "Não disponível")}${metric("RX óptico", pick(o, "rx", "rx_power", "rx_dbm"))}${metric("CPU", cpu || "Não disponível")}${metric("RAM", pick(d, "memoria_percent", "memory_usage"))}${metric("Temperatura", pick(d, "temperatura_cpu", "temperature"))}${metric("Uptime", pick(d, "uptime_segundos", "uptime"))}</div><div class="split"><section class="panel"><div class="panel-header"><h2>Equipamento</h2>${badge(pick(d, "fabricante", "vendor", "manufacturer"))}</div>${kv(d)}</section><section class="panel"><h2>WAN</h2>${kv(w)}</section></div>${Array.isArray(clients) ? topology(clients, pick(d, "modelo", "model")) : ""}`;
+    const failed = results.map((r, i) => r.status === "rejected" ? `<div class="notice warning">${esc(["Equipamento", "WAN", "Óptica", "Clientes", "Tráfego"][i])}: ${esc(r.reason.message)}</div>` : "").join("");
+    const rx = o.rx ?? o.rx_power ?? o.rx_dbm;
+    const streams = (traffic?.sources || []).filter((s) => s.source === "wan");
+    const latest = streams[0];
+    const currentRate = latest?.rx_mbps == null ? "—" : `${Number(latest.rx_mbps).toFixed(2)} Mbps`;
+    const percent = (v) => v == null ? "—" : `${v}%`;
+    return `${failed}<div class="grid">${metric("Internet", linkStatus(w.status))}${metric("IP WAN", w.ipv4 ?? "—")}${metric("Clientes", Array.isArray(clients) ? clients.length : "—")}${metric("RX óptico", rx == null ? "—" : `${rx} dBm`)}${metric("CPU", percent(d.cpu_percent))}${metric("RAM", percent(d.memory_percent))}${metric("Tráfego WAN RX", currentRate)}${metric("Uptime", uptime(d.uptime_seconds))}</div><div class="split"><section class="panel"><div class="panel-header"><h2>Equipamento</h2>${badge(d.manufacturer)}</div>${fields([["Modelo", d.model], ["Firmware", d.firmware], ["Hardware", d.hardware], ["Serial", d.serial], ["Temperatura", d.temperature_c == null ? null : d.temperature_c + " °C"], ["Uptime", uptime(d.uptime_seconds)]])}<details><summary>Detalhes técnicos</summary>${kv(d.advanced || {})}</details></section><section class="panel"><h2>WAN</h2>${fields([["Estado", linkStatus(w.status)], ["Tipo", w.connection_type], ["IPv4", w.ipv4], ["Gateway", w.gateway], ["VLAN", w.vlan], ["DNS", w.dns]])}</section></div>${Array.isArray(clients) ? topology(clients, d.model) : ""}`;
   }
   var mount2 = mountDetails;
 
@@ -198,9 +228,9 @@
   });
 
   // apps/access_manager/static/js/shared/forms.js
-  function editConfig(title, path, fields, extra = {}) {
-    const supported = fields.filter((f) => f.value !== void 0 && f.value !== null && f.value !== "—");
-    const d = dialog(title, `<form class="form-grid">${supported.map((f) => `<div class="field"><label>${esc(f.label)}</label>${f.type === "bool" ? `<select name="${esc(f.key)}"><option value="true" ${f.value === true || f.value === "1" ? "selected" : ""}>Ativo</option><option value="false" ${f.value === false || f.value === "0" ? "selected" : ""}>Inativo</option></select>` : `<input name="${esc(f.key)}" value="${esc(f.value)}" type="${f.type || "text"}">`}</div>`).join("")}<div class="dialog-footer"><button class="button primary">Aplicar alterações</button></div></form>`);
+  function editConfig(title, path, fields2, extra = {}) {
+    const supported = fields2.filter((f) => f.value !== void 0 && f.value !== null && f.value !== "—");
+    const d = dialog(title, `<form class="form-grid">${supported.map((f) => `<div class="field"><label>${esc(f.label)}</label>${f.options ? `<select name="${esc(f.key)}" ${f.options.length ? "" : "disabled"}><option value="${esc(f.value)}">${esc(f.value)}</option>${f.options.filter((o) => String(o.value) !== String(f.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select>` : f.type === "bool" ? `<select name="${esc(f.key)}"><option value="true" ${f.value === true || f.value === "1" ? "selected" : ""}>Ativo</option><option value="false" ${f.value === false || f.value === "0" ? "selected" : ""}>Inativo</option></select>` : `<input name="${esc(f.key)}" value="${esc(f.value)}" type="${f.type || "text"}">`}</div>`).join("")}<div class="dialog-footer"><button class="button primary">Aplicar alterações</button></div></form>`);
     const form = d.querySelector("form");
     const original = new FormData(form);
     form.onsubmit = async (e) => {
@@ -209,7 +239,7 @@
       for (const f of supported) {
         if (values.get(f.key) !== original.get(f.key)) {
           const v = values.get(f.key);
-          config[f.key] = f.type === "bool" ? v === "true" : f.type === "number" ? Number(v) : String(v);
+          config[f.key] = f.options ? `<select name="${esc(f.key)}" ${f.options.length ? "" : "disabled"}><option value="${esc(f.value)}">${esc(f.value)}</option>${f.options.filter((o) => String(o.value) !== String(f.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select>` : f.type === "bool" ? v === "true" : f.type === "number" ? Number(v) : String(v);
         }
       }
       if (!Object.keys(config).length) {
@@ -239,7 +269,7 @@
     const d = await request("/api/device/wifi");
     networks = Array.isArray(d) ? d : d?.networks || [];
     radios = Array.isArray(d?.radios) ? d.radios : [];
-    return `<section class="panel"><h2>Redes Wi-Fi</h2></section>${table([{ label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band", "banda"] }, { label: "Ativo", render: (r) => esc(pick(r, "enabled", "ativo")) }, { label: "Broadcast", keys: ["broadcast"] }, { label: "Segurança", keys: ["security", "seguranca"] }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-reveal-wifi="${esc(r.id)}">Ver senha</button><button class="button" data-edit-ssid="${networks.indexOf(r)}" ${cap("wifi").enabled?.write ? "" : "disabled"}>Editar</button></div>` }], networks)}<section class="panel"><h2>Rádios</h2>${radios.map((r, i) => `<article class="panel"><h3>${esc(pick(r, "band", "banda"))}</h3>${kv(r)}<button class="button" data-edit-radio="${i}" ${cap("wifi_radio").enabled?.write ? "" : "disabled"}>Editar rádio</button></article>`).join("") || '<p class="muted">Sem dados de rádio.</p>'}</section>`;
+    return `<section class="panel"><h2>Redes Wi-Fi</h2></section>${table([{ label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band", "banda"] }, { label: "Ativo", render: (r) => esc(bool(r.enabled ?? r.ativo)) }, { label: "Broadcast", render: (r) => esc(bool(r.broadcast)) }, { label: "Segurança", keys: ["security", "seguranca"] }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-reveal-wifi="${esc(r.id)}">Ver senha</button><button class="button" data-edit-ssid="${networks.indexOf(r)}" ${cap("wifi").enabled?.write ? "" : "disabled"}>Editar</button></div>` }], networks)}<section class="panel"><h2>Rádios</h2>${radios.map((r, i) => `<article class="panel"><h3>${esc(pick(r, "band", "banda"))}</h3>${fields([["Estado", bool(r.enabled ?? r.radio_ativo)], ["Canal", r.channel ?? r.canal], ["Automático", bool(r.auto_channel ?? r.canal_automatico)], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais], ["SGI", bool(r.sgi)]])}<details><summary>Avançado</summary>${kv(r)}</details><button class="button" data-edit-radio="${i}" ${cap("wifi_radio").enabled?.write ? "" : "disabled"}>Editar rádio</button></article>`).join("") || '<p class="muted">Sem dados de rádio.</p>'}</section>`;
   }
   function mount3() {
     document.querySelectorAll("[data-reveal-wifi]").forEach((b) => b.onclick = async () => {
@@ -261,37 +291,119 @@
     });
     document.querySelectorAll("[data-edit-radio]").forEach((b) => b.onclick = () => {
       const r = radios[Number(b.dataset.editRadio)];
-      editConfig("Editar rádio", "/api/device/wifi/radio", [{ key: "channel", label: "Canal", value: r.channel ?? r.canal }, { key: "auto_channel", label: "Canal automático", value: r.auto_channel ?? r.canal_automatico, type: "bool" }, { key: "bandwidth", label: "Largura", value: r.bandwidth ?? r.largura }, { key: "standard", label: "Padrão", value: r.standard ?? r.padrao }, { key: "tx_power", label: "Potência", value: r.tx_power ?? r.potencia }, { key: "country", label: "País", value: r.country ?? r.pais }, { key: "sgi", label: "SGI", value: r.sgi, type: "bool" }], { band: r.band ?? r.banda });
+      editConfig("Editar rádio", "/api/device/wifi/radio", [{ key: "channel", options: r.options?.channel || [], label: "Canal", value: r.channel ?? r.canal }, { key: "auto_channel", label: "Canal automático", value: r.auto_channel ?? r.canal_automatico, type: "bool" }, { key: "bandwidth", options: r.options?.bandwidth || [], label: "Largura", value: r.bandwidth ?? r.largura }, { key: "standard", options: r.options?.standard || [], label: "Padrão", value: r.standard ?? r.padrao }, { key: "tx_power", options: r.options?.tx_power || [], label: "Potência", value: r.tx_power ?? r.potencia }, { key: "country", options: r.options?.country || [], label: "País", value: r.country ?? r.pais }, { key: "sgi", label: "SGI", value: r.sgi_write === false ? void 0 : r.sgi, type: "bool" }], { band: r.band ?? r.banda });
     });
   }
 
   // apps/access_manager/static/js/workspaces/views/network.js
   var dhcpData;
   var dnsData;
-  var objectPanel = (title, data) => `<section class="panel"><h2>${esc(title)}</h2>${kv(data || {})}</section>`;
   async function wan() {
-    const data = await request("/api/device/wan"), rows2 = Array.isArray(data) ? data : [data];
-    return rows2.map((r) => {
-      const { raw, metadata, advanced, id, path, ...fields } = r || {};
-      return `<section class="panel"><h2>${esc(pick(r, "name", "nome", "connection_name"))}</h2>${kv(fields)}<details><summary>Avançado</summary>${kv({ id, path })}<pre>${esc(JSON.stringify(advanced || metadata || raw || {}, null, 2))}</pre></details></section>`;
-    }).join("");
+    const data = await request("/api/device/wan");
+    return data.map((r) => `<section class="panel"><h2>${esc(r.name || "Conexão WAN")}</h2><div class="split"><article><h3>Status da conexão</h3>${fields([["Estado", r.status], ["Tipo", r.connection_type], ["IPv4", r.ipv4], ["IPv6", r.ipv6], ["Gateway", r.gateway], ["VLAN", r.vlan]])}</article><article><h3>Autenticação e rede</h3>${fields([["Usuário PPPoE", r.username], ["Serviço", r.service], ["DNS", r.dns], ["MTU", r.mtu], ["NAT", bool(r.nat)], ["Uptime", r.uptime], ["Prefixo IPv6", r.prefix]])}</article></div>${fields([["Recebido", formatBytes(r.rx_bytes)], ["Enviado", formatBytes(r.tx_bytes)]])}<details><summary>Detalhes técnicos</summary>${kv(r.advanced || {})}</details></section>`).join("");
   }
   async function lan() {
     const d = await request("/api/device/lan");
-    return table([{ label: "Porta", keys: ["port", "porta", "name"] }, { label: "Habilitada", keys: ["admin_state", "enabled"] }, { label: "Link", keys: ["link_state", "status", "state", "estado"] }, { label: "Velocidade", keys: ["speed", "velocidade"] }, { label: "Duplex", keys: ["duplex"] }, { label: "Negociação", keys: ["autonegotiation", "negotiation"] }, { label: "Cliente / MAC", keys: ["client", "mac"] }, { label: "RX bytes", keys: ["rx_bytes"] }, { label: "TX bytes", keys: ["tx_bytes"] }, { label: "Erros RX/TX", render: (r) => `${esc(pick(r, "rx_errors"))}/${esc(pick(r, "tx_errors"))}` }], Array.isArray(d) ? d : d?.ports || []);
+    return table([{ label: "Porta", keys: ["port", "porta", "name"] }, { label: "Habilitada", render: (r) => esc(typeof r.enabled === "boolean" ? r.enabled ? "Sim" : "Não" : linkStatus(r.admin_state)) }, { label: "Link", render: (r) => {
+      const raw = pick(r, "link_state", "status", "state", "estado");
+      const label = linkStatus(raw);
+      return badge(label, /^(up|1|connected)$/i.test(String(raw)) ? "ok" : "info");
+    } }, { label: "Velocidade", keys: ["speed", "velocidade"] }, { label: "Duplex", render: (r) => esc({ full: "Full duplex", half: "Half duplex", auto: "Automático" }[String(r.duplex || "").toLowerCase()] || r.duplex || "Não disponível") }, { label: "Negociação", keys: ["autonegotiation", "negotiation"] }, { label: "Cliente / MAC", keys: ["client", "mac"] }, { label: "RX bytes", keys: ["rx_bytes"] }, { label: "TX bytes", keys: ["tx_bytes"] }, { label: "Erros RX/TX", render: (r) => `${esc(pick(r, "rx_errors"))}/${esc(pick(r, "tx_errors"))}` }], Array.isArray(d) ? d : d?.ports || []);
   }
   async function dhcpdns() {
     const results = await Promise.allSettled([request("/api/device/dhcp"), request("/api/device/dns")]);
     dhcpData = results[0].status === "fulfilled" ? results[0].value : null;
     dnsData = results[1].status === "fulfilled" ? results[1].value : null;
-    return `<div class="split">${dhcpData ? objectPanel("DHCP", dhcpData.basic || dhcpData) : '<section class="panel">DHCP não disponível nesta sessão.</section>'}${dnsData ? objectPanel("DNS", dnsData) : '<section class="panel">DNS não disponível nesta sessão.</section>'}</div><div class="toolbar"><button class="button" id="edit-dhcp" ${dhcpData && cap("dhcp").enabled?.write ? "" : "disabled"}>Editar DHCP</button><button class="button" id="edit-dns" ${dnsData && cap("dns").enabled?.write ? "" : "disabled"}>Editar DNS</button></div>${table([{ label: "Hostname", keys: ["hostname", "Name", "name"] }, { label: "IP", keys: ["ip", "IPAddr", "IPAddress"] }, { label: "MAC", keys: ["mac", "MACAddr", "MACAddress"] }], dhcpData?.leases || [], "Nenhum lease retornado.")}${table([{ label: "Reserva", keys: ["name", "Name"] }, { label: "IP", keys: ["ip", "IPAddr"] }, { label: "MAC", keys: ["mac", "MACAddr"] }], dhcpData?.reservations || [], "Nenhuma reserva retornada.")}`;
+    return `<div class="split">${dhcpData ? `<section class="panel"><h2>DHCP</h2>${fields([["Servidor", bool(dhcpData.enabled)], ["IP da LAN", dhcpData.lan_ip], ["Máscara", dhcpData.mask], ["Início do pool", dhcpData.pool_start], ["Fim do pool", dhcpData.pool_end], ["Lease (segundos)", dhcpData.lease_seconds], ["DNS primário", dhcpData.dns1], ["DNS secundário", dhcpData.dns2]])}</section>` : '<section class="panel">DHCP não disponível nesta sessão.</section>'}${dnsData ? `<section class="panel"><h2>DNS</h2>${fields([["Domínio", dnsData.domain_name], ["DNS IPv4 primário", dnsData.ipv4_1], ["DNS IPv4 secundário", dnsData.ipv4_2], ["DNS IPv6 primário", dnsData.ipv6_1], ["DNS IPv6 secundário", dnsData.ipv6_2]])}</section>` : '<section class="panel">DNS não disponível nesta sessão.</section>'}</div><div class="toolbar"><button class="button" id="edit-dhcp" ${dhcpData && cap("dhcp").enabled?.write ? "" : "disabled"}>Editar DHCP</button><button class="button" id="edit-dns" ${dnsData && cap("dns").enabled?.write ? "" : "disabled"}>Editar DNS</button></div>${table([{ label: "Hostname", keys: ["hostname", "Name", "name"] }, { label: "IP", keys: ["ip", "IPAddr", "IPAddress"] }, { label: "MAC", keys: ["mac", "MACAddr", "MACAddress"] }], dhcpData?.leases || [], "Nenhum lease retornado.")}<section class="panel"><div class="panel-header"><h2>Reservas DHCP</h2><button id="new-reservation" class="button" ${cap("dhcp_reservations").enabled?.write ? "" : "disabled"}>Adicionar</button></div></section>${table([{ label: "Reserva", keys: ["name", "Name"] }, { label: "IP", keys: ["ip", "IPAddr"] }, { label: "MAC", keys: ["mac", "MACAddr"] }, { label: "Ações", render: (r) => cap("dhcp_reservations").enabled?.write ? `<div class="inline-actions"><button class="button" data-edit-reservation="${esc(r.id)}">Editar</button><button class="button danger" data-delete-reservation="${esc(r.id)}">Excluir</button></div>` : "Somente leitura" }], dhcpData?.reservations || [], "Nenhuma reserva retornada.")}${dnsHosts()}`;
   }
   function mountDhcpDns() {
+    mountReservations();
+    mountDnsHosts();
     document.querySelector("#edit-dns").onclick = () => editConfig("Editar DNS", "/api/device/dns", [{ key: "domain_name", label: "Domínio", value: dnsData.domain_name }, { key: "ipv4_1", label: "DNS IPv4 primário", value: dnsData.ipv4_1 }, { key: "ipv4_2", label: "DNS IPv4 secundário", value: dnsData.ipv4_2 }, { key: "ipv6_1", label: "DNS IPv6 primário", value: dnsData.ipv6_1 }, { key: "ipv6_2", label: "DNS IPv6 secundário", value: dnsData.ipv6_2 }]);
     document.querySelector("#edit-dhcp").onclick = () => {
-      const d = dhcpData.basic || dhcpData;
-      editConfig("Editar DHCP", "/api/device/dhcp", [{ key: "enabled", label: "Servidor DHCP", value: d.ServerEnable, type: "bool" }, { key: "min_address", label: "Início do pool", value: d.MinAddress }, { key: "max_address", label: "Fim do pool", value: d.MaxAddress }, { key: "lease_time", label: "Lease (segundos)", value: d.LeaseTime }, { key: "dns1", label: "DNS primário", value: d.DNSServer1 }, { key: "dns2", label: "DNS secundário", value: d.DNSServer2 }]);
+      const d = dhcpData;
+      editConfig("Editar DHCP", "/api/device/dhcp", [{ key: "enabled", label: "Servidor DHCP", value: d.enabled, type: "bool" }, { key: "min_address", label: "Início do pool", value: d.pool_start }, { key: "max_address", label: "Fim do pool", value: d.pool_end }, { key: "lease_time", label: "Lease (segundos)", value: d.lease_seconds }, { key: "dns1", label: "DNS primário", value: d.dns1 }, { key: "dns2", label: "DNS secundário", value: d.dns2 }]);
     };
+  }
+  function mountReservations() {
+    const edit2 = (row = {}) => {
+      const available = dhcpData.reservation_fields || [];
+      const d = dialog(row.id ? "Editar reserva" : "Adicionar reserva", `<form class="form-grid">${available.map((key2) => `<div class="field"><label>${{ name: "Nome", ip: "IP", mac: "MAC" }[key2]}</label><input name="${key2}" value="${esc(row[key2] || "")}" ${key2 === "name" ? "" : "required"}></div>`).join("")}<button class="button primary">Salvar</button></form>`);
+      const f = d.querySelector("form");
+      f.onsubmit = async (e) => {
+        e.preventDefault();
+        const payload = Object.fromEntries(new FormData(f));
+        if (row.id) payload.id = row.id;
+        const b = f.querySelector("button");
+        b.disabled = true;
+        try {
+          const result = await request("/api/device/dhcp/reservations", { method: "POST", body: JSON.stringify(payload) });
+          toast(result.verified ? "Reserva verificada." : "Comando enviado.");
+          d.close();
+          document.dispatchEvent(new CustomEvent("refresh-view"));
+        } catch (err) {
+          toast(err.message);
+        } finally {
+          b.disabled = false;
+        }
+      };
+    };
+    document.querySelector("#new-reservation")?.addEventListener("click", () => edit2());
+    document.querySelectorAll("[data-edit-reservation]").forEach((b) => b.onclick = () => edit2(dhcpData.reservations.find((r) => String(r.id) === b.dataset.editReservation)));
+    document.querySelectorAll("[data-delete-reservation]").forEach((b) => b.onclick = () => {
+      const d = dialog("Excluir reserva?", `<p>O endereço reservado será removido.</p>`, `<button class="button danger" data-confirm>Excluir</button>`);
+      d.querySelector("[data-confirm]").onclick = async (e) => {
+        e.currentTarget.disabled = true;
+        try {
+          await request("/api/device/dhcp/reservations", { method: "DELETE", body: JSON.stringify({ id: b.dataset.deleteReservation, confirm: true }) });
+          d.close();
+          document.dispatchEvent(new CustomEvent("refresh-view"));
+        } catch (err) {
+          toast(err.message);
+        }
+      };
+    });
+  }
+  function dnsHosts() {
+    return `<section class="panel"><div class="panel-header"><h2>Hosts DNS estáticos</h2><button id="new-dns-host" class="button" ${dnsData && cap("dns_hosts").enabled?.write ? "" : "disabled"}>Adicionar</button></div><p class="muted">Nomes locais associados a IPs; estes registros não são servidores DNS upstream.</p></section>${table([{ label: "Nome", keys: ["name"] }, { label: "IP", keys: ["ip"] }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-edit-host="${esc(r.id)}" ${cap("dns_hosts").enabled?.write ? "" : "disabled"}>Editar</button><button class="button danger" data-delete-host="${esc(r.id)}" ${cap("dns_hosts_delete").enabled?.write ? "" : "disabled"}>Excluir</button></div>` }], dnsData?.hosts || [], "Nenhum host DNS estático retornado.")}`;
+  }
+  function mountDnsHosts() {
+    const edit2 = (row = {}) => {
+      const d = dialog("Host DNS estático", `<form class="form-grid"><div class="field"><label>Nome</label><input name="name" value="${esc(row.name || "")}" ${row.id && !dnsData.host_rename ? "readonly" : ""} required></div><div class="field"><label>IP</label><input name="ip" value="${esc(row.ip || "")}" required></div><button class="button primary">Salvar</button></form>`);
+      const f = d.querySelector("form");
+      f.onsubmit = async (e) => {
+        e.preventDefault();
+        const payload = Object.fromEntries(new FormData(f));
+        if (row.id) payload.id = row.id;
+        const b = f.querySelector("button");
+        b.disabled = true;
+        try {
+          const result = await request("/api/device/dns/hosts", { method: "POST", body: JSON.stringify(payload) });
+          toast(result.verified ? "Host DNS verificado." : "Comando enviado.");
+          d.close();
+          document.dispatchEvent(new CustomEvent("refresh-view"));
+        } catch (err) {
+          toast(err.message);
+        } finally {
+          b.disabled = false;
+        }
+      };
+    };
+    document.querySelector("#new-dns-host")?.addEventListener("click", () => edit2());
+    document.querySelectorAll("[data-edit-host]").forEach((b) => b.onclick = () => edit2(dnsData.hosts.find((r) => String(r.id) === b.dataset.editHost)));
+    document.querySelectorAll("[data-delete-host]").forEach((b) => b.onclick = () => {
+      const d = dialog("Excluir host DNS?", `<p>O registro local será removido.</p>`, `<button class="button danger" data-confirm>Excluir</button>`);
+      d.querySelector("[data-confirm]").onclick = async (e) => {
+        e.currentTarget.disabled = true;
+        try {
+          await request("/api/device/dns/hosts", { method: "DELETE", body: JSON.stringify({ id: b.dataset.deleteHost, confirm: true }) });
+          d.close();
+          document.dispatchEvent(new CustomEvent("refresh-view"));
+        } catch (err) {
+          toast(err.message);
+        }
+      };
+    });
   }
 
   // apps/access_manager/static/js/workspaces/views/profiles.js
@@ -303,27 +415,80 @@
   var profiles = [];
   async function render4() {
     profiles = await request("/api/profiles");
-    return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section>${table([{ label: "Nome", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Wi-Fi", render: (r) => esc(Object.keys(r.wifi || {}).join(", ") || "—") }, { label: "DNS", render: (r) => Object.keys(r.dns || {}).length ? "Configurado" : "—" }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-edit-profile="${esc(r.name)}">Editar</button><button class="button" data-preview-profile="${esc(r.name)}">Preview / aplicar</button><button class="button danger" data-delete-profile="${esc(r.name)}">Excluir</button></div>` }], profiles, "Nenhum perfil salvo.")}`;
+    return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section>${table([{ label: "Nome", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Wi-Fi", render: (r) => esc((r.wifi?.ssids || []).map((s) => s.ssid || s.id).join(", ") || "—") }, { label: "DNS", render: (r) => Object.keys(r.dns || {}).length ? "Configurado" : "—" }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-edit-profile="${esc(r.name)}">Editar</button><button class="button" data-preview-profile="${esc(r.name)}">Preview / aplicar</button><button class="button danger" data-delete-profile="${esc(r.name)}">Excluir</button></div>` }], profiles, "Nenhum perfil salvo.")}`;
   }
-  function edit(profile = {}) {
-    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<form id="profile-form" class="form-grid"><div class="field"><label>Nome</label><input name="name" value="${esc(profile.name || "")}" ${profile.name ? "readonly" : ""} required></div><div class="field"><label>Descrição</label><input name="description" value="${esc(profile.description || "")}"></div><div class="field"><label>DNS primário</label><input name="dns1" value="${esc(profile.dns?.ipv4_1 || "")}"></div><div class="field"><label>DNS secundário</label><input name="dns2" value="${esc(profile.dns?.ipv4_2 || "")}"></div><div class="dialog-footer"><button class="button primary" type="submit">Salvar</button></div></form>`);
-    const f = d.querySelector("form");
-    f.onsubmit = async (e) => {
+  var field = (label, name, value = "") => `<div class="field"><label>${label}</label><input name="${name}" value="${esc(value ?? "")}"></div>`;
+  function choice(label, name, value, options) {
+    return `<div class="field"><label>${label}</label><select name="${name}" ${options?.length ? "" : "disabled"}><option value="${esc(value ?? "")}">${esc(value ?? "Não disponível")}</option>${(options || []).filter((o) => String(o.value) !== String(value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select></div>`;
+  }
+  async function edit(profile = {}) {
+    const live = await request("/api/device/wifi").catch(() => ({ networks: [], radios: [] }));
+    const networks2 = live.networks || [], radios2 = Array.isArray(live.radios) ? live.radios : [];
+    const savedSsids = profile.wifi?.ssids || [], savedRadios = profile.wifi?.radios || (profile.wifi?.radio ? [profile.wifi.radio] : []);
+    const unseenSsids = savedSsids.filter((s) => !networks2.some((r) => String(r.id) === String(s.id))), unseenRadios = savedRadios.filter((s) => !radios2.some((r) => (r.band ?? r.banda) === s.band));
+    const dns = profile.dns || {};
+    const servers = dns.servers || [dns.ipv4_1 || dns.primary, dns.ipv4_2 || dns.secondary, dns.ipv6_1, dns.ipv6_2].filter(Boolean);
+    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<form id="profile-form"><div class="form-grid">${field("Nome", "name", profile.name)}${field("Descrição", "description", profile.description)}</div><h3>DNS</h3><p class="muted">Até dois DNS IPv4 e dois IPv6. Senhas Wi-Fi são informadas apenas ao aplicar.</p><div id="profile-dns-list">${(servers.length ? servers : [""]).map((s) => `<div class="toolbar"><input name="dns-server" value="${esc(s)}" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>`).join("")}</div><button class="button" type="button" id="add-profile-dns">Adicionar DNS</button><h3>Redes Wi-Fi</h3>${networks2.length ? networks2.map((r, i) => {
+      const stored = savedSsids.find((s) => String(s.id) === String(r.id));
+      return `<section class="panel"><label><input type="checkbox" name="include-ssid-${i}" ${stored ? "checked" : ""}> Incluir ${esc(r.ssid || r.id)}</label><div class="form-grid">${field("SSID", `ssid-${i}`, stored?.ssid ?? r.ssid)}${choice("Estado", `enabled-${i}`, stored?.enabled ?? r.enabled ?? r.ativo, [{ value: "true", label: "Ativo" }, { value: "false", label: "Inativo" }])}${choice("Broadcast", `broadcast-${i}`, stored?.broadcast ?? r.broadcast, [{ value: "true", label: "Ativo" }, { value: "false", label: "Inativo" }])}</div></section>`;
+    }).join("") : '<p class="muted">Conecte um equipamento para vincular redes e rádios ao perfil.</p>'}${unseenSsids.map((s, i) => `<p><label><input type="checkbox" name="keep-ssid-${i}" checked> Manter rede do perfil ${esc(s.ssid || s.id)} (não observada nesta conexão)</label></p>`).join("")}<h3>Rádios</h3>${radios2.map((r, i) => {
+      const band2 = r.band ?? r.banda, stored = savedRadios.find((s) => s.band === band2);
+      return `<section class="panel"><label><input type="checkbox" name="include-radio-${i}" ${stored ? "checked" : ""}> Incluir ${esc(band2)}</label><div class="form-grid">${[["Canal", "channel", r.channel ?? r.canal], ["Largura", "bandwidth", r.bandwidth ?? r.largura], ["Padrão", "standard", r.standard ?? r.padrao], ["Potência", "tx_power", r.tx_power ?? r.potencia], ["País", "country", r.country ?? r.pais]].map(([label, key2, current]) => choice(label, `${key2}-${i}`, stored?.[key2] ?? current, r.options?.[key2] || [])).join("")}${choice("Canal automático", `auto_channel-${i}`, stored?.auto_channel ?? r.auto_channel ?? r.canal_automatico, [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}</div></section>`;
+    }).join("")}${unseenRadios.map((r, i) => `<p><label><input type="checkbox" name="keep-radio-${i}" checked> Manter rádio ${esc(r.band)} do perfil (não observado nesta conexão)</label></p>`).join("")}<h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease (segundos)", "lease", profile.dhcp?.lease_time)}</div><div class="dialog-footer"><button class="button primary">Salvar perfil</button></div></form>`);
+    const form = d.querySelector("form");
+    if (profile.name) form.querySelector('[name="name"]').readOnly = true;
+    const wireRemove = () => d.querySelectorAll("[data-remove-dns]").forEach((b) => b.onclick = () => b.parentElement.remove());
+    wireRemove();
+    d.querySelector("#add-profile-dns").onclick = () => {
+      d.querySelector("#profile-dns-list").insertAdjacentHTML("beforeend", '<div class="toolbar"><input name="dns-server" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>');
+      wireRemove();
+    };
+    form.onsubmit = async (e) => {
       e.preventDefault();
-      const fd = new FormData(f);
-      const dns = { ...profile.dns };
-      for (const [name, key] of [["dns1", "ipv4_1"], ["dns2", "ipv4_2"]]) {
-        const v = String(fd.get(name) || "").trim();
-        if (v) dns[key] = v;
-        else delete dns[key];
+      const fd = new FormData(form), wifi = { ...profile.wifi }, dhcp = { ...profile.dhcp };
+      wifi.ssids = [...unseenSsids.filter((s, i) => fd.get(`keep-ssid-${i}`)), ...networks2.flatMap((r, i) => {
+        if (!fd.get(`include-ssid-${i}`)) return [];
+        const stored = savedSsids.find((s) => String(s.id) === String(r.id)) || {};
+        const out = { ...stored, id: r.id, ssid: String(fd.get(`ssid-${i}`) || "") };
+        for (const k of ["enabled", "broadcast"]) {
+          const v = fd.get(`${k}-${i}`);
+          if (v === "true" || v === "false") out[k] = v === "true";
+        }
+        return [out];
+      })];
+      {
+        wifi.radios = [...unseenRadios.filter((r, i) => fd.get(`keep-radio-${i}`)), ...radios2.flatMap((r, i) => {
+          if (!fd.get(`include-radio-${i}`)) return [];
+          const band2 = r.band ?? r.banda, out = { ...savedRadios.find((s) => s.band === band2) || {}, band: band2 };
+          for (const k of ["channel", "bandwidth", "standard", "tx_power", "country"]) {
+            const v = fd.get(`${k}-${i}`);
+            if (v != null && v !== "") out[k] = String(v);
+          }
+          const auto = fd.get(`auto_channel-${i}`);
+          if (auto === "true" || auto === "false") out.auto_channel = auto === "true";
+          return [out];
+        })];
+        delete wifi.radio;
       }
+      for (const [input, key2] of [["pool-start", "min_address"], ["pool-end", "max_address"], ["lease", "lease_time"]]) {
+        const v = String(fd.get(input) || "").trim();
+        if (v) dhcp[key2] = v;
+        else delete dhcp[key2];
+      }
+      const nextDns = { ...dns, servers: fd.getAll("dns-server").map((v) => String(v).trim()).filter(Boolean) };
+      for (const k of ["primary", "secondary", "ipv4_1", "ipv4_2", "ipv6_1", "ipv6_2"]) delete nextDns[k];
+      const payload = { ...profile, name: String(fd.get("name") || "").trim(), description: fd.get("description"), wifi, dns: nextDns, dhcp };
+      const b = form.querySelector('[type="submit"]') || form.querySelector(".dialog-footer button");
+      b.disabled = true;
       try {
-        await request("/api/profiles", { method: "POST", body: JSON.stringify({ ...profile, name: fd.get("name"), description: fd.get("description"), dns }) });
+        await request("/api/profiles", { method: "POST", body: JSON.stringify(payload) });
         d.close();
         toast("Perfil salvo.");
         document.dispatchEvent(new CustomEvent("refresh-view"));
       } catch (err) {
         toast(err.message);
+      } finally {
+        b.disabled = false;
       }
     };
   }
@@ -332,7 +497,8 @@
     document.querySelectorAll("[data-edit-profile]").forEach((b) => b.onclick = () => edit(profiles.find((p) => p.name === b.dataset.editProfile)));
     document.querySelectorAll("[data-delete-profile]").forEach((b) => b.onclick = () => {
       const d = dialog("Excluir perfil?", `<p>${esc(b.dataset.deleteProfile)}</p>`, `<button class="button danger" data-confirm>Excluir</button>`);
-      d.querySelector("[data-confirm]").onclick = async () => {
+      d.querySelector("[data-confirm]").onclick = async (e) => {
+        e.currentTarget.disabled = true;
         try {
           await request("/api/profiles", { method: "DELETE", body: JSON.stringify({ name: b.dataset.deleteProfile }) });
           d.close();
@@ -345,14 +511,18 @@
     document.querySelectorAll("[data-preview-profile]").forEach((b) => b.onclick = async () => {
       try {
         const p = await request("/api/profiles/preview", { method: "POST", body: JSON.stringify({ name: b.dataset.previewProfile }) });
-        const d = dialog("Preview do perfil", `<p>${p.applicable} operação(ões) serão aplicadas; ${p.skipped} serão ignoradas por capability.</p>${table([{ label: "Operação", keys: ["label"] }, { label: "Suporte", keys: ["support"] }, { label: "Resultado", render: (o) => o.will_apply ? "Aplicar" : "Pular" }], p.operations)}`, `<button class="button primary" data-apply ${p.applicable ? "" : "disabled"}>Aplicar perfil</button>`);
-        d.querySelector("[data-apply]").onclick = async () => {
+        const d = dialog("Preview do perfil", `<p>${p.applicable} operação(ões) serão aplicadas; ${p.skipped} serão ignoradas por suporte.</p>${table([{ label: "Operação", keys: ["label"] }, { label: "Suporte", keys: ["support"] }, { label: "Resultado", render: (o) => o.will_apply ? "Aplicar" : "Pular" }], p.operations)}${p.operations.map((o) => `<section class="panel"><h3>${esc(o.label)}</h3>${table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["current"] }, { label: "Novo", keys: ["desired"] }], o.changes || [])}</section>`).join("")}${(p.profile?.wifi?.ssids || []).map((s) => `<div class="field"><label>Nova senha de ${esc(s.ssid || s.id)} (opcional, não salva)</label><input type="password" data-transient-ssid="${esc(s.id)}" autocomplete="new-password" minlength="8"></div>`).join("")}`, `<button class="button primary" data-apply ${p.applicable ? "" : "disabled"}>Aplicar perfil</button>`);
+        d.querySelector("[data-apply]").onclick = async (e) => {
+          e.currentTarget.disabled = true;
           try {
-            const r = await request("/api/profiles/apply", { method: "POST", body: JSON.stringify({ name: b.dataset.previewProfile }) });
-            toast(`Perfil: ${r.applied} aplicado(s), ${r.skipped} pulado(s), ${r.failed} falha(s).`);
+            const secrets = {};
+            for (const input of d.querySelectorAll("[data-transient-ssid]")) if (input.value) secrets[input.dataset.transientSsid] = input.value;
+            const r = await request("/api/profiles/apply", { method: "POST", body: JSON.stringify({ name: b.dataset.previewProfile, secrets }) });
+            toast(`Perfil: ${r.applied} comando(s) enviado(s), ${r.verified || 0} verificado(s), ${r.skipped} pulado(s), ${r.failed} falha(s), ${r.uncertain || 0} incerto(s).`);
             d.close();
           } catch (err) {
             toast(err.message);
+            e.currentTarget.disabled = false;
           }
         };
       } catch (err) {
@@ -369,23 +539,28 @@
   });
   var definitions = [{ feature: "dmz", title: "DMZ", fields: [["enabled", "Habilitado", "bool"], ["internal_client", "IP do cliente"]] }, { feature: "upnp", title: "UPnP", fields: [["enabled", "Habilitado", "bool"]] }, { feature: "tr069", title: "TR-069", fields: [["url", "URL ACS"]] }, { feature: "firewall", title: "Firewall", fields: [["enabled", "Habilitado", "bool"], ["level", "Nível"]] }];
   var loaded = {};
+  function presentation(feature, data) {
+    const rows2 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
+    return fields(rows2[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
+  }
   var featureCap = (f) => f === "firewall" && (cap("firewall_level").enabled?.read || cap("firewall_level").enabled?.write) ? cap("firewall_level") : cap(f);
   async function render5() {
     loaded = {};
     const results = await Promise.allSettled(definitions.map((d) => featureCap(d.feature).enabled?.read ? request("/api/device/" + d.feature) : Promise.resolve(null)));
-    const history2 = await request("/api/device/history").catch(() => null);
+    const history = await request("/api/device/history").catch(() => null);
     const reboot = cap("reboot");
-    return `<section class="panel"><h2>Manutenção</h2><div class="capability-row"><strong>Reiniciar equipamento</strong>${capBadge(reboot.read)}${capBadge(reboot.write)}<button id="reboot-button" class="button danger" ${reboot.enabled?.write ? "" : "disabled"}>Reiniciar</button></div></section><div class="split">${definitions.map((d, i) => {
+    const device = await request("/api/device").catch(() => null);
+    return `<section class="panel"><h2>Telemetria do equipamento</h2>${device ? fields([["Tempo ligado", uptime(device.uptime_seconds)], ["CPU", device.cpu_percent == null ? null : device.cpu_percent + " %"], ["Memória", device.memory_percent == null ? null : device.memory_percent + " %"], ["Temperatura", device.temperature_c == null ? null : device.temperature_c + " °C"]]) : '<p class="muted">Telemetria não disponível.</p>'}</section><section class="panel"><h2>Manutenção</h2><div class="capability-row"><strong>Reiniciar equipamento</strong>${capBadge(reboot.read)}${capBadge(reboot.write)}<button id="reboot-button" class="button danger" ${reboot.enabled?.write ? "" : "disabled"}>Reiniciar</button></div></section><div class="split">${definitions.map((d, i) => {
       const result = results[i];
       const value = result.status === "fulfilled" ? result.value : null;
       if (value) loaded[d.feature] = value;
-      return `<section class="panel"><div class="panel-header"><h2>${d.title}</h2>${capBadge(featureCap(d.feature).write)}</div>${value ? kv(value) : `<p class="muted">${result.status === "rejected" ? esc(result.reason.message) : "Leitura não comprovada nesta sessão."}</p>`}<button class="button" data-config="${d.feature}" ${value && value.available !== false && featureCap(d.feature).enabled?.write ? "" : "disabled"}>Editar</button></section>`;
-    }).join("")}</div><section class="panel"><h2>Histórico de operações</h2>${history2 ? table([{ label: "Data", keys: ["created_at"] }, { label: "Operação", keys: ["operation"] }, { label: "Alvo", keys: ["target"] }, { label: "Resultado", keys: ["outcome"] }], history2.changes || []) : '<p class="muted">Histórico não disponível.</p>'}</section>`;
+      return `<section class="panel"><div class="panel-header"><h2>${d.title}</h2>${capBadge(featureCap(d.feature).write)}</div>${value ? presentation(d.feature, value) : `<p class="muted">${result.status === "rejected" ? esc(result.reason.message) : "Leitura não comprovada nesta sessão."}</p>`}<button class="button" data-config="${d.feature}" ${value && value.available !== false && featureCap(d.feature).enabled?.write ? "" : "disabled"}>Editar</button></section>`;
+    }).join("")}</div><section class="panel"><h2>Histórico de operações</h2>${history ? table([{ label: "Data", keys: ["created_at"] }, { label: "Operação", keys: ["operation"] }, { label: "Alvo", keys: ["target"] }, { label: "Resultado", keys: ["outcome"] }], (history.changes || []).map((row) => ({ ...row, created_at: row.created_at ? new Date(row.created_at).toLocaleString("pt-BR") : null, outcome: { attempted: "Solicitado", accepted: "Aceito", verified: "Verificado", uncertain: "Sem confirmação", failed: "Falhou" }[row.outcome] || row.outcome }))) : '<p class="muted">Histórico não disponível.</p>'}</section>`;
   }
   function mount5() {
     document.querySelectorAll("[data-config]").forEach((b2) => b2.onclick = () => {
       const definition = definitions.find((d) => d.feature === b2.dataset.config), data = loaded[definition.feature];
-      editConfig("Editar " + definition.title, "/api/device/" + definition.feature, definition.fields.map(([key, label, type]) => ({ key, label, type, value: data[key] })));
+      editConfig("Editar " + definition.title, "/api/device/" + definition.feature, definition.fields.map(([key2, label, type]) => ({ key: key2, label, type, value: data[key2] })));
     });
     const b = document.querySelector("#reboot-button");
     if (!b || b.disabled) return;
@@ -420,51 +595,112 @@
   var traffic_exports = {};
   __export(traffic_exports, {
     mount: () => mount6,
-    render: () => render7
+    render: () => render7,
+    unmount: () => unmount
   });
-  var history = /* @__PURE__ */ new Map();
+  var histories = /* @__PURE__ */ new Map();
   var session = null;
   var timer = null;
-  var bytes = (v) => {
-    const n = Number(v);
-    if (v == null || !Number.isFinite(n)) return "Não disponível";
-    const units = ["B", "KiB", "MiB", "GiB", "TiB"];
-    let x = n, i = 0;
-    while (x >= 1024 && i < 4) {
-      x /= 1024;
-      i++;
-    }
-    return `${x.toFixed(i ? 2 : 0)} ${units[i]}`;
-  };
+  var generation = 0;
+  var seconds = 300;
+  var key = (s) => s.source + ":" + s.identity;
   var rate = (v) => v == null ? "Aguardando amostra" : `${Number(v).toFixed(2)} Mbps`;
-  function chart(samples) {
-    if (samples.length < 2) return '<p class="muted">O gráfico aparecerá após duas amostras com taxa disponível.</p>';
-    const max = Math.max(1, ...samples.flatMap((s) => [s.rx_mbps || 0, s.tx_mbps || 0]));
-    const points = (k) => samples.flatMap((s, i) => s[k] == null ? [] : [`${i * 600 / (samples.length - 1)},${130 - s[k] * 120 / max}`]).join(" ");
-    return `<svg class="sparkline" viewBox="0 0 600 140" role="img" aria-label="Taxas observadas de download e upload"><polyline points="${points("rx_mbps")}"></polyline><polyline class="upload" points="${points("tx_mbps")}"></polyline></svg><p class="muted">RX em azul · TX em violeta · escala máxima ${max.toFixed(2)} Mbps · amostras desta sessão</p>`;
+  function remember(s) {
+    const k = key(s), h = histories.get(k) || [];
+    h.push({ ...s, timestamp: s.timestamp || Date.now() / 1e3 });
+    histories.set(k, h.slice(-2e3));
+  }
+  function card(s) {
+    return `<section class="panel" data-stream="${esc(key(s))}"><h3>${esc({ wan: "WAN", lan: "LAN", wifi: "Wi-Fi", wifi_client: "Cliente Wi-Fi" }[s.source] || s.source)}</h3><p class="muted mono">${esc(s.identity)}</p><div class="grid">${[["Taxa RX", "rx_mbps"], ["Taxa TX", "tx_mbps"], ["Recebido", "rx_bytes"], ["Enviado", "tx_bytes"]].map(([label, k]) => `<article class="metric"><label>${label}</label><strong data-value="${k}"></strong></article>`).join("")}</div><p data-sample-status class="muted"></p><svg class="sparkline" viewBox="0 0 600 140" role="img" aria-label="Taxas RX e TX"><polyline data-rx></polyline><polyline data-tx class="upload"></polyline></svg><p class="muted" data-chart-label></p><div class="human-fields">${["rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"].map((k) => `<div class="human-field"><span>${{ rx_packets: "Pacotes RX", tx_packets: "Pacotes TX", rx_errors: "Erros RX", tx_errors: "Erros TX", rx_discard: "Descartes RX", tx_discard: "Descartes TX" }[k]}</span><strong data-value="${k}"></strong></div>`).join("")}</div></section>`;
+  }
+  function setText(el, value) {
+    if (el && el.textContent !== value) el.textContent = value;
+  }
+  function paint(d) {
+    const host = document.querySelector("#traffic-streams");
+    if (!host) return;
+    const sources = d?.sources || [];
+    setText(document.querySelector("#traffic-status"), sources.length ? "Amostras atualizadas." : "Nenhum contador ativo observado nesta sessão.");
+    const active = new Set(sources.map(key));
+    for (const el of host.children) {
+      if (!active.has(el.dataset.stream)) setText(el.querySelector("[data-sample-status]"), "Fonte não observada na última leitura; valores anteriores.");
+    }
+    for (const s of sources) {
+      remember(s);
+      let el = [...host.children].find((e) => e.dataset.stream === key(s));
+      if (!el) {
+        host.insertAdjacentHTML("beforeend", card(s));
+        el = host.lastElementChild;
+      }
+      for (const node of el.querySelectorAll("[data-value]")) {
+        const name = node.dataset.value, v = name.endsWith("_mbps") ? rate(s[name]) : name.endsWith("_bytes") ? formatBytes(s.counters?.[name]) : String(s.counters?.[name] ?? "Não disponível");
+        setText(node, v);
+      }
+      setText(el.querySelector("[data-sample-status]"), s.counter_reset ? "Contador reiniciado; aguardando amostra." : "");
+      plot(el, s);
+    }
+    const ranked = sources.filter((s) => ["client", "wifi_client"].includes(s.source)).filter((s) => s.counters?.rx_bytes != null || s.counters?.tx_bytes != null).sort((a, b) => Number(b.counters?.rx_bytes || 0) + Number(b.counters?.tx_bytes || 0) - (Number(a.counters?.rx_bytes || 0) + Number(a.counters?.tx_bytes || 0)));
+    setText(document.querySelector("#traffic-ranking"), ranked.length ? ranked.slice(0, 5).map((s) => `${s.identity}: ${formatBytes(Number(s.counters?.rx_bytes || 0) + Number(s.counters?.tx_bytes || 0))}`).join(" · ") : "Ranking de clientes não disponível: o firmware não retornou contadores individuais.");
+  }
+  function plot(el, s) {
+    const cutoff = Date.now() / 1e3 - seconds;
+    const h = (histories.get(key(s)) || []).filter((v) => v.timestamp >= cutoff);
+    const max = Math.max(1, ...h.flatMap((v) => [v.rx_mbps || 0, v.tx_mbps || 0]));
+    const points = (k) => h.flatMap((v, i) => v[k] == null ? [] : [`${i * 600 / Math.max(1, h.length - 1)},${130 - v[k] * 120 / max}`]).join(" ");
+    el.querySelector("[data-rx]").setAttribute("points", points("rx_mbps"));
+    el.querySelector("[data-tx]").setAttribute("points", points("tx_mbps"));
+    setText(el.querySelector("[data-chart-label]"), `RX azul · TX violeta · escala ${max.toFixed(2)} Mbps · ${h.length} pontos · médias por intervalo no histórico`);
   }
   async function render7() {
-    const current = window.__amStore?.session?.session?.session_id;
-    if (current !== session) {
-      session = current;
-      history.clear();
+    const id = window.__amStore?.session?.session?.session_id;
+    if (id !== session) {
+      session = id;
+      histories.clear();
     }
-    const d = await request("/api/device/traffic");
-    const sources = d?.sources || [];
-    for (const s of sources) {
-      const key = s.source + ":" + s.identity;
-      const h = history.get(key) || [];
-      if (s.rx_mbps != null || s.tx_mbps != null) h.push(s);
-      history.set(key, h.slice(-60));
-    }
-    return `<section class="panel"><div class="panel-header"><h2>Tráfego</h2><button class="button" id="traffic-refresh">Atualizar amostra</button></div><p class="muted">Taxas calculadas por diferença de contadores. WAN, LAN e clientes são apresentados separadamente.</p>${!sources.length ? '<div class="notice warning">Nenhum contador ativo observado nesta sessão.</div>' : ""}</section>${sources.map((s) => `<section class="panel"><h3>${esc({ wan: "WAN", lan: "LAN", wifi_client: "Cliente Wi-Fi" }[s.source] || s.source)} · ${esc(s.identity)}</h3><div class="grid">${metric(s.source === "wan" ? "Download" : "Taxa RX", rate(s.rx_mbps))}${metric(s.source === "wan" ? "Upload" : "Taxa TX", rate(s.tx_mbps))}${metric("Recebido", bytes(s.counters?.rx_bytes))}${metric("Enviado", bytes(s.counters?.tx_bytes))}</div>${s.counter_reset ? '<p class="muted">Contador reiniciado; aguardando nova amostra.</p>' : ""}${chart(history.get(s.source + ":" + s.identity) || [])}${table([{ label: "RX pacotes", keys: ["rx_packets"] }, { label: "TX pacotes", keys: ["tx_packets"] }, { label: "Erros RX", keys: ["rx_errors"] }, { label: "Erros TX", keys: ["tx_errors"] }, { label: "Descartes RX", keys: ["rx_discard"] }, { label: "Descartes TX", keys: ["tx_discard"] }], [s.counters || {}])}</section>`).join("")}`;
+    return `<section class="panel"><div class="panel-header"><h2>Tráfego</h2><div class="toolbar"><select id="traffic-period" aria-label="Período"><option value="300">Últimos minutos</option><option value="3600">1 hora</option><option value="86400">24 horas</option></select><button class="button" id="traffic-refresh">Atualizar amostra</button></div></div><p class="muted" id="traffic-status">Aguardando leitura.</p><p class="muted">Contadores por interface; WAN/LAN/Wi-Fi não são somados.</p></section><div id="traffic-streams"></div><section class="panel"><h3>Consumo acumulado por cliente</h3><p id="traffic-ranking" class="muted"></p></section>`;
   }
   function mount6() {
-    document.querySelector("#traffic-refresh")?.addEventListener("click", () => document.dispatchEvent(new CustomEvent("refresh-view")));
+    const token = ++generation;
+    let busy = false;
+    const poll = async () => {
+      if (token !== generation || busy) return;
+      busy = true;
+      try {
+        const d = await request("/api/device/traffic");
+        if (token === generation) paint(d);
+      } catch (err) {
+        if (token === generation) setText(document.querySelector("#traffic-status"), err.message);
+      } finally {
+        busy = false;
+        if (token === generation) {
+          clearTimeout(timer);
+          timer = setTimeout(poll, 5e3);
+        }
+      }
+    };
+    document.querySelector("#traffic-refresh").onclick = poll;
+    const period = document.querySelector("#traffic-period");
+    period.value = String(seconds);
+    period.onchange = async () => {
+      seconds = Number(period.value);
+      try {
+        const rows2 = await request("/api/device/traffic/history", { method: "POST", body: JSON.stringify({ seconds }) });
+        if (token !== generation) return;
+        histories.clear();
+        for (const r of rows2) remember(r);
+        for (const el of document.querySelector("#traffic-streams").children) {
+          const h = histories.get(el.dataset.stream);
+          if (h?.length) plot(el, h.at(-1));
+        }
+      } catch (err) {
+        setText(document.querySelector("#traffic-status"), err.message);
+      }
+    };
+    poll();
+  }
+  function unmount() {
+    generation++;
     clearTimeout(timer);
-    timer = setTimeout(() => {
-      if (window.__amStore?.view === "traffic") document.dispatchEvent(new CustomEvent("refresh-view"));
-    }, 5e3);
   }
 
   // apps/access_manager/static/js/shared/diagnostics.js
@@ -472,7 +708,7 @@
     const technical = `<details><summary>Ver resposta técnica</summary><pre>${esc(JSON.stringify(d.advanced || d, null, 2))}</pre></details>`;
     const head = `<h3>${esc(d.target || "Destino não disponível")}</h3><p>${esc(d.status)} · ${esc(d.interface || "Interface não disponível")} · ${esc(d.protocol || "Protocolo não disponível")}</p>`;
     if (d.kind === "traceroute") return head + table([{ label: "Hop", keys: ["number"] }, { label: "IP / host", render: (r) => esc(r.host || "*") }, ...[0, 1, 2].map((i) => ({ label: `Latência ${i + 1}`, render: (r) => r.latencies_ms?.[i] != null ? `${esc(r.latencies_ms[i])} ms` : "*" })), { label: "Status", render: (r) => r.timeout ? "Timeout" : "Resposta recebida" }], d.hops || [], "Nenhum salto foi fornecido pelo equipamento.") + technical;
-    return head + `<div class="grid">${[["Enviados", "sent"], ["Recebidos", "received"], ["Perda (%)", "loss_percent"], ["Mínimo (ms)", "min_ms"], ["Médio (ms)", "avg_ms"], ["Máximo (ms)", "max_ms"]].map(([label, key]) => metric(label, d[key] ?? "Não disponível")).join("")}</div>` + technical;
+    return head + `<div class="grid">${[["Enviados", "sent"], ["Recebidos", "received"], ["Perda (%)", "loss_percent"], ["Mínimo (ms)", "min_ms"], ["Médio (ms)", "avg_ms"], ["Máximo (ms)", "max_ms"]].map(([label, key2]) => metric(label, d[key2] ?? "Não disponível")).join("")}</div>` + technical;
   }
 
   // apps/access_manager/static/js/workspaces/views/misc.js
@@ -553,6 +789,7 @@
     if (updated) updated.textContent = s?.updated_at ? `Atualizado ${new Date(s.updated_at).toLocaleTimeString()}` : "—";
   }
   async function render8(name = store.view) {
+    views[store.view]?.unmount?.();
     store.view = name;
     document.querySelectorAll(".nav").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
     const [kicker, title] = meta[name] || meta.overview;
@@ -610,7 +847,7 @@
       const password = form.querySelector('[name="password"]');
       if (password) password.value = "";
       toast(`Conectado via ${payload.https ? "HTTPS" : "HTTP"} em ${s.session.model || s.session.vendor || payload.host}.`);
-      await render8(s.session?.mode === "deployment" ? "deployment" : "overview");
+      await render8("overview");
     } catch (err) {
       toast(err?.message || "Não foi possível conectar ao equipamento.");
       console.error("[Access Manager] Falha de conexão:", err);
@@ -659,7 +896,7 @@
       store.setSession(s);
       store.setCapabilities(s.session?.capabilities || {});
       syncContext();
-      await render8(s.connected ? s.session?.mode === "deployment" ? "deployment" : "overview" : store.view);
+      await render8(s.connected ? "overview" : store.view);
     } catch (error) {
       console.error("[Access Manager] Falha ao consultar sessão inicial:", error);
       await render8(store.view);

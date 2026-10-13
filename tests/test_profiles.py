@@ -86,3 +86,45 @@ def test_persisted_profile_rejects_wifi_password(tmp_path: Path):
     with pytest.raises(ValueError, match='Secrets are not persisted'):
         service.save({'name':'unsafe','wifi':{'ssids':[{'id':1,'password':'supersecret'}]}})
     assert not (tmp_path/'profiles.json').exists()
+
+
+def test_multiple_radios_dns_addresses_and_legacy_power_are_translated():
+    profile=NetworkProfile.from_dict({'name':'Dual','wifi':{'radios':[{'band':'2.4GHz','channel':'6'},{'band':'5GHz','power':100}]},'dns':{'servers':['1.1.1.1','8.8.8.8','2606:4700:4700::1111']}})
+    ops=HuaweiProfileTranslator().translate(profile)
+    assert len(ops)==3
+    assert ops[1].args[0]['tx_power']==100 and 'power' not in ops[1].args[0]
+    assert ops[2].args[0]=={'ipv4_1':'1.1.1.1','ipv4_2':'8.8.8.8','ipv6_1':'2606:4700:4700::1111'}
+
+
+def test_dns_profile_does_not_silently_drop_excess_or_send_empty_config():
+    import pytest
+    with pytest.raises(ValueError):ZTEProfileTranslator().translate(NetworkProfile.from_dict({'name':'Too many','dns':{'servers':['1.1.1.1','8.8.8.8','9.9.9.9']}}))
+    assert ZTEProfileTranslator().translate(NetworkProfile.from_dict({'name':'Empty','dns':{'servers':[]}}))==[]
+
+
+def test_transient_profile_password_is_applied_without_persistence(tmp_path):
+    commands=FakeCommands();repository=JsonProfileRepository(tmp_path/'profiles.json')
+    service=ProfileService(FakeSessions(),commands,repository,{'huawei':HuaweiProfileTranslator()})
+    service.save({'name':'Temporary','wifi':{'ssids':[{'id':'1','ssid':'Home'}]}})
+    result=service.apply('Temporary',secrets={'1':'temporary-secret'})
+    assert result['applied']==1
+    assert commands.calls[0][2][1]['password']=='temporary-secret'
+    assert 'temporary-secret' not in repository.path.read_text()
+
+
+def test_profile_preview_reports_current_and_desired_values(tmp_path):
+    class Q:
+        def wifi(self):return {'networks':[{'id':'1','ssid':'Before','ativo':False}], 'radios':[]}
+    service=ProfileService(FakeSessions(),FakeCommands(),JsonProfileRepository(tmp_path/'profiles.json'),{'huawei':HuaweiProfileTranslator()},queries=Q())
+    preview=service.preview({'name':'Diff','wifi':{'ssids':[{'id':'1','ssid':'After','enabled':True}]}})
+    changes=preview['operations'][0]['changes']
+    assert changes[0]['current']=='Before' and changes[0]['desired']=='After'
+    assert changes[1]['current']=='Não' and changes[1]['desired']=='Sim'
+
+
+def test_uncertain_profile_result_is_not_counted_as_applied(tmp_path):
+    class Commands:
+        def execute(self,*args,**kw):return {'success':False,'uncertain':True}
+    service=ProfileService(FakeSessions(),Commands(),JsonProfileRepository(tmp_path/'profiles.json'),{'huawei':HuaweiProfileTranslator()})
+    result=service.apply({'name':'Uncertain','wifi':{'ssids':[{'id':'1','ssid':'Home'}]}})
+    assert result['uncertain']==1 and result['applied']==0 and result['verified']==0
