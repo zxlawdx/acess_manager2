@@ -32,6 +32,8 @@ class DeviceCommandBus:
                 elif result.get('success') is True: outcome = 'accepted'
             record(result, outcome)
             return result
+    def dns_lookup(self, config): return self.execute('dns_lookup','dns_lookup',config)
+    def discover_speedtest(self): return self.execute('speedtest_discovery','discover_speedtest')
     def reboot(self): return self.execute('reboot','reboot')
     def set_ssid(self, ssid_id, config): return self.execute('wifi','set_ssid_config',ssid_id,config)
     def set_wifi_radio(self, config): return self.execute('wifi_radio','set_wifi_radio',config)
