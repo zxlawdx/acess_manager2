@@ -211,3 +211,11 @@ Esta matriz registra 177 rotas do SOURCE. Rotas sem mapeamento revisado ficam PE
 | Navegação operacional | sidebar | Capabilities/Implantação internas, ocultas; testes DOM |
 
 A tabela das rotas históricas preserva pendências fora deste escopo. Leitura suportada não implica escrita ou validação física. Ver NETPULSE_EXECUTION_REPORT.md para bloqueios por firmware.
+
+## Atualização: liberação por endpoint (2026-10-13)
+
+A pedido do usuário, o bloqueio por modelo X6 foi substituído por disponibilidade da página autenticada na sessão. Os writers BBSP existentes de DHCP, DNS, reservas DHCP e hosts DNS (inclusive exclusão) ficam habilitados no X6 quando suas páginas correspondentes respondem. Página upstream DNS não habilita CRUD de hosts; cada superfície tem probe próprio. Writers mantêm validação e readback; disponibilidade não equivale a validação física. As afirmações anteriores de X6 sempre UNKNOWN foram superadas por esta regra.
+
+Regressão após alteração: 57 testes passaram (X6, providers, HTTP Vela e writers capturados). Ausência de endpoint conserva UNKNOWN. Não houve nova alteração de frontend nem necessidade de repetir QA visual.
+
+ZTE: `dns_hostname_lua.lua` possui implementação de Apply para upsert, mas não há endpoint/ação de exclusão comprovada no código legado. Essa operação continua indisponível. Mesh: o endpoint `easymeshTopo.asp` já está catalogado para leitura; o limite de representação vem da ausência de relações reconhecidas, não de uma trava de escrita a remover.

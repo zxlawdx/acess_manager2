@@ -16,6 +16,8 @@ from apps.access_manager.infrastructure.huawei.captured import (
     _record_domain,
     parse_huawei_js_records,
     DHCP_SERVER_PAGE,
+    DHCP_STATIC_PAGE,
+    DNS_HOSTS_PAGE,
     DNS_PAGE,
     ETH_INFO_PAGE,
     LAN_USER_DEV_PAGE,
@@ -176,6 +178,9 @@ class HuaweiEG8041FamilyRuntime:
         "clients": (USER_DEVICE_PAGE, LAN_USER_DEV_PAGE, WLAN_INFO_PAGE, WLAN_ASSOC_PAGE),
         "dhcp": (DHCP_SERVER_PAGE,),
         "dns": (DNS_PAGE,),
+        "dhcp_reservations": (DHCP_STATIC_PAGE,),
+        "dns_hosts": (DNS_HOSTS_PAGE,),
+        "dns_hosts_delete": (DNS_HOSTS_PAGE,),
     }
 
     def _surface_available(self, feature: str) -> bool:
@@ -280,6 +285,9 @@ class HuaweiEG8041FamilyRuntime:
             ("clients", self.clients),
             ("dhcp", self.captured.dhcp_status),
             ("dns", self.captured.dns_status),
+            ("dhcp_reservations", lambda: self.captured._records(DHCP_STATIC_PAGE)[1]),
+            ("dns_hosts", lambda: self.captured._records(DNS_HOSTS_PAGE)[1]),
+            ("dns_hosts_delete", lambda: self.captured._records(DNS_HOSTS_PAGE)[1]),
             ("dmz", self.captured.dmz_status),
             ("tr069", self.captured.tr069_management_status),
             ("firewall_level", self.captured.firewall_level_status),
@@ -513,7 +521,7 @@ class HuaweiEG8041FamilyRuntime:
 
     def capabilities(self) -> list[Capability]:
         out: list[Capability] = []
-        for feature in ("device", "wan", "optical", "wifi", "wifi_radio", "lan", "clients", "dhcp", "dns", "dmz", "tr069", "firewall_level"):
+        for feature in ("device", "wan", "optical", "wifi", "wifi_radio", "lan", "clients", "dhcp", "dns", "dhcp_reservations", "dns_hosts", "dns_hosts_delete", "dmz", "tr069", "firewall_level"):
             probe = self.probes.get(feature)
             read = S.SUPPORTED if probe and probe.ok else S.UNKNOWN
             write = S.UNKNOWN
@@ -522,7 +530,11 @@ class HuaweiEG8041FamilyRuntime:
                 # mutation surface through read-back. It is implemented, but
                 # not labelled physically validated merely from X7 evidence.
                 write = S.SUPPORTED
-            elif self.model == "EG8041X7-10" and feature in {"dhcp", "dns", "dmz", "tr069", "firewall_level"} and probe and probe.ok:
+            elif feature in {"dhcp", "dns", "dhcp_reservations", "dns_hosts", "dns_hosts_delete"} and probe and probe.ok and self._surface_available(feature):
+                # Shared BBSP writers already exist with read-back. Availability
+                # on this session, rather than X7 physical evidence, gates X6.
+                write = S.SUPPORTED
+            elif self.model == "EG8041X7-10" and feature in {"dmz", "tr069", "firewall_level"} and probe and probe.ok:
                 write = S.SUPPORTED
             out.append(Capability(
                 feature,

@@ -33,3 +33,11 @@ As implementações funcionais do SOURCE `1623bce8717b9b92683cd3904f9c2bd378da40
 3. Persistência de tráfego é consultada na sessão ativa; consulta histórica entre sessões/dispositivos ainda não existe. Ranking depende de contadores individuais retornados pelo firmware.
 4. Paridade integral das 177 rotas continua aberta: WAN CRUD, regras de firewall, port-forward, QoS, SNTP, WPS/agendas/band steering, frota/jobs/agentes/monitor/incidentes/drift, backup/restore e outras superfícies seguem na matriz. Leitura WAN/LAN não implica esses writers completos.
 5. QA de layout usa Chromium real com respostas sintéticas. Disponibilidade e sucesso de escrita em equipamento físico ainda exigem capturas específicas; não se declara paridade física completa.
+
+## Atualização: liberação por endpoint (2026-10-13)
+
+A pedido do usuário, o bloqueio por modelo X6 foi substituído por disponibilidade da página autenticada na sessão. Os writers BBSP existentes de DHCP, DNS, reservas DHCP e hosts DNS (inclusive exclusão) ficam habilitados no X6 quando suas páginas correspondentes respondem. Página upstream DNS não habilita CRUD de hosts; cada superfície tem probe próprio. Writers mantêm validação e readback; disponibilidade não equivale a validação física. As afirmações anteriores de X6 sempre UNKNOWN foram superadas por esta regra.
+
+Regressão após alteração: 57 testes passaram (X6, providers, HTTP Vela e writers capturados). Ausência de endpoint conserva UNKNOWN. Não houve nova alteração de frontend nem necessidade de repetir QA visual.
+
+ZTE: `dns_hostname_lua.lua` possui implementação de Apply para upsert, mas não há endpoint/ação de exclusão comprovada no código legado. Essa operação continua indisponível. Mesh: o endpoint `easymeshTopo.asp` já está catalogado para leitura; o limite de representação vem da ausência de relações reconhecidas, não de uma trava de escrita a remover.
