@@ -656,13 +656,13 @@ class HuaweiCapturedFeatureService:
             ),
             "registration_status": value(
                 "Status", "ONTState", "RegisterStatus",
-                default="Huawei GPON",
+                default=None,
             ),
             "onu_id": value(
-                "OnuId", "ONUId", "ONTID", default="-",
+                "OnuId", "ONUId", "ONTID", default=None,
             ),
             "los": value(
-                "LOS", "LosStatus", default="-",
+                "LOS", "LosStatus", default=None,
             ),
             "pon_uptime": value(
                 "Uptime", "PONUptime",
@@ -2833,9 +2833,9 @@ class HuaweiCapturedFeatureService:
                 "potencia": self._power_for_ui(
                     _record_value(relevant, "TransmitPower", default="100")
                 ),
-                "beacon_interval": _record_value(relevant, "BeaconPeriod", default=100),
+                "beacon_interval": _record_value(relevant, "BeaconPeriod", default=None),
                 "rts_cts": _record_value(relevant, "RTSThreshold", default=2346),
-                "dtim": _record_value(relevant, "DtimPeriod", default=1),
+                "dtim": _record_value(relevant, "DtimPeriod", default=None),
                 "frag_threshold": _record_value(
                     relevant, "FragThreshold", default=2346
                 ),
@@ -2863,10 +2863,10 @@ class HuaweiCapturedFeatureService:
                 ),
                 "bandwidth_code": raw_bw,
                 "standard_raw": str(raw_standard),
-                "sgi": False,
-                "mu_mimo": False,
-                "downlink_ofdma": False,
-                "twt": False,
+                "sgi": None,
+                "mu_mimo": None,
+                "downlink_ofdma": None,
+                "twt": None,
                 "radio_ativo": bool(basic.get("ativo", True)),
                 "_raw_ht20": raw_bw,
                 "_raw_standard": str(raw_standard),

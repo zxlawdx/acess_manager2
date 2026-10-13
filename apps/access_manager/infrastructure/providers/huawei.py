@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from apps.access_manager.infrastructure.configuration_adapters import OperationalConfigurations
 
 from apps.access_manager.domain.capabilities import (
     Capability,
@@ -27,6 +28,7 @@ class HuaweiProvider:
     vendor = "huawei"
 
     def __init__(self, client_factory=HuaweiAffinityNegotiatingWebClient):
+        self._surfaces=OperationalConfigurations(self)
         self.client_factory = client_factory
         self.client = None
         self.model = None
@@ -134,6 +136,7 @@ class HuaweiProvider:
         }
 
     def disconnect(self):
+        self._surfaces.clear()
         if self.client is not None:
             try:
                 self.client.close()
@@ -167,6 +170,11 @@ class HuaweiProvider:
             Capability("reboot", S.UNKNOWN, S.UNKNOWN, E.UNKNOWN, destructive=True, source="no_negative_proof"),
         ]
 
+        items.append(Capability('configuration_surfaces',S.SUPPORTED,S.SUPPORTED,E.FIXTURE_VALIDATED,source='mapped_runtime_operational_adapters'))
+        items.append(Capability('mesh_read',S.SUPPORTED,S.UNKNOWN,E.SOURCE_CONFIRMED,source='mapped_easymesh_read_only'))
+        from apps.access_manager.infrastructure.huawei.reboot import supported as reboot_supported
+        if reboot_supported(self.client,self.model):items.append(Capability('reboot',S.SUPPORTED,S.SUPPORTED,E.SOURCE_CONFIRMED,destructive=True,source='hg8245h_auth_family_reboot'))
+        items.append(Capability('runtime_diagnostic',S.SUPPORTED,S.UNKNOWN,E.SOURCE_CONFIRMED,source='mapped_read_inventory'))
         profile = self.profile
         if profile is not None:
             for name, spec in profile.captured_features.items():
@@ -233,6 +241,7 @@ class HuaweiProvider:
 
         rank = {S.UNSUPPORTED: 0, S.UNKNOWN: 1, S.PARTIAL: 2, S.SUPPORTED: 3}
         erank = {
+            E.SOURCE_FOUND: 0, E.DOCUMENTED: 1, E.SOURCE_CONFIRMED: 2, E.FIRMWARE_CONFIRMED: 3,
             E.UNKNOWN: 0,
             E.RESEARCH_ONLY: 1,
             E.IMPLEMENTED: 2,
@@ -262,6 +271,12 @@ class HuaweiProvider:
 
     def get_device_info(self):
         self._need()
+        if str(getattr(self.client,'auth_flow',''))=='api_ses_token':
+            import xml.etree.ElementTree as ET
+            root=ET.fromstring(self.client.get_page('/api/system/deviceinfo'))
+            if root.tag!='response':raise RuntimeError('Resposta de identidade API não reconhecida')
+            names={'model':('DeviceName','ProductName','ModelName'),'firmware':('SoftwareVersion',),'hardware':('HardwareVersion',),'serial':('SerialNumber',),'uptime_seconds':('Uptime',)}
+            return {**{key:next((root.findtext(n) for n in tags if root.findtext(n)),None) for key,tags in names.items()},'manufacturer':'Huawei'}
         return self.captured.device_status()
 
     def get_clients(self):
@@ -380,11 +395,9 @@ class HuaweiProvider:
         return self.runtime.traceroute(config)
 
     def reboot(self):
-        # Do not turn the presence of reboot.asp into a production mutation.
-        # The legacy EG8041 tree maps the page but does not contain a proven
-        # X6/X7 writer. UNKNOWN therefore remains the correct write state.
-        self.capabilities.require_write("reboot")
-        raise RuntimeError("Huawei reboot writer is not proven for this active runtime")
+        from apps.access_manager.infrastructure.huawei.reboot import reboot
+        self.capabilities.require_write('reboot')
+        return reboot(self.client,self.model)
 
     def get_dmz(self):
         self._need(); return self.captured.dmz_status()
@@ -456,3 +469,29 @@ class HuaweiProvider:
             except Exception as error:
                 result={**result,'success':False,'verified':False,'uncertain':True,'readback_error':type(error).__name__}
         return result
+
+    def surface_catalog(self): return self._surfaces.catalog()
+    def surface_read(self, feature): return self._surfaces.inspect(self.client,feature)
+    def surface_preview(self, config): return self._surfaces.preview(self.client,str(getattr(self.client,'host','')),config['feature'],config['instance'],config.get('changes') or {},config.get('action','update'))
+    def surface_apply(self, config): return self._surfaces.apply(self.client,str(getattr(self.client,'host','')),config['nonce'],config.get('confirmation'))
+
+    def get_mesh(self):
+        from apps.access_manager.domain.mesh import normalize_mesh
+        data=self.mapped.read_feature('easymesh_topology')
+        nodes=[]
+        for page in data.get('pages') or []:
+            for row in page.get('records') or []:
+                if row.get('NodeID'):nodes.append(row)
+        return normalize_mesh({'available':bool(nodes),'nodes':nodes})
+
+    def runtime_diagnostic(self):
+        from apps.access_manager.infrastructure.huawei.mapped_surface import HUAWEI_MAPPED_FEATURES
+        profile=self.profile
+        result={}
+        for feature,spec in (profile.captured_features if profile else {}).items():
+            if not spec.get('read') or feature not in HUAWEI_MAPPED_FEATURES:continue
+            # Whitelisted service reads use their existing implementation.
+            # No generic externally selected path or POST payload is accepted.
+            data=self.mapped.read_feature(feature)
+            result[HUAWEI_MAPPED_FEATURES[feature]['label']]={'available':data.get('available',False),'record_count':sum(p.get('record_count',0) for p in data.get('pages',[])),'partial':data.get('partial',False)}
+        return {'read_only':True,'sections':result}

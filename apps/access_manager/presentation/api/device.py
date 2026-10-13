@@ -26,7 +26,11 @@ def optical(context=None): return safe(queries.optical)
 @api.get("/device/capabilities")
 def capabilities(context=None): return safe(lambda: sessions.provider.capabilities.public())
 @api.post("/device/reboot")
-def reboot(context=None): return safe(commands.reboot)
+def reboot(context=None):
+    def run():
+        if body(context).get('confirm') is not True:raise ValueError('Confirme explicitamente o reboot')
+        return commands.reboot()
+    return safe(run)
 @api.post("/device/wifi/ssid")
 def wifi_ssid(context=None):
     d=body(context); return safe(lambda: commands.set_ssid(d['ssid_id'],d.get('config') or {}))
@@ -86,3 +90,66 @@ def diagnostic_dns_lookup(context=None): return safe(lambda: commands.dns_lookup
 
 @api.post("/device/diagnostics/speedtest-discovery")
 def speedtest_discovery(context=None): return safe(commands.discover_speedtest)
+
+@api.get("/device/configuration/catalog")
+def surface_catalog(context=None): return safe(queries.surface_catalog)
+@api.post("/device/configuration/read")
+def surface_read(context=None): return safe(lambda: queries.surface_read(body(context)['feature']))
+@api.post("/device/configuration/preview")
+def surface_preview(context=None): return safe(lambda: commands.surface_preview(body(context)))
+@api.post("/device/configuration/apply")
+def surface_apply(context=None): return safe(lambda: commands.surface_apply(body(context)))
+
+@api.post("/device/diagnostics/speedtest/start")
+def speedtest_start(context=None): return safe(lambda: commands.speedtest_start(body(context)))
+@api.post("/device/diagnostics/speedtest/poll")
+def speedtest_poll(context=None): return safe(lambda: queries.speedtest_poll(body(context)['run_id']))
+
+@api.get("/device/mesh")
+def mesh_read(context=None): return safe(queries.mesh)
+@api.post("/device/traffic/device-history")
+def device_traffic_history(context=None): return safe(lambda: queries.device_traffic_history(body(context)))
+
+@api.get("/device/firmware/status")
+def firmware_status(context=None): return safe(queries.firmware)
+@api.get("/device/accounts")
+def accounts(context=None): return safe(queries.accounts)
+@api.get("/management/artifacts")
+def artifact_list(context=None):
+    from apps.access_manager.composition import artifacts
+    return safe(artifacts.repository.list)
+@api.post("/management/artifacts/backup")
+def artifact_backup(context=None):
+    from apps.access_manager.composition import artifacts
+    return safe(artifacts.backup)
+@api.post("/management/artifacts/upload")
+def artifact_upload(context=None):
+    from apps.access_manager.composition import artifacts
+    return safe(lambda: artifacts.upload(body(context)))
+@api.post("/management/artifacts/download")
+def artifact_download(context=None):
+    from apps.access_manager.composition import artifacts
+    return safe(lambda: artifacts.repository.download(body(context)['id']))
+@api.post("/management/artifacts/apply")
+def artifact_apply(context=None):
+    from apps.access_manager.composition import artifacts
+    return safe(lambda: artifacts.apply(body(context)))
+
+@api.post("/device/diagnostics/collection")
+def diagnostic_collection(context=None): return safe(lambda: commands.save_collection(body(context)))
+@api.post("/device/diagnostics/workstation")
+def workstation(context=None):
+    from apps.access_manager.application.services.workstation_path_diagnostic import WorkstationPathDiagnostic
+    return safe(lambda: WorkstationPathDiagnostic().run())
+
+@api.get("/device/runtime/diagnostic")
+def runtime_diagnostic(context=None): return safe(queries.runtime_diagnostic)
+
+@api.get("/device/nat/sessions")
+def nat_sessions(context=None): return safe(queries.nat_sessions)
+
+@api.post("/device/factory-reset/preview")
+def factory_reset_preview(context=None): return safe(commands.factory_reset_preview)
+
+@api.post("/device/factory-reset/apply")
+def factory_reset_apply(context=None): return safe(lambda: commands.factory_reset_apply(body(context)))

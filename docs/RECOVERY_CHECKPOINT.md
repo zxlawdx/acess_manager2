@@ -50,3 +50,23 @@ Novos arquivos: infrastructure/zte/traffic.py; workspaces/views/complete-diagnos
 Suíte atual: 162 Python + 2 subtests; 24 DOM. QA Chromium e Vela real Qt três resoluções, dados sintéticos; nenhuma validação física/Windows nova. Capturas complete-diagnostics-*.
 
 Próximas pendências independentes: integrar F6201B full_forms/workbench (14 formulários) sem inventar campos ausentes; Huawei SNTP/WAN/IPv4filters; gerenciamento backup/restore/firmware/reset e speed start comprovados; Wi-Fi avançado; Mesh somente relações observadas. A migração integral continua pendente e não deve ser declarada concluída. Preservar afinidade TCP Huawei existente e política sem retry de mutations. ZTE DNS Delete continua sem writer comprovado.
+
+## Rodada de fechamento — conjunto 1
+
+Base main 236518f (PR #7 integrado), branch feat/research-implementation-closure. 14 FullCapturedForms e 7 estratégias simples F6201B ligadas por OperationalConfigurations → provider → API configuration/catalog/read/preview/apply → Gerenciamento. Campos frontend têm IDs neutros e labels humanas; nonce/estado privado ficam no backend. Confirmar APLICAR antes da mutation; formato condicional ausente continua erro concreto do preflight. Testes funcionais portados do legado: captured_form substitui o contrato antigo supervised_lab; dummy writes_enabled não é alterado e não interfere no transporte funcional.
+
+Suíte até aqui: 189 passed + 30 subtests. NativeGateway adapters para port-forward/SNTP/firewall/QoS e adapters mapeados Huawei adicionados; falta ampliar testes desses adapters, diagnóstico de speedtest, gerenciamento/artefatos/histórico, revisão dirigida de todas as evidências e QA final. Não publicar nem declarar fechamento antes desses conjuntos.
+
+## Rodada de fechamento — conjunto 2 (em andamento)
+
+OperationalConfigurations inclui agora gateway ZTE com preview/merge/readback para port-forwarding, SNTP, filtros IP/MAC/global e QoS; drivers funcionais WAN CRUD, TR-069 ampliado, admin password e rádio avançado. F6201B RF usa ordenação exata da captura, AutoChRange=0 somente no firmware exato documentado, demais campos ausentes não são inventados. Huawei inclui mapped SNTP/DST/DSCP/política MAC/serviços LAN/WAN e IPv4 filtering; campos não presentes no writer não são habilitados por semelhança.
+
+NativeSpeedtest divide start único/poll de leitura; artefatos locais com IDs opacos/SHA/metadata, export/restore/firmware ZTE usam fluxo do legado (POST de permissão separado da mutation do upload). Cliente POST não segue redirects, evitando replay 307/308. Reboot HG8245H separado por rand_count/api_ses_token; demais famílias dependem de evidência própria. Contratos óptico/Mesh e binding de tráfego UUID→host/identificador acrescentados. Próximo: testes novos de adapters/artefatos/speedtest/histórico, integração de UI Diagnóstico, verificação dirigida do resto da matriz e closure completo.
+
+## Retomada de fechamento — 2026-10-13
+
+Branch `feat/research-implementation-closure`, base main `236518f2e017a14b6042458667c7d4a53638a1b2`. Working tree preservado após desconexão do runtime. Entregas e limites dos 30 conjuntos estão detalhados em [RESEARCH_IMPLEMENTATION_CLOSURE.md](RESEARCH_IMPLEMENTATION_CLOSURE.md); esse registro atualiza o estado dos conjuntos anteriores sem apagar as pendências da migração integral.
+
+14 full forms F6201B, adapters operacionais ZTE/Huawei, speedtest start/poll, backup/restore/firmware ZTE, reboot Huawei por família, Wi-Fi avançado comprovado, discovery, normalização óptica/Mesh, histórico entre sessões e UI correspondente integrados localmente. Acrescentados ALG, acesso remoto IPv4/IPv6, Telnet, portas administrativas em vetor e reset de fábrica com fingerprint de formulário/nonce/RESETAR. NAT fornece somente contadores comprovados.
+
+Validação atual: Python 269 passed + 30 subtests; DOM 25 passed; frontend sync, collectstatic --no-tailwind, compileall e diff check passaram. QA Chromium e WebView Vela real Qt/offscreen passou em 1366×768, 1600×900 e 1920×1080: bordas, overflow, modal, navegação e resize/maximize. Polling Chromium preservou cards/SVG/página/scroll. Sem teste físico ou Windows novo. Nenhum novo PR publicado até este checkpoint; alterações na branch local. A migração integral NÃO está concluída; limites concretos estão no closure.

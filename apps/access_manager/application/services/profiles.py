@@ -128,11 +128,12 @@ class ProfileService:
         for op in operations:
             if op.feature not in current_cache:
                 try:
-                    reader={'wifi':'wifi','wifi_radio':'wifi','dns':'dns','dhcp':'dhcp'}.get(op.feature)
+                    reader={'wifi':'wifi','wifi_radio':'wifi','dns':'dns','dns_hosts':'dns','dhcp':'dhcp'}.get(op.feature)
                     current_cache[op.feature]=getattr(self.queries,reader)() if self.queries is not None and reader else None
                 except Exception:current_cache[op.feature]=None
             current=current_cache[op.feature] or {}
             config=op.args[-1] if op.args and isinstance(op.args[-1],dict) else {}
+            if op.feature=='dns_hosts':current=next((r for r in current.get('hosts',[]) if r.get('name')==config.get('name')), {})
             if op.feature=='wifi':current=next((r for r in current.get('networks',[]) if str(r.get('id'))==str(op.args[0])),{})
             if op.feature=='wifi_radio':current=next((r for r in current.get('radios',[]) if (r.get('band') or r.get('banda'))==config.get('band')), {})
             aliases={'channel':'canal','bandwidth':'largura','standard':'padrao','tx_power':'potencia','country':'pais','auto_channel':'canal_automatico','min_address':'pool_start','max_address':'pool_end','lease_time':'lease_seconds','ssid':'ssid','enabled':'ativo'}
