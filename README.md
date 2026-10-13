@@ -1,4 +1,4 @@
-# NetPulse / Access Manager 2
+# Access Manager
 
 Migração em andamento do `zxlawdx/acess_manager`, com interface NetPulse e protocolos ZTE/Huawei existentes. A matriz em `docs/NETPULSE_MIGRATION_MATRIX.md` registra também as superfícies ainda pendentes: esta versão não representa paridade completa com as 177 rotas do legado.
 
