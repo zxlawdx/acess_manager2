@@ -671,7 +671,7 @@
   if (root && root.dataset.runtimeMounted !== "true") {
     root.dataset.runtimeMounted = "true";
     mountApp().catch((error) => {
-      console.error("[NetPulse]", error);
+      console.error("[Access Manager]", error);
       root.dataset.runtimeMounted = "failed";
     });
   }

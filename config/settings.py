@@ -1,4 +1,4 @@
-APP_TITLE="NetPulse — Access Manager"
+APP_TITLE="Access Manager"
 ENTRY_ROUTE="/"
 WINDOW_WIDTH=1480
 WINDOW_HEIGHT=920
