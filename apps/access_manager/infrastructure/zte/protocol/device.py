@@ -328,6 +328,7 @@ class ZTE:
             for ap in aps
         }
 
+        bands = {ap.get("_InstID"): {"DEV.WIFI.RD1": "2.4GHz", "DEV.WIFI.RD2": "5GHz"}.get(ap.get("WLANViewName"), ap.get("Band")) for ap in aps}
         resultado = []
 
         for cliente in clientes:
@@ -343,6 +344,8 @@ class ZTE:
                 "mac": cliente.get("MACAddress"),
                 "ssid": ssids.get(ap, ap),
                 "ap": ap,
+                "band": cliente.get("Band") or bands.get(ap),
+                "connection_type": "Wi-Fi",
                 "rssi": cliente.get("RSSI"),
                 "snr": cliente.get("SNR"),
                 "noise": cliente.get("NOISE"),

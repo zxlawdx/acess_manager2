@@ -42,3 +42,13 @@
 .transport-toggle input:checked + .transport-toggle-track i { transform: translateX(13px); background: #080a0e; }
 .transport-toggle:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+
+/* NetPulse: canonical light palette and technical typography. */
+main{background:radial-gradient(circle at 95% 0%,#eeeaf7,transparent 38%),var(--background);padding:24px 30px 40px}
+aside{padding:20px 12px}.nav-group{color:#bbb6d0}.nav,.nav span{color:#d8d3e6}.nav{padding:11px 12px;margin-bottom:4px}.nav:hover,.nav.active{background:#46405e;color:#fff}.nav.active span{color:#fff}.nav.active{box-shadow:inset 3px 0 #b497e8}
+.button.primary{color:white}.page-heading{margin-bottom:20px}.page-heading h1{font-size:26px}.metric,.panel{box-shadow:0 3px 12px #292b4005;padding:20px}.metric{border-top:3px solid #e7ddf5;min-height:122px}.metric strong{font-size:27px}.grid,.split{gap:14px}.data-table td{padding:13px 10px}.data-table tr:hover td{background:#f8f6fc}.mono,.metric strong{font-family:var(--font-mono)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px}.toolbar input,.toolbar select{padding:9px 12px;border:1px solid var(--border);border-radius:9px;background:white;color:var(--text-primary)}
+.client-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}.client-card{display:grid;gap:7px;text-align:left;border:1px solid var(--border);background:var(--surface);padding:16px;border-radius:12px;color:var(--text-primary);cursor:pointer}.client-card:hover{border-color:var(--accent)}
+.topology-root{text-align:center;margin:12px auto 20px;padding:15px;border-radius:12px;background:#eee8f7;color:var(--accent);max-width:260px;font-weight:700}.topology-branches{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}.topology-branch{border-top:2px solid var(--border);padding-top:12px}.topology-branch h3{margin-bottom:12px}.topology-branch .client-card{width:100%;margin-bottom:8px}
+dialog.drawer{position:fixed;inset:0 0 0 auto;margin:0;height:100vh;max-height:100vh;width:min(520px,100vw);border-radius:18px 0 0 18px}.drawer .kv-grid{grid-template-columns:repeat(2,minmax(0,1fr))}details{margin:14px 0}summary{cursor:pointer;color:var(--accent)}pre{white-space:pre-wrap;overflow-wrap:anywhere}.sparkline{width:100%;height:140px}.sparkline polyline{fill:none;stroke:var(--info);stroke-width:2}.sparkline .upload{stroke:var(--accent)}
+@media(max-width:780px){main{padding:16px}.context-bar{flex-wrap:wrap}.page-heading h1{font-size:22px}}@media(max-width:520px){.topology-branches{grid-template-columns:1fr}.drawer .kv-grid{grid-template-columns:1fr}}

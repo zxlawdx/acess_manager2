@@ -7,8 +7,9 @@ import * as network from './views/network.js';
 import * as profiles from './views/profiles.js';
 import * as management from './views/management.js';
 import * as capabilities from './views/capabilities.js';
+import * as traffic from './views/traffic.js';
 import * as misc from './views/misc.js';
-import {toast} from '../shared/ui.js';
+import {esc,toast} from '../shared/ui.js';
 
 let mountedRoot = null;
 let workspace = null;
@@ -22,8 +23,8 @@ const meta = {
 };
 const views = {
   overview, clients, wifi, profiles, management, capabilities,
-  traffic:{render:misc.traffic}, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
-  wan:{render:network.wan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns}
+  traffic, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
+  wan:{render:network.wan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
 };
 
 function syncContext() {
@@ -54,7 +55,7 @@ async function render(name = store.view) {
     workspace.innerHTML = await view.render();
     view.mount?.();
   } catch (e) {
-    workspace.innerHTML = `<div class="notice danger" role="alert">${e.message}</div>`;
+    workspace.innerHTML = `<div class="notice danger" role="alert">${esc(e.message)}</div>`;
   }
 }
 

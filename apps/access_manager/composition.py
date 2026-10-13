@@ -8,10 +8,12 @@ from apps.access_manager.infrastructure.providers.deployment import DeploymentPr
 from apps.access_manager.application.services.profiles import JsonProfileRepository, ProfileService
 from apps.access_manager.infrastructure.profiles import HuaweiProfileTranslator, ZTEProfileTranslator
 from apps.access_manager.runtime import data_dir
+from apps.access_manager.infrastructure.history import HistoryRepository
+history=HistoryRepository()
 
 huawei_provider=HuaweiProvider(); zte_provider=ZTEProvider(); deployment_provider=DeploymentProvider()
 router=ProviderRouter(huawei_probe=HuaweiProvider.looks_like_huawei,huawei_models=HuaweiProvider.known_models())
-sessions=SessionManager(router,{'huawei':huawei_provider,'zte':zte_provider,'deployment':deployment_provider})
+sessions=SessionManager(router,{'huawei':huawei_provider,'zte':zte_provider,'deployment':deployment_provider},history=history)
 commands=DeviceCommandBus(sessions); queries=DeviceQueryBus(sessions)
 
 profiles=ProfileService(
