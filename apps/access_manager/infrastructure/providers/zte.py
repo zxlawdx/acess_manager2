@@ -71,13 +71,25 @@ class ZTEProvider:
         if self.client is None: raise RuntimeError('ZTE session is not connected')
         return self.client
     def _is_f6201b(self): return 'F6201B' in self._compact(self.model)
-    def get_device_info(self): return self._need().device_status()
-    def get_clients(self): return list(self._need().wifi_clients())+list(self._need().lan_clients())
-    def get_wifi(self):
-        c=self._need(); return {'networks':self._f6201b_wifi.list_ssids(c) if self._is_f6201b() else c.wifi_networks(), 'radios':c.channel_status()}
-    def get_wan(self): return self._need().wan_status()
-    def get_lan(self): return self._need().lan_ports()
-    def get_dhcp(self): return self._need().dhcp_status()
+    def _read(self, method):
+        # Read-only retry reopens the view through the existing reader. Never
+        # retry writes: a dropped response can already have applied a command.
+        reader = getattr(self._need(), method)
+        try:
+            return reader()
+        except RuntimeError as error:
+            if 'SessionTimeout' not in str(error) and 'view necessária' not in str(error):
+                raise
+            return reader()
+    def get_device_info(self): return self._read('device_status')
+    def get_clients(self):
+        from apps.access_manager.domain.clients import merge_clients
+        return merge_clients(self._need().lan_clients(), self._need().wifi_clients())
+    def get_wifi(self, reveal_password=False):
+        c=self._need(); return {'networks':self._f6201b_wifi.list_ssids(c) if self._is_f6201b() and not reveal_password else (c.wifi_networks(reveal_password=True) if reveal_password else c.wifi_networks()), 'radios':c.channel_status()}
+    def get_wan(self): return self._read('wan_status')
+    def get_lan(self): return self._read('lan_ports')
+    def get_dhcp(self): return self._read('dhcp_status')
     def get_dns(self): return self._f6201b_dns.read(self._need()) if self._is_f6201b() else self._need().dns_status()
     def get_optical(self): return self._need().optical_status()
     def get_traffic(self):
@@ -86,7 +98,7 @@ class ZTEProvider:
         lan=list(c.lan_ports() or [])
         wifi=list(c.wifi_clients() or [])
         sources=[]
-        keys=('rx_bytes','tx_bytes','rx_packets','tx_packets')
+        keys=('rx_bytes','tx_bytes','rx_packets','tx_packets','rx_errors','tx_errors','rx_discard','tx_discard')
         for source, rows in (('wan',wan),('lan',lan),('wifi_client',wifi)):
             for row in rows:
                 counters={k:row.get(k) for k in keys if row.get(k) not in (None,'')}
@@ -125,7 +137,13 @@ class ZTEProvider:
         return self._need().set_radio_power(band, bool(enabled))
     def set_wifi_schedule(self, config): self.capabilities.require_write('wifi_schedule'); return self._need().set_wifi_schedule(config)
     def set_band_steering(self, config): self.capabilities.require_write('band_steering'); return self._need().set_band_steering(config)
-    def set_dmz(self, config): self.capabilities.require_write('dmz'); return self._need().set_dmz(config)
+    def set_dmz(self, config):
+        self.capabilities.require_write('dmz')
+        current = self.get_dmz()
+        if not current.get('available'): raise RuntimeError('DMZ form is not available in this session')
+        values = {k: current.get(k) for k in ('id','enabled','internal_client','wan')}
+        values.update(config)
+        return self._need().set_dmz(values)
     def set_tr069(self, config): self.capabilities.require_write('tr069'); return self._need().set_tr069_management(config)
     def reboot(self): self.capabilities.require_write('reboot'); return self._need().reboot()
     def ping(self, config):
@@ -134,3 +152,19 @@ class ZTEProvider:
     def traceroute(self, config):
         if self._is_f6201b(): return self._f6201b_diag.execute(self._need(), kind='traceroute', config=config, original_post=self._need().session.post)
         return self._need().traceroute(config)
+
+    def get_dmz(self):
+        rows = self._need().dmz_status()
+        row = rows[0] if isinstance(rows, list) and rows else rows if isinstance(rows, dict) else {}
+        enabled = row.get('enabled', row.get('Enable'))
+        return {'available': bool(row), 'id': row.get('id') or row.get('_InstID'),
+                'enabled': None if enabled is None else enabled is True or str(enabled)=='1',
+                'internal_client': row.get('internal_client', row.get('InternalClient')),
+                'wan': row.get('wan', row.get('WANCViewName'))}
+    def get_upnp(self): return self._need().upnp_status()
+    def get_tr069(self):
+        result = self._need().tr069_management_status()
+        return {'available': result.get('available'), 'url': (result.get('server') or {}).get('URL'), 'advanced': result}
+    def get_firewall(self): return self._need().firewall_management_status()
+    def set_firewall(self, config):
+        self.capabilities.require_write('firewall'); return self._need().set_firewall_management(config)

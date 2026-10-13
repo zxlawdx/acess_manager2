@@ -1,8 +1,8 @@
-# Access Manager Next
+# NetPulse / Access Manager 2
 
-Nova implementação multivendor do Access Manager, construída separadamente do legado. O legado é fonte de conhecimento de protocolo; a aplicação nova possui contratos, providers e UI próprios.
+Migração em andamento do `zxlawdx/acess_manager`, com interface NetPulse e protocolos ZTE/Huawei existentes. A matriz em `docs/NETPULSE_MIGRATION_MATRIX.md` registra também as superfícies ainda pendentes: esta versão não representa paridade completa com as 177 rotas do legado.
 
-## Desenvolvimento
+## Executar
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -11,24 +11,25 @@ python manage.py collectstatic --no-tailwind
 python manage.py runapp
 ```
 
-## Testes
+O runtime compilado e as fontes estão versionados; executar a aplicação não exige instalar Node. Para editar o frontend:
+
+```bash
+npm ci
+python tools/sync_frontend.py
+python manage.py collectstatic --no-tailwind
+```
+
+`runtime.js` é gerado dos módulos de `static/js`: não o edite diretamente. O template usa o helper `static()` do Vela, e as rotas Python não duplicam `/api`.
+
+## Validar
 
 ```bash
 python -m pytest -q
+npm ci
+npm test
+python tools/sync_frontend.py --check
 ```
 
-Não existe modo Lab nem estado global de autorização de escrita. A disponibilidade é derivada da sessão ativa + provider + capability da feature.
+A escrita depende da sessão e da capability do provider. Uma leitura comprovada não habilita escrita desconhecida. O histórico SQLite reutiliza o repository e a redação de segredos do legado. Diagnósticos, taxas e detalhes de clientes usam respostas reais; fixtures só existem em testes.
 
-## Evidência desta entrega
-
-- 56 testes + 2 subtests verdes no ambiente de reconstrução;
-- compileall verde;
-- sintaxe de todos os módulos JS validada com Node;
-- sem `writes_enabled`/Lab gate no novo runtime;
-- relatório detalhado em `docs/EXECUTION_REPORT.md`.
-
-O boot Vela real requer instalar a dependência pinada de `requirements.txt`; o ambiente de reconstrução não teve acesso de rede no shell para baixá-la.
-## Correção de integração Vela — assets e API
-
-Os templates usam `{{ static('...') }}` para gerar URLs servidas pelo Vela em `__vela__/static/...`. Não use `/static/apps/...` diretamente. As rotas decoradas da API também são declaradas sem o prefixo `/api`, pois o `ApiServer` do Vela adiciona esse prefixo automaticamente.
-
+Limitações e evidências: `docs/NETPULSE_EXECUTION_REPORT.md`.

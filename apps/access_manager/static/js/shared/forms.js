@@ -1,0 +1,8 @@
+import {dialog,esc,toast} from './ui.js';
+import {request} from '../services/api.js';
+export function editConfig(title,path,fields,extra={}){
+ const supported=fields.filter(f=>f.value!==undefined&&f.value!==null&&f.value!=='—');
+ const d=dialog(title,`<form class="form-grid">${supported.map(f=>`<div class="field"><label>${esc(f.label)}</label>${f.type==='bool'?`<select name="${esc(f.key)}"><option value="true" ${f.value===true||f.value==='1'?'selected':''}>Ativo</option><option value="false" ${f.value===false||f.value==='0'?'selected':''}>Inativo</option></select>`:`<input name="${esc(f.key)}" value="${esc(f.value)}" type="${f.type||'text'}">`}</div>`).join('')}<div class="dialog-footer"><button class="button primary">Aplicar alterações</button></div></form>`);
+ const form=d.querySelector('form');const original=new FormData(form);
+ form.onsubmit=async e=>{e.preventDefault();const values=new FormData(form),config={};for(const f of supported){if(values.get(f.key)!==original.get(f.key)){const v=values.get(f.key);config[f.key]=f.type==='bool'?v==='true':f.type==='number'?Number(v):String(v)}}if(!Object.keys(config).length){toast('Nenhuma alteração.');return}const payload=extra.ssid_id?{ssid_id:extra.ssid_id,config}:{...extra,...config};const b=form.querySelector('button');b.disabled=true;try{const result=await request(path,{method:'POST',body:JSON.stringify(payload)});toast(result?.verified===true?'Alteração confirmada por leitura do equipamento.':'Comando enviado; consulte o estado atualizado.');d.close();document.dispatchEvent(new CustomEvent('refresh-view'))}catch(err){toast(err.message)}finally{b.disabled=false}}
+}

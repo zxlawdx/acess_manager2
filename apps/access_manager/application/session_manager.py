@@ -7,11 +7,15 @@ from apps.access_manager.domain.models import DeviceSession, SessionMode, Vendor
 logger = logging.getLogger(__name__)
 
 class SessionManager:
-    def __init__(self, router, providers: dict[str, object]):
+    def __init__(self, router, providers: dict[str, object], history=None):
         self.router, self.providers = router, providers
+        self.history = history
+        self._history_session = None
         self._provider = None
         self._session = None
         self._lock = RLock()
+    @property
+    def operation_lock(self): return self._lock
     @property
     def session(self): return self._session
     @property
@@ -62,10 +66,19 @@ class SessionManager:
             vendor=Vendor(decision.vendor)
             self._provider=provider
             self._session=DeviceSession(vendor=vendor,host=host,provider=type(provider).__name__,model=result.get('model'),firmware=result.get('firmware'),protocol_family=result.get('protocol_family'),mode=mode,attendant=attendant,capabilities=caps,metadata={'route_reason': decision.reason,'scheme':'https' if https else 'http','https':bool(https)})
+            if self.history is not None:
+                try:
+                    self._history_session = self.history.start_session(host=host, attendant=attendant, device={'modelo': self._session.model, 'firmware': self._session.firmware})
+                except Exception:
+                    logger.exception('Could not persist session history')
             logger.info("device_connect_succeeded vendor=%s model=%s mode=%s", decision.vendor, self._session.model or 'unknown', mode.value)
             return self.status()
     def disconnect(self):
         with self._lock:
+            if self.history is not None and self._history_session:
+                try: self.history.end_session(self._history_session)
+                except Exception: logger.exception('Could not close session history')
+                self._history_session = None
             if self._provider is not None:
                 try: self._provider.disconnect()
                 finally: self._provider=None; self._session=None

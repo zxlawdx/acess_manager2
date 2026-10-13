@@ -35,8 +35,8 @@ def test_template_uses_classic_runtime_and_exposes_https_selector():
 
 
 def test_runtime_has_no_dynamic_module_boot_and_owns_connect_submit():
-    source=(ROOT/'apps/access_manager/static/js/runtime.js').read_text(encoding='utf-8')
+    source=(ROOT/'apps/access_manager/static/js/runtime.js').read_text(encoding='utf-8').replace(chr(34), chr(39))
     assert 'import(' not in source
     assert "form.addEventListener('submit', connectFromForm)" in source
-    assert "request('/api/session', {method: 'POST'" in source
+    assert "request('/api/session', { method: 'POST'" in source
     assert "name=\"https\"" in (ROOT/'apps/access_manager/templates/index.html').read_text(encoding='utf-8')

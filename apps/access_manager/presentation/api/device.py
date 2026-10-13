@@ -38,3 +38,28 @@ def diagnostic_ping(context=None): return safe(lambda: commands.ping(body(contex
 
 @api.post("/device/diagnostics/traceroute")
 def diagnostic_traceroute(context=None): return safe(lambda: commands.traceroute(body(context)))
+
+@api.get("/device/dmz")
+def dmz_read(context=None): return safe(queries.dmz)
+@api.post("/device/dmz")
+def dmz_write(context=None): return safe(lambda: commands.set_dmz(body(context)))
+
+@api.get("/device/upnp")
+def upnp_read(context=None): return safe(queries.upnp)
+@api.post("/device/upnp")
+def upnp_write(context=None): return safe(lambda: commands.set_upnp(body(context)))
+
+@api.get("/device/tr069")
+def tr069_read(context=None): return safe(queries.tr069)
+@api.post("/device/tr069")
+def tr069_write(context=None): return safe(lambda: commands.set_tr069(body(context)))
+
+@api.get("/device/firewall")
+def firewall_read(context=None): return safe(queries.firewall)
+@api.post("/device/firewall")
+def firewall_write(context=None): return safe(lambda: commands.set_firewall(body(context)))
+
+@api.get("/device/history")
+def operation_history(context=None):
+    from apps.access_manager.composition import history
+    return safe(history.recent)

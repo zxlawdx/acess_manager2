@@ -1,64 +1,9 @@
 import {request} from '../../services/api.js';
 import {table,pick,cap,dialog,toast,esc,kv} from '../../shared/ui.js';
-
-function actionButtons(r){
-  const id=pick(r,'id','_InstID','ssid_id');
-  const buttons=[];
-  if(cap('wifi').enabled?.read){
-    buttons.push(`<button class="button" data-reveal-wifi="${esc(id)}">Ver senha</button>`);
-  }
-  if(cap('wifi').enabled?.write){
-    buttons.push(`<button class="button" data-edit-ssid="${esc(id)}" data-current-ssid="${esc(pick(r,'ssid','ESSID','name'))}">Editar</button>`);
-  }else{
-    buttons.push('<span class="muted">Somente leitura</span>');
-  }
-  return `<div class="inline-actions">${buttons.join('')}</div>`;
-}
-
-export async function render(){
-  const data=await request('/api/device/wifi');
-  const nets=Array.isArray(data)?data:(data?.networks||[]);
-  const radios=data?.radios||[];
-  return `<section class="panel"><div class="panel-header"><h2>Redes Wi-Fi</h2><span class="muted">Escrita: ${esc(cap('wifi').write)}</span></div></section>${table([
-    {label:'SSID',keys:['ssid','ESSID','name']},
-    {label:'Band',keys:['band','banda','WLANViewName']},
-    {label:'Ativo',render:r=>String(pick(r,'ativo','enabled','Enable'))},
-    {label:'Canal',keys:['channel','canal']},
-    {label:'Clientes',keys:['clients','client_count']},
-    {label:'',render:actionButtons}
-  ],nets,'Nenhum SSID retornado.')}<section class="panel"><div class="panel-header"><h2>Rádios</h2></div>${Array.isArray(radios)&&radios.length?radios.map(r=>`<div style="margin-bottom:8px">${kv(r)}</div>`).join(''):'<span class="muted">Sem dados de rádio.</span>'}</section>`;
-}
-
-export function mount(){
-  document.querySelectorAll('[data-reveal-wifi]').forEach(btn=>{
-    btn.onclick=async()=>{
-      btn.disabled=true;
-      try{
-        const data=await request('/api/device/wifi/reveal-password',{method:'POST',body:'{}'});
-        const rows=Array.isArray(data)?data:(data?.networks||[]);
-        const row=rows.find(item=>String(pick(item,'id','_InstID','ssid_id'))===String(btn.dataset.revealWifi));
-        if(!row?.password) throw new Error('O firmware/login não expôs a senha deste SSID.');
-        dialog('Senha Wi-Fi',`<div class="kv-grid"><div class="kv"><label>SSID</label><span>${esc(pick(row,'ssid','ESSID','name'))}</span></div><div class="kv"><label>Senha</label><span style="user-select:all">${esc(row.password)}</span></div></div><div class="notice warning">Leitura sob demanda da sessão autenticada; a chave não é mantida no snapshot normal.</div>`);
-      }catch(err){toast(err.message)}finally{btn.disabled=false}
-    };
-  });
-
-  document.querySelectorAll('[data-edit-ssid]').forEach(btn=>btn.onclick=()=>{
-    const id=btn.dataset.editSsid;
-    const current=btn.dataset.currentSsid==='—'?'':btn.dataset.currentSsid;
-    const d=dialog('Editar SSID',`<form id="ssid-form" class="form-grid"><input type="hidden" name="ssid_id" value="${esc(id)}"><div class="field"><label>Nome da rede</label><input name="ssid" value="${esc(current)}" maxlength="32"></div><div class="field"><label>Nova senha (opcional)</label><input name="password" type="password" minlength="8" maxlength="63" autocomplete="new-password"></div><div class="field"><label><input name="enabled" type="checkbox" checked> SSID habilitado</label></div><div class="field"><label><input name="broadcast" type="checkbox" checked> Broadcast habilitado</label></div><div class="dialog-footer"><button class="button" type="button" data-cancel>Cancelar</button><button class="button primary" type="submit">Aplicar</button></div></form>`);
-    const f=d.querySelector('#ssid-form');
-    f.querySelector('[data-cancel]').onclick=()=>d.close();
-    f.onsubmit=async e=>{
-      e.preventDefault();
-      const fd=new FormData(f);
-      const config={ssid:String(fd.get('ssid')||''),enabled:fd.get('enabled')==='on',broadcast:fd.get('broadcast')==='on'};
-      const password=String(fd.get('password')||'');
-      if(password)config.password=password;
-      try{
-        await request('/api/device/wifi/ssid',{method:'POST',body:JSON.stringify({ssid_id:id,config})});
-        d.close();toast('Alteração enviada e validada pelo provider.');document.dispatchEvent(new CustomEvent('refresh-view'));
-      }catch(err){toast(err.message)}
-    };
-  });
+import {editConfig} from '../../shared/forms.js';
+let networks=[],radios=[];
+export async function render(){const d=await request('/api/device/wifi');networks=Array.isArray(d)?d:d?.networks||[];radios=Array.isArray(d?.radios)?d.radios:[];return `<section class="panel"><h2>Redes Wi-Fi</h2></section>${table([{label:'SSID',keys:['ssid']},{label:'Banda',keys:['band','banda']},{label:'Ativo',render:r=>esc(pick(r,'enabled','ativo'))},{label:'Broadcast',keys:['broadcast']},{label:'Segurança',keys:['security','seguranca']},{label:'Ações',render:r=>`<div class="inline-actions"><button class="button" data-reveal-wifi="${esc(r.id)}">Ver senha</button><button class="button" data-edit-ssid="${networks.indexOf(r)}" ${cap('wifi').enabled?.write?'':'disabled'}>Editar</button></div>`}],networks)}<section class="panel"><h2>Rádios</h2>${radios.map((r,i)=>`<article class="panel"><h3>${esc(pick(r,'band','banda'))}</h3>${kv(r)}<button class="button" data-edit-radio="${i}" ${cap('wifi_radio').enabled?.write?'':'disabled'}>Editar rádio</button></article>`).join('')||'<p class="muted">Sem dados de rádio.</p>'}</section>`}
+export function mount(){document.querySelectorAll('[data-reveal-wifi]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{const d=await request('/api/device/wifi/reveal-password',{method:'POST',body:'{}'});const r=(Array.isArray(d)?d:d.networks||[]).find(r=>String(r.id)===b.dataset.revealWifi);if(!r?.password||r.password_hidden===true)throw new Error('Senha não disponível neste firmware/login.');dialog('Senha Wi-Fi',`<p>${esc(r.ssid)}</p><p class="mono" style="user-select:all">${esc(r.password)}</p>`)}catch(err){toast(err.message)}finally{b.disabled=false}});
+ document.querySelectorAll('[data-edit-ssid]').forEach(b=>b.onclick=()=>{const r=networks[Number(b.dataset.editSsid)];editConfig('Editar SSID','/api/device/wifi/ssid',[{key:'ssid',label:'Nome da rede',value:r.ssid},{key:'password',label:'Nova senha (opcional)',value:'',type:'password'},{key:'enabled',label:'SSID habilitado',value:r.enabled??r.ativo,type:'bool'},{key:'broadcast',label:'Broadcast',value:r.broadcast,type:'bool'},{key:'isolation',label:'Isolamento',value:r.isolation??r.isolamento,type:'bool'}],{ssid_id:r.id})});
+ document.querySelectorAll('[data-edit-radio]').forEach(b=>b.onclick=()=>{const r=radios[Number(b.dataset.editRadio)];editConfig('Editar rádio','/api/device/wifi/radio',[{key:'channel',label:'Canal',value:r.channel??r.canal},{key:'auto_channel',label:'Canal automático',value:r.auto_channel??r.canal_automatico,type:'bool'},{key:'bandwidth',label:'Largura',value:r.bandwidth??r.largura},{key:'standard',label:'Padrão',value:r.standard??r.padrao},{key:'tx_power',label:'Potência',value:r.tx_power??r.potencia},{key:'country',label:'País',value:r.country??r.pais},{key:'sgi',label:'SGI',value:r.sgi,type:'bool'}],{band:r.band??r.banda})})
 }

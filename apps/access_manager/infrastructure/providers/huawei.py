@@ -263,21 +263,8 @@ class HuaweiProvider:
         self._need()
         if self.runtime is not None:
             return self.runtime.clients()
-        # Generic fallback still deduplicates by normalized MAC where possible.
-        rows = list(self.captured.lan_clients()) + list(self.captured.wifi_clients())
-        merged = {}
-        anonymous = []
-        for row in rows:
-            compact = re.sub(r"[^0-9A-Fa-f]", "", str(row.get("mac") or ""))
-            if len(compact) == 12:
-                mac = ":".join(compact[i:i+2] for i in range(0, 12, 2)).upper()
-                current = merged.setdefault(mac, {"mac": mac})
-                for key, value in row.items():
-                    if value not in (None, "", [], {}) and current.get(key) in (None, "", [], {}):
-                        current[key] = value
-            else:
-                anonymous.append(row)
-        return [*merged.values(), *anonymous]
+        from apps.access_manager.domain.clients import merge_clients
+        return merge_clients(self.captured.lan_clients(), self.captured.wifi_clients())
 
     def get_wifi(self, reveal_password: bool = False):
         self._need()
@@ -374,3 +361,16 @@ class HuaweiProvider:
         # X6/X7 writer. UNKNOWN therefore remains the correct write state.
         self.capabilities.require_write("reboot")
         raise RuntimeError("Huawei reboot writer is not proven for this active runtime")
+
+    def get_dmz(self):
+        self._need(); return self.captured.dmz_status()
+    def get_tr069(self):
+        self._need()
+        result = self.captured.tr069_management_status()
+        return {'url': (result.get('server') or {}).get('URL'), 'advanced': result}
+    def get_firewall(self):
+        self._need()
+        result = self.captured.firewall_level_status()
+        firewall = result.get('firewall') or {}
+        enabled = firewall.get('Enable')
+        return {'enabled': None if enabled in (None, '') else str(enabled) == '1', 'level': firewall.get('AdvancedLevel'), 'advanced': result}
