@@ -1,4 +1,4 @@
-import {request} from '../services/api.js';
+import {request,beginView,scopeActive,isCancelled,currentScope} from '../services/api.js';
 import {store} from '../core/store.js';
 import * as overview from './views/overview.js';
 import * as clients from './views/clients.js';
@@ -10,9 +10,11 @@ import * as capabilities from './views/capabilities.js';
 import * as traffic from './views/traffic.js';
 import * as misc from './views/misc.js';
 import {esc,toast} from '../shared/ui.js';
+import {patchHTML} from '../shared/patch.js';
 
 let mountedRoot = null;
 let workspace = null;
+const viewStates=new Map();
 
 const meta = {
   overview:['VISÃO OPERACIONAL','Visão geral'], clients:['VISÃO OPERACIONAL','Clientes'],
@@ -35,8 +37,10 @@ function syncContext() {
   if (updated) updated.textContent = s?.updated_at ? `Atualizado ${new Date(s.updated_at).toLocaleTimeString()}` : '—';
 }
 
-async function render(name = store.view) {
-  views[store.view]?.unmount?.();
+async function render(name = store.view,background=false) {
+  const scope=background?currentScope():beginView(name);
+  if(!background){views[store.view]?.unmount?.();const d=document.querySelector('#action-dialog');if(d?.open)d.close()}
+  const state={generation:scope.generation,loading:true,error:null};viewStates.set(name,state);scope.controller.signal.addEventListener('abort',()=>{state.loading=false},{once:true});
   store.view = name;
   document.querySelectorAll('.nav').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   const [kicker,title] = meta[name] || meta.overview;
@@ -46,16 +50,22 @@ async function render(name = store.view) {
   if (titleEl) titleEl.textContent = title;
 
   if (!store.session?.connected && name !== 'profiles') {
+    state.loading=false;
     workspace.innerHTML = '<div class="empty-state"><strong>Nenhum equipamento conectado</strong><span>Conecte-se para carregar este workspace.</span></div>';
     return;
   }
 
-  workspace.innerHTML = '<div class="panel muted">Carregando…</div>';
+  if(!background)workspace.innerHTML='<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
   try {
     const view = views[name] || views.overview;
-    workspace.innerHTML = await view.render();
+    const html=await view.render();
+    if(!scopeActive(scope))return;
+    state.loading=false;
+    if(background)patchHTML(workspace,html);else workspace.innerHTML=html;
     view.mount?.();
   } catch (e) {
+    if(!scopeActive(scope)||isCancelled(e))return;
+    state.loading=false;state.error=e.message;
     workspace.innerHTML = `<div class="notice danger" role="alert">${esc(e.message)}</div>`;
   }
 }
@@ -158,13 +168,15 @@ export async function mountApp() {
   }
 
   document.addEventListener('refresh-view', () => render(store.view));
+  let refreshTimer;
+  document.addEventListener('snapshot-updated',event=>{if(event.detail.generation!==currentScope()?.generation||['wifi','profiles','traffic'].includes(store.view))return;clearTimeout(refreshTimer);const scope=currentScope();refreshTimer=setTimeout(()=>{if(scopeActive(scope))render(store.view,true)},16)});
 
   try {
     const s = await request('/api/session');
     store.setSession(s);
     store.setCapabilities(s.session?.capabilities || {});
     syncContext();
-    await render(s.connected ? ('overview') : store.view);
+    await render(s.connected?(currentScope()?store.view:'overview'):store.view);
   } catch (error) {
     console.error('[Access Manager] Falha ao consultar sessão inicial:', error);
     await render(store.view);

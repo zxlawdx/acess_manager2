@@ -1,10 +1,11 @@
-import {request} from '../../services/api.js';
+import {request,currentScope,scopeActive,cancelled} from '../../services/api.js';
 import {metric,kv,badge,esc} from '../../shared/ui.js';
 import {fields,uptime,linkStatus} from '../../shared/presentation.js';
 import {topology,mountDetails} from './clients.js';
-export async function render(){
+export async function render(){const scope=currentScope();
  const endpoints=['/api/device','/api/device/wan','/api/device/optical','/api/device/clients','/api/device/traffic'];
  const results=await Promise.allSettled(endpoints.map(p=>request(p)));
+ if(!scopeActive(scope))throw cancelled();
  const [device,wan,optical,clients,traffic]=results.map(r=>r.status==='fulfilled'?r.value:null);
  const w=Array.isArray(wan)?wan[0]||{}:wan||{},o=optical||{},d=device||{};
  const failed=results.map((r,i)=>r.status==='rejected'?`<div class="notice warning">${esc(['Equipamento','WAN','Óptica','Clientes','Tráfego'][i])}: ${esc(r.reason.message)}</div>`:'').join('');

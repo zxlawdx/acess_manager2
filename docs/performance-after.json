@@ -1,0 +1,10 @@
+{
+  "wifi_shell": 1.900000000372529,
+  "wifi_ssids": 103.79999999981374,
+  "wifi_warm": 1.3999999994412065,
+  "profile_modal": 4.8999999994412065,
+  "stale_wifi": false,
+  "stale_modal": false,
+  "aborts": 13,
+  "requests": 6
+}

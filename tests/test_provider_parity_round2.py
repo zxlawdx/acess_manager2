@@ -191,3 +191,29 @@ def test_zte_radio_options_use_current_width_channel_list_and_observed_widths():
     assert [v['value'] for v in options['bandwidth']]==['80','160']
     assert options['standard']==[{'value':'ac','label':'802.11ac'}]
     assert 'tx_power' not in options
+
+
+def test_huawei_radio_snapshot_reuses_pages_only_within_one_read():
+    from collections import Counter
+    from apps.access_manager.infrastructure.providers.huawei import HuaweiProvider
+    class Client:
+        def __init__(self):self.calls=Counter()
+        def get_page(self,path):self.calls[path]+=1;return '<html>Authenticated radio page</html>'
+    client=Client();provider=HuaweiProvider();provider.client=client
+    provider.captured=HuaweiCapturedFeatureService(client)
+    provider.get_wifi_radios()
+    assert client.calls and max(client.calls.values())==1
+    provider.get_wifi_radios()
+    assert max(client.calls.values())==2
+
+
+def test_zte_radio_options_open_basic_view_once_for_both_bands():
+    from apps.access_manager.infrastructure.providers.zte import ZTEProvider
+    class Client:
+        def __init__(self):self.views=0
+        def channel_status(self):return [{'banda':'2.4GHz'},{'banda':'5GHz'}]
+        def get_view(self,*args,**kwargs):self.views+=1;return '<select name="Channel"><option value="0">Auto</option></select>'
+        def available_channels(self,**kwargs):return []
+    provider=ZTEProvider();provider.client=Client()
+    provider.get_wifi_radios()
+    assert provider.client.views==1
