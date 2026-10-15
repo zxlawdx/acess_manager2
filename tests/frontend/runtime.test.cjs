@@ -89,3 +89,26 @@ test('channel diagnostic renders measured manual state and confirmed recommendat
  for(const expected of ['2.4GHz','6','Manual','20 MHz','1, 6, 11','Considerar canal 1'])assert.ok(text.includes(expected),expected);
  x.w.close();
 });
+
+test('Juniper workspace hides CPE navigation and performs normalized subscriber lookup',async()=>{
+ const caps=Object.fromEntries(['device','subscriber_lookup','subscriber_detail'].map(k=>[k,{read:'SUPPORTED',write:'UNKNOWN',enabled:{read:true,write:false}}]));
+ const row={username:'brd_000123',contract:'000123',session_id:'100',state:'Active',interface:'pp0.3221226000',ipv4_address:'192.0.2.10',ipv6_addresses:['2001:db8::10']};
+ const x=await boot({'/api/session':{connected:true,session:{session_id:'juniper-test',vendor:'juniper',model:'mx204',protocol_family:'junos_netconf',capabilities:caps}},'/api/infrastructure/system':{model:'mx204',family:'MX',firmware:'24.2R1',hostname:'synthetic-bng'},'/api/infrastructure/subscribers/lookup':{complete:true,sessions:[row,{...row,session_id:'205'}],candidates:[{candidate:'brd_000123',status:'FOUND'}]},'/api/infrastructure/subscribers/detail':row});
+ const d=x.w.document;assert.equal(d.querySelector('[data-view="wifi"]').hidden,true);assert.equal(d.querySelector('[data-view="subscribers"]').hidden,false);assert.ok(!x.calls.some(c=>c[0]==='/api/device/wifi/radios'));
+ await x.click('subscribers');d.querySelector('#subscriber-query').value='000123';d.querySelector('#subscriber-search').dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.match(d.querySelector('#subscriber-status').textContent,/2 sessão/);assert.equal(d.querySelectorAll('[data-subscriber]').length,2);
+ const call=x.calls.find(c=>c[0]==='/api/infrastructure/subscribers/lookup');assert.equal(JSON.parse(call[1].body).query,'000123');assert.ok(!call[1].body.includes('show subscribers'));
+ d.querySelector('[data-subscriber]').click();await x.wait();assert.match(d.querySelector('#action-dialog').textContent,/000123/);assert.ok(d.querySelector('[data-context="aaa"]'));x.w.close();
+});
+
+test('Juniper partial candidate failures never present confirmed offline',async()=>{
+ const x=await boot({'/api/session':{connected:true,session:{session_id:'j',vendor:'juniper',model:'mx204',capabilities:{}}},'/api/infrastructure/system':{model:'mx204'},'/api/infrastructure/subscribers/lookup':{complete:false,sessions:[],candidates:[{candidate:'brd_1',status:'TIMEOUT',message:'Tempo esgotado'}]}});
+ await x.click('subscribers');const d=x.w.document;d.querySelector('#subscriber-query').value='1';d.querySelector('#subscriber-search').dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.match(d.querySelector('#subscriber-status').textContent,/Busca incompleta/);assert.ok(!d.querySelector('#subscriber-status').textContent.includes('Nenhuma sessão ativa'));x.w.close();
+});
+
+test('connection offers explicit Juniper and all three transports without HTTP routing',async()=>{
+ const x=await boot({'/api/session':{connected:false,session:null},'/api/infrastructure/system':{model:'mx204'}}),d=x.w.document,f=d.querySelector('#connect-form');
+ assert.equal(f.elements.vendor.options.length,2);assert.equal(f.elements.transport.options.length,3);
+ f.elements.vendor.value='juniper';f.elements.vendor.dispatchEvent(new x.w.Event('change'));assert.equal(d.querySelector('#juniper-connection').hidden,false);assert.equal(f.querySelector('.https-toggle').hidden,true);
+ const original=x.w.fetch;x.w.fetch=async(url,options)=>new URL(url).pathname==='/api/session'&&options.method==='POST'?{ok:true,text:async()=>JSON.stringify({connected:true,session:{session_id:'j',vendor:'juniper',model:'mx204',protocol_family:'junos_netconf',capabilities:{}}})}:original(url,options);
+ f.elements.host.value='example.invalid';f.elements.username.value='synthetic';f.elements.password.value='synthetic-only';f.elements.port.value='830';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.equal(d.querySelector('#login-page').hidden,true);assert.equal(f.elements.password.value,'');assert.equal(d.querySelector('[data-view=subscribers]').hidden,false);x.w.close();
+});

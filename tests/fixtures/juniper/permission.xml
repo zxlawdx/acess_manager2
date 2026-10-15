@@ -1,0 +1,1 @@
+<rpc-reply><rpc-error><error-type>protocol</error-type><error-tag>access-denied</error-tag><error-severity>error</error-severity><error-message>Permission denied: private content must not escape</error-message></rpc-error></rpc-reply>
