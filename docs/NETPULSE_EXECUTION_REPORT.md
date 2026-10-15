@@ -117,3 +117,7 @@ Validação: 295 Python + 30 subtests; 31 frontend; Chromium e Vela real Qt nas 
 Base `740638e1ba215246c16c77f7f91a5468e15c2a8b`, branch `fix/zte-h3601p-v9`. Perfil e runtime integrados; candidato WLAN accessdev_ssiddev, LAN accessdev_landevs, DHCP hostinfo. Parser completo/fragmentado, namespaces, IPv6, dedup por identidade e endpoint/context cache. Optical removido por capability no gateway Ethernet. Escritas não promovidas. QA Vela/Qt e Chromium em três resoluções passou com dados sintéticos; teste físico P1 e Windows não executados. Resultado final e comandos em docs/zte/H3601P_IMPLEMENTATION_REPORT.md. Demais pendências históricas não foram declaradas concluídas.
 
 Validação desta rodada H3601P: 347 testes Python + 30 subtestes; 32 testes frontend; zero falhas/skips. QA nativo e Chromium nas três resoluções. Nenhuma confirmação física P1 ou Windows.
+
+## Access Manager — MX204, 2026-10-15
+
+feat/juniper-bng: Juniper+CPE independentes, handoff com contexto fresco, login AD sem persistência de senha, preferências e host-key trust explícitos; parser XML/CLI e estilos físicos corrigidos; leitores de assinante/AAA/accounting/rota/FIB/filter/lockout e health sob demanda. 464 Python +30 subtestes, 37 frontend; QA Vela/Qt real três resoluções com transportes sintéticos. Sem teste físico novo do agente ou Windows. Detalhes e pendências reais em JUNIPER_INTEGRATION_REPORT.md e juniper/CAPABILITY_MATRIX.md. Perfis preservados; main não integrado; migração não concluída.

@@ -122,3 +122,11 @@ Validação: 295 Python + 30 subtests; 31 frontend; Chromium e Vela real Qt nas 
 Base `740638e1ba215246c16c77f7f91a5468e15c2a8b`, branch `fix/zte-h3601p-v9`. Perfil e runtime integrados; candidato WLAN accessdev_ssiddev, LAN accessdev_landevs, DHCP hostinfo. Parser completo/fragmentado, namespaces, IPv6, dedup por identidade e endpoint/context cache. Optical removido por capability no gateway Ethernet. Escritas não promovidas. QA Vela/Qt e Chromium em três resoluções passou com dados sintéticos; teste físico P1 e Windows não executados. Resultado final e comandos em docs/zte/H3601P_IMPLEMENTATION_REPORT.md. Demais pendências históricas não foram declaradas concluídas.
 
 Validação desta rodada H3601P: 347 testes Python + 30 subtestes; 32 testes frontend; zero falhas/skips. QA nativo e Chromium nas três resoluções. Nenhuma confirmação física P1 ou Windows.
+
+## MX204 — handoff e correção do parser — 2026-10-15
+
+Continuada feat/juniper-bng a partir de 18c0e52, sem reset/reclone/merge main. Dois managers independentes via coordenador: Juniper + CPE. Lookup → sessão selecionada → releitura → draft → credenciais próprias CPE → provider existente → Voltar ao assinante. Desconexões independentes, IP/ID/user obsoletos rejeitados, teste TCP opcional sem concluir offline. Login AD compacto, preferências sem secrets e confiança SSH explícita por host/porta.
+
+Parser agrega detail/extensive/service, vincula child DHCP, distingue três IDs, count0/No such subscriber, XML/CLI text, paginação e framing. RPC AAA corrigido; leitores lazy accounting/rota/FIB/filter/lockout, RADIUS/AAA/FPC/ambiente/LACP/optics acrescentados. Capability/evidência não confundem fixture com físico.
+
+Validação: 464 Python + 30 subtestes, 37 frontend; Vela/API/WebView Qt reais nas três resoluções com transportes remotos sintéticos, handoff ZTE e sessões independentes. QA em screenshots/juniper-mx204. Evidência manual MX204 recebida do usuário; nenhuma nova autenticação física do agente ou execução Windows. Perfis SHA256 preservado. Relatório atual: JUNIPER_INTEGRATION_REPORT.md. Pendentes: full XML alvo por leitor, advanced MAC/interface, topologia física automática comprovada, amostragem/delta, história de assinante, auto protocolo completo e Windows. Writes/CGNAT mapping não promovidos. Migração integral não concluída.

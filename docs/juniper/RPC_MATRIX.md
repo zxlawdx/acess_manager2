@@ -20,3 +20,24 @@ Runtime NETCONF uses ncclient Junos `<command format="xml">CLI</command>` and pa
 | Disconnect/reconnect | clear network-access aaa subscriber session-id ID [reconnect] | Not implemented/promoted | Requires current device/session/IP identity and read-back | Unknown target/privilege | RESEARCH_ONLY |
 
 Unrecognized XML or ASCII-only `<output>` fails explicitly, never becomes a successful empty list. Versioned namespaces are removed structurally; unknown fields are not returned raw. Actual native RPC capture is a remaining physical task.
+
+## MX204 supplied physical evidence and current adapter — 2026-10-15
+
+These native RPC names replace earlier speculative catalog entries. NETCONF dispatches typed XML for these requests; other existing facts/health reads retain the bounded XML command adapter when no native mapping is supplied. SSH sends each validated command atomically with `| display xml | no-more`.
+
+| Intent | Native RPC | Parameters |
+|---|---|---|
+| Subscriber username | get-subscribers | user-name, extensive |
+| Selected subscriber | get-subscribers | id, extensive |
+| Subscriber IPv4 | get-subscribers | address, extensive |
+| Accounting | get-subscribers | id, accounting-statistics |
+| PPPoE | get-pppoe-interface-information | interface-name, detail |
+| AAA selected ID | **get-aaa-subscriber-by-session-id** | id, detail |
+| Exact IPv4 route | get-route-information | destination /32, exact, extensive |
+| FIB | get-forwarding-table-information | destination |
+| Firewall filter | get-firewall-filter-information | filtername from current subscriber only |
+| Lockout | get-pppoe-lockout-information | underlying-interface-name |
+| RADIUS | get-radius-servers-table | detail |
+| AAA counters | get-aaa-module-statistics | authentication/detail, accounting/detail, dynamic-requests |
+
+LACP, optics, FPC and environment use closed read-only CLI catalog commands with XML output. No generic command endpoint, direct firewall policer command, clear, set, commit, CoA or subscriber mutation was added. Full device response schemas still require target replay; command-level manual evidence is not app-level validation.

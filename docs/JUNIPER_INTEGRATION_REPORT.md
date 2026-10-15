@@ -1,75 +1,51 @@
-# Access Manager — Juniper integration report
+# Juniper MX204 integration — 2026-10-15
 
-## Baseline
+## Branch and preserved state
 
-- Initial branch: `fix/zte-h3601p-v9`; initial commit `8d115beacc3c85bad191a6f6109e4bde4b9541a4`.
-- Initial working tree: clean; implementation branch: `feat/juniper-bng`.
-- No reset/reclone, no merge into main, no change to saved profiles.
+Continued the existing `feat/juniper-bng` working tree at `18c0e52785f698577836ebf7f22f1d03790009a9`. No reset, reclone, branch replacement or main merge. Product remains **Access Manager**. Existing Huawei/ZTE readers, writers and saved profiles remain in place.
 
-## Existing architecture and integration
+## Architecture and delivered workflow
 
-Independent Huawei/ZTE providers, SessionManager/RLock, CapabilitySet, query/command buses, Vela/Bottle API and esbuild workspace were preserved. Juniper is an infrastructure provider, not an ONT subclass. Explicit Juniper selection bypasses HTTP CPE fingerprinting. Existing Huawei/ZTE connection normalization remains covered by regression tests.
+`InfrastructureSessions` coordinates exactly one Juniper SessionManager and one existing CPE SessionManager. Device buses retain their existing interface; infrastructure reads always route to the Juniper manager. JuniperProvider has no Huawei/ZTE dependency. CPE connect and either session's disconnect preserve the other session. The topbar offers Return to subscriber, preserving the query and refreshing the results.
 
-Implementation:
+Login is compact, without the CPE illustration, and uses Server / AD user / AD password. SSH and NETCONF ports are separate. Versioned preferences persist only default host, successful host, ports and transport; failure does not promote a host. AD password is cleared after every attempt. The explicit SSH fingerprint flow stores public keys by host and port, rejects changed keys and retains strict verification. See juniper/CREDENTIAL_LIFECYCLE.md.
 
-- `domain/subscribers.py`: typed search query, contract resolver and normalized subscriber model. Numeric identifiers stay strings; known usernames remain lowercase.
-- `infrastructure/juniper/{transport,requests,parsers,errors}.py`: ncclient NETCONF, verified-host SSH/XML fallback, closed read-only query catalog, safe XML and normalized public errors.
-- `infrastructure/providers/juniper.py`: lifecycle/facts, per-feature capabilities, filtered lookup, fresh selected-session detail, optional PPPoE/AAA, interface/chassis/resources and diagnostics.
-- `presentation/api/infrastructure.py`: nine read-intent endpoints, using the existing query bus and session identity/operation lock.
-- Existing session API accepts explicit `vendor=juniper`, `transport=netconf|auto|ssh`, optional port. Host keys must already be trusted in known_hosts. Auto fallback is explicit and never follows rejected credentials/host keys.
-- `static/js/workspaces/views/juniper.js`: Overview, Assinantes PPPoE, Interfaces, Sistema and Diagnóstico, all inside the existing global Vela shell. CPE Wi-Fi/DHCP/optical menus are hidden for infrastructure sessions. No subscriber data/history persisted.
+A selected subscriber is re-read before CPE draft creation and again before connection. ID/user/IP mismatch is rejected. The draft has read-only IPv4 with an explicit edit option, port validation, protocol/manufacturer selectors and separate CPE credentials. Optional TCP reachability is from the workstation, not the BNG; a closed management port does not mean PPPoE offline. Draft freshness is shown.
 
-API (POST bodies follow existing app contracts): `/api/infrastructure/subscribers/{lookup,detail,context}`, `/api/infrastructure/interfaces`, `/api/infrastructure/interfaces/detail`, `/api/infrastructure/{system,chassis,resources,diagnostics}`. Frontend sends query/session/kind intentions, never CLI. Device app_session_id guards against a response/request crossing to a replacement connection.
+## Reader and parser corrections
 
-## Subscriber behavior
+- SSH sends one validated command per exec channel with XML/no-more. In-memory JunosCommandResult separates transport, format, elapsed time and repr-hidden raw output.
+- Known prompt/ANSI/CR/backspace framing is normalized. Pagination fails explicitly. Recognized subscriber CLI labels have a dedicated fallback. Malformed XML and NETCONF text do not fall back blindly.
+- Detail/extensive/service-session records aggregate by identity; DHCP children attach through parent ID. Subscriber/service/PPPoE IDs remain separate. Profile/version, DNS, pools, MAC, VLAN, agent IDs and service shaping are preserved when returned.
+- Count-zero and No such subscriber normalize to not found. Permission, unsupported command and remote daemon failures are distinct safe errors. Candidate failures do not erase successful prefixes or confirm absence.
+- Native RPCs cover get-subscribers, get-aaa-subscriber-by-session-id, PPPoE, accounting, route, FIB, filter, lockout, RADIUS and AAA module counters. Closed catalog CLI/XML covers the remaining health readers; see RPC_MATRIX.md.
+- Subscriber accounting, route/FIB, lockout and returned filter counters are lazy. No guessed filter names, direct policer command, inferred drops, invented bitrate, FIB/interface equality rule or lockout from another MAC.
+- System offers explicit RADIUS/AAA/FPC/environment reads. Interface details offer LACP and lane-preserving optics. Unknown shapes fail rather than inventing healthy data. No historical AAA-total threshold is an incident rule.
 
-`000123` queries exactly `brd_000123`, `cdy_000123`, `364_000123`, sequentially on one connection. Full usernames query only themselves. IPv4/IPv6 inputs use a typed address filter. No global subscriber inventory is downloaded for search. Per-candidate FOUND/NOT_FOUND/TIMEOUT/ERROR distinguishes absence from incomplete lookup. Returned unrelated usernames are rejected rather than exposing another customer or reporting confirmed absence.
+## Files
 
-Repeated usernames retain distinct sessions. Detail is selected by subscriber Session ID; PPPoE and AAA are separate lazy calls after fresh session/username validation. Namespaces are version-neutral. Absent scalar fields stay null; IPv6 addresses/prefixes remain lists; reported service/policy/NAT fields are whitelisted. Accounting statistics are marked unavailable unless independently supported; no zero-traffic inference or shaping-to-commercial-plan translation.
+New: application/infrastructure_sessions.py; infrastructure/juniper/output.py, settings.py, trust.py; tests/test_juniper_handoff.py; tests/visual/juniper-mx204_driver.py and juniper-mx204-native.cjs; design, credential and capability documents; screenshots/QA JSON.
 
-Facts identify model/release/family/OS when returned. Non-BNG devices can still use independent facts/interfaces. MX permits a cheap count probe; a model name alone does not grant every feature. Read permissions, schema mismatch, RPC error and timeout remain distinct. Optional features start PARTIAL, successful compatible responses promote only their own read capability. New writes remain UNKNOWN.
+Updated: composition, existing SessionManager, query bus, Juniper request/parser/transport/provider modules, session/infrastructure API, existing login/template/workspace/dialog/CSS and generated runtime.js; Juniper, execution, migration and recovery reports. No new parallel app shell or CPE backend replacement.
 
-## Operations and mutations
+## Validation
 
-- Ping: fixed four packets, typed IPv4/IPv6 and optional RI, explicit Juniper origin.
-- Traceroute: fixed eight-hop maximum, typed IP/RI, bounded timeout. Reported RTT is not silently converted to milliseconds without a confirmed unit contract.
-- CPU/memory/chassis/interface details: manual, no aggressive polling or process dump.
-- Disconnect/reconnect: **not implemented or promoted**. Prompt requires Windows/Vela validation before mutation, plus real platform/release/permission and a tested read-before-write/read-back path; those prerequisites are absent. No clear/set/request/commit operation is in the transport allowlist. No lockout clear or configuration editor.
+- **464 Python tests passed, 30 subtests passed** (`python -m pytest -q`). Includes 31 new contract/parser tests, transport and API regressions and existing Huawei/ZTE suite.
+- **37 frontend tests passed** (`npm test`), including AD failure cleanup and no browser storage.
+- Frontend sync/check, collectstatic --no-tailwind, compileall and git diff --check passed.
+- Real `manage.py runapp`, Vela/Bottle and Qt WebEngine: **1366×768, 1600×900, 1920×1080**. Login fits 1366×768; shell touches WebView edges, modal centered, no horizontal shell overflow. Five infrastructure pages, multiple sessions, PPPoE/AAA, RADIUS, LACP/optics, CPE ZTE handoff, Return to subscriber and independent disconnects passed. New artifacts: `docs/screenshots/juniper-mx204/`.
+- Remote Junos/CPE transports are synthetic in automated QA; no new agent physical login or Windows/WebView2 run. User-supplied MX204 manual observations are recorded separately in PHYSICAL_VALIDATION.md.
 
-## Evidence matrix
+## Evidence and remaining work
 
-| Feature | Research | Fixture | Automated | Physical |
-|---|---:|---:|---:|---:|
-| Contract resolution / three prefixes / leading zeros | Yes | Yes | Yes | No |
-| NETCONF / Junos NCElement reply | Yes | Yes | Yes | No |
-| Explicit SSH/XML fallback / host-key rejection | Yes | Transport mocks | Yes | No |
-| Facts / namespace variation / missing values | Yes | Yes | Yes | No |
-| Subscriber lookup / multiple sessions / partial errors | Yes | Yes | Yes | No |
-| IPv4 / IPv6 query and collections | Yes | Yes | Yes | No |
-| PPPoE / AAA selected detail | Yes | Yes | Yes | No |
-| Interfaces / chassis / RE resources | Yes | Yes | Yes | No |
-| Ping / traceroute parsing and typed queries | Yes | Yes | Yes | No |
-| Disconnect / reconnect | Yes | No | Not delivered | No |
-| Windows runtime | Dependency audit | n/a | Wheel availability only | Not executed |
+Manual MX204/Junos 23.4R2-S5.6 evidence supplied by the user supersedes older no-target assumptions. Complete raw captures were not included for every health/schema variant. New constructed XML tests are not physical fixtures. Runtime read support is shape-gated with fixture evidence; this run does not promote PHYSICALLY_VALIDATED.
 
-Fixtures are synthetic shapes informed by official documentation/catalogs. `mx204` and `24.2R1` in fixtures are not an owner's detected device. Native per-release `display xml rpc` captures remain pending.
+Still pending: full sanitized target XML replay for every reader, advanced MAC/interface lookup UI, automatic proven pp0→demux→ae→member path assembly, broader CLI-text dialect coverage, configured accounting cadence/delta chart, persistent subscriber history, protocol-auto negotiation beyond HTTP/HTTPS-by-port, timeout configuration UI and Windows acceptance. Unknown/changed-key tests cover local trust logic, not a Windows live SSH server. No IPv6-only CPE handoff is claimed.
 
-## Tests and QA
+Writes remain UNKNOWN/blocked: subscriber disconnect/reconnect, CoA, service/firewall modifications. CGNAT public mapping and direct policer reads remain unconfirmed. Ping/traceroute were preserved; corrupted manual paste is not treated as unsupported evidence. Migration is not declared complete.
 
-Actual results:
+## MX204 operator steps
 
-- `python -m pytest tests/test_juniper.py -q`: **39 passed**.
-- `python -m pytest -q`: **433 passed + 30 subtests**; includes Huawei/ZTE regression suite.
-- `npm test`: **36 passed**; includes explicit Juniper login, workspace isolation, duplicate sessions and incomplete search UI.
-- `python tools/sync_frontend.py --check`: passed.
-- `python manage.py collectstatic --no-tailwind`: no errors.
-- `python tests/visual/juniper_driver.py` with Qt offscreen + `node tests/visual/juniper-native.cjs`: real Vela/Bottle API and Qt WebEngine, only remote Junos transport mocked. Five pages at **1366×768, 1600×900, 1920×1080**; lookup with two sessions, PPPoE/AAA lazy loading, CPU/memory, interfaces, ping, detail centering, shell alignment and no horizontal overflow passed. Screenshots/QA JSON in `docs/screenshots/juniper/`.
-- ZTE bootstrap native regression at the same three sizes: actual Vela/Bottle with synthetic router transport; clients/IPv6, authenticated-unknown and rejected-login behavior passed. This regression did not overwrite baseline committed screenshots.
-- No app JavaScript exceptions observed by native QA (existing framework Tailwind warning filtered).
-- Windows dependency audit: ncclient 0.7.0 pure-Python wheel built; Windows x64 CPython 3.12 dependency wheels available. **Actual Windows/WebView2 execution remains unperformed.**
+Fetch/select `feat/juniper-bng`; activate `.venv`; install requirements; run `python tools/sync_frontend.py`, `python manage.py collectstatic --no-tailwind`, `python manage.py runapp`. Select Juniper, enter the authorized server, select SSH/XML and configure the actual SSH port in Advanced (50022 in the supplied environment, not a product default). Verify/trust the fingerprint externally, then authenticate with AD credentials. Search a test contract, select its actual session, compare IP/state/pp0/IDs, open details and choose Access CPE. Use separate CPE credentials, verify Return to subscriber and independent disconnects. Full target checklist: `docs/juniper/PHYSICAL_VALIDATION.md`.
 
-## Remaining real limitations
-
-No physical Juniper, management credentials, model/release or test subscriber was supplied. Physical acceptance and Windows execution are pending, so the complete acceptance checklist is not claimed. Unknown XML dialects fail explicitly instead of becoming empty successes. No SSH text-only parser fallback, multi-BNG inventory, logs, lockout, optics/DOM, route/ARP correlation or RADIUS health reader was delivered. CUPS has no dedicated parser; Evolved differences are not treated as proven classic parity. Target-native RPC capture/privilege verification is required. Existing remote RPCs may finish within their bounded timeout after browser cancellation; stale results are ignored.
-
-Saved profiles SHA256 unchanged: `0c04d0a57d4ba19f9fcbdd91534f11252cc4ce1a8a76a29db9ffcab3b820e3de`.
+Profiles SHA256 remains `0c04d0a57d4ba19f9fcbdd91534f11252cc4ce1a8a76a29db9ffcab3b820e3de`.
