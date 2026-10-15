@@ -28,13 +28,14 @@ const meta = {
 const views = {
   overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
   traffic, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
-  wan:{render:network.wan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
+  wan:{render:network.wan}, lan:{render:network.lan,mount:network.mountLan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
 };
 
 function syncContext() {
   const s = store.session?.session;
   const connected=Boolean(store.session?.connected);
   document.querySelector('#login-page').hidden=connected;
+  document.querySelector('.login-theme').hidden=connected;
   document.querySelector('.app-shell').hidden=!connected;
   const disconnect = document.querySelector('#disconnect-button');
   const updated = document.querySelector('#ctx-updated');

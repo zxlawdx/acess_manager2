@@ -1,0 +1,45 @@
+{
+  "results": [
+    {
+      "width": 1366,
+      "height": 768,
+      "theme": "light",
+      "secondaryContrast": 4.720153565740457
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "theme": "dark",
+      "secondaryContrast": 7.936652874049385
+    },
+    {
+      "width": 1600,
+      "height": 900,
+      "theme": "light",
+      "secondaryContrast": 4.720153565740457
+    },
+    {
+      "width": 1600,
+      "height": 900,
+      "theme": "dark",
+      "secondaryContrast": 7.936652874049385
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "theme": "light",
+      "secondaryContrast": 4.720153565740457
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "theme": "dark",
+      "secondaryContrast": 7.936652874049385
+    }
+  ],
+  "reducedMotion": true,
+  "systemTheme": true,
+  "persistence": true,
+  "routerData": "synthetic",
+  "runtime": "real Vela / pywebview Qt"
+}
