@@ -89,3 +89,13 @@ class DeviceQueryBus:
         import math
         if not math.isfinite(since) or not math.isfinite(until) or since>=until:raise ValueError('Intervalo inválido')
         return history.traffic_by_device(host=config.get('host'),identifier=config.get('identifier'),since=since,until=until)
+
+    def infrastructure(self,feature,method,config=None):
+        config=config or {}
+        with getattr(self.sessions,'operation_lock',nullcontext()):
+            if self.sessions.provider.vendor!='juniper':raise ValueError('Consulta exclusiva do workspace Juniper.')
+            if config.get('app_session_id') and config['app_session_id']!=self.sessions.session.session_id:
+                from apps.access_manager.infrastructure.juniper.errors import JuniperError
+                raise JuniperError('STALE_SESSION')
+            args=() if method in {'get_juniper_system','get_juniper_interfaces','get_juniper_chassis','get_juniper_resources'} else (config.get('query'),) if method=='lookup_subscribers' else (config.get('session_id'),) if method=='get_subscriber' else (config.get('name'),) if method=='get_juniper_interface' else (config,)
+            return self.execute(feature,method,*args)

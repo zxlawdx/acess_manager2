@@ -1,5 +1,6 @@
 import {request,beginView,scopeActive,isCancelled,currentScope} from '../services/api.js';
 import {store} from '../core/store.js';
+import * as juniper from './views/juniper.js';
 import * as overview from './views/overview.js';
 import * as clients from './views/clients.js';
 import * as wifi from './views/wifi.js';
@@ -18,14 +19,14 @@ let workspace = null;
 let connectionBusy=false;
 const viewStates=new Map();
 
-const meta = {
+const meta = {juniperOverview:['JUNIPER','Visão geral'],subscribers:['JUNIPER','Assinantes PPPoE'],juniperInterfaces:['JUNIPER','Interfaces'],juniperSystem:['JUNIPER','Sistema'],juniperDiagnostics:['JUNIPER','Diagnóstico'],
   overview:['VISÃO OPERACIONAL','Visão geral'], clients:['VISÃO OPERACIONAL','Clientes'],
   traffic:['VISÃO OPERACIONAL','Tráfego'], wifi:['REDE','Wi-Fi e SSIDs'], wan:['REDE','WAN'],
   lan:['REDE','LAN'], dhcpdns:['REDE','DHCP e DNS'], diagnostics:['OPERAÇÕES','Diagnóstico'],
   completeDiagnostics:['OPERAÇÕES','Diagnóstico completo'], profiles:['OPERAÇÕES','Perfis'], management:['OPERAÇÕES','Gerenciamento'],
   capabilities:['AVANÇADO','Capabilities'], deployment:['AVANÇADO','Implantação']
 };
-const views = {
+const views = {juniperOverview:{render:juniper.overview},subscribers:{render:juniper.subscribers,mount:juniper.mountSubscribers,unmount:juniper.unmountSubscribers},juniperInterfaces:{render:juniper.interfaces,mount:juniper.mountInterfaces},juniperSystem:{render:juniper.system,mount:juniper.mountSystem},juniperDiagnostics:{render:juniper.diagnostics,mount:juniper.mountDiagnostics},
   overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
   traffic, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
   wan:{render:network.wan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
@@ -34,6 +35,8 @@ const views = {
 function syncContext() {
   const s = store.session?.session;
   const connected=Boolean(store.session?.connected);
+  const infrastructure=s?.vendor==='juniper';
+  document.querySelectorAll('#sidebar .nav,#sidebar .nav-group').forEach(element=>{element.hidden=infrastructure?!element.hasAttribute('data-juniper-nav'):element.hasAttribute('data-juniper-nav')});
   document.querySelector('#login-page').hidden=connected;
   document.querySelector('.app-shell').hidden=!connected;
   const disconnect = document.querySelector('#disconnect-button');
@@ -43,6 +46,8 @@ function syncContext() {
 }
 
 async function render(name = store.view,background=false) {
+  if(store.session?.session?.vendor==='juniper'&&!['juniperOverview','subscribers','juniperInterfaces','juniperSystem','juniperDiagnostics'].includes(name))name='juniperOverview';
+  else if(store.session?.session?.vendor!=='juniper'&&['juniperOverview','subscribers','juniperInterfaces','juniperSystem','juniperDiagnostics'].includes(name))name='overview';
   const scope=background?currentScope():beginView(name);
   if(!background){views[store.view]?.unmount?.();const d=document.querySelector('#action-dialog');if(d?.open)d.close()}
   const state={generation:scope.generation,loading:true,error:null};viewStates.set(name,state);scope.controller.signal.addEventListener('abort',()=>{state.loading=false},{once:true});
@@ -91,6 +96,7 @@ function normalizeConnectionPayload(form) {
     password,
     https,
     model_hint: modelHint || null,
+    ...(fd.get('vendor')==='juniper'?{vendor:'juniper',transport:fd.get('transport')||'netconf',port:fd.get('port')||null}:{}),
   };
 }
 
@@ -125,7 +131,7 @@ async function connectFromForm(event) {
     const password = form.querySelector('[name="password"]');
     if (password) password.value = '';
 
-    toast(`Conectado via ${payload.https ? 'HTTPS' : 'HTTP'} em ${s.session.model || s.session.vendor || payload.host}.`);
+    toast(`Conectado via ${payload.vendor==='juniper'?(s.session.protocol_family||'SSH'):(payload.https ? 'HTTPS' : 'HTTP')} em ${s.session.model || s.session.vendor || payload.host}.`);
     await render('overview');
   } catch (err) {
     // Em erro, nenhum campo é resetado. Isso evita redigitar IP/usuário/senha
@@ -165,6 +171,8 @@ export async function mountApp() {
   const form = document.querySelector('#connect-form');
   if (!form) throw new Error('Formulário de conexão não foi encontrado.');
   form.addEventListener('submit', connectFromForm);
+  const syncVendor=()=>{const juniper=form.elements.vendor.value==='juniper';document.querySelector('#juniper-connection').hidden=!juniper;form.querySelector('.https-toggle').hidden=juniper;document.querySelector('.connection-security').textContent=juniper?'As credenciais são usadas somente na sessão SSH. A chave do equipamento deve estar validada no known_hosts.':'As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.'};
+  form.elements.vendor.onchange=syncVendor;syncVendor();
   document.querySelector('[data-toggle-password]').onclick=e=>{const input=form.elements.password;input.type=input.type==='password'?'text':'password';e.currentTarget.textContent=input.type==='password'?'Mostrar':'Ocultar'};
 
   const disconnect = document.querySelector('#disconnect-button');

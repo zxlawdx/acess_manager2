@@ -11,3 +11,6 @@ paramiko>=3.4,<4
 
 # Necessário em runtime por pkg_resources/setuptools dentro do bundle PyInstaller.
 platformdirs>=4.2,<5
+
+# NETCONF session management for Junos; reuses Paramiko/lxml.
+ncclient==0.7.0

@@ -38,15 +38,20 @@ class SessionManager:
             raw = hostname + (f':{parsed.port}' if parsed.port is not None else '')
         return raw, bool(https)
 
-    def connect(self, host, username, password, *, https=False, model_hint=None, attendant=None, **kwargs):
+    def connect(self, host, username, password, *, https=False, model_hint=None, attendant=None, vendor=None, **kwargs):
         with self._lock:
             self.disconnect()
-            host, https = self._normalize_target(host, https=https)
+            if vendor=='juniper':
+                host=str(host or '').strip()
+                from apps.access_manager.application.provider_router import ProviderDecision
+                decision=ProviderDecision('juniper','explicit_infrastructure_selection')
+            else:
+                host, https = self._normalize_target(host, https=https)
+                decision=self.router.decide(host,model_hint=model_hint,https=https)
             logger.info(
                 "device_connect_requested host=%s transport=%s model_hint=%s",
                 host, "https" if https else "http", bool(model_hint),
             )
-            decision=self.router.decide(host, model_hint=model_hint, https=https)
             logger.info("provider_selected vendor=%s reason=%s", decision.vendor, decision.reason)
             provider=self.providers[decision.vendor]
             try:

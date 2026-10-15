@@ -16,9 +16,9 @@
   }
   async function request(path2, options = {}) {
     const { scope = defaultScope(path2, options), forceRefresh = false, ...fetchOptions } = options;
-    const method = String(options.method || "GET").toUpperCase(), read = method === "GET";
+    const method = String(options.method || "GET").toUpperCase(), read2 = method === "GET";
     if (!scopeActive(scope)) throw cancelled();
-    const canCache = read && cachedPaths.has(path2);
+    const canCache = read2 && cachedPaths.has(path2);
     sessionKey();
     const entry = canCache ? snapshots.get(path2) : null;
     if (!forceRefresh && entry && Date.now() - entry.time < 15e3) {
@@ -33,9 +33,9 @@
     const start = performance.now(), epoch = revision;
     const work = (async () => {
       const url = new URL(path2, window.location.origin);
-      const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
+      const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read2 ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
       const text2 = await res.text(), data = parseResponseBody(text2);
-      if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/diagnostics/full/run", "/api/device/diagnostics/full/history", "/api/device/diagnostics/full/export", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path2)) clearSnapshots();
+      if (!read2 && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/diagnostics/full/run", "/api/device/diagnostics/full/history", "/api/device/diagnostics/full/export", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path2)) clearSnapshots();
       if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
       if (!res.ok) throw new Error(data?.error?.message || data?.message || `HTTP ${res.status} ao acessar ${url.pathname}`);
       if (data?.success === false) throw new Error(data?.error?.message || "Falha na operação");
@@ -148,13 +148,6 @@
     status2.style.color = online ? "var(--success)" : "";
   }
 
-  // apps/access_manager/static/js/workspaces/views/overview.js
-  var overview_exports = {};
-  __export(overview_exports, {
-    mount: () => mount2,
-    render: () => render2
-  });
-
   // apps/access_manager/static/js/shared/ui.js
   var esc = (value) => String(value ?? "—").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   var pick = (obj, ...keys) => {
@@ -255,6 +248,163 @@
   }
   var linkStatus = (v) => ({ connected: "Conectado", disconnected: "Desconectado", up: "Ativo", down: "Sem link", unknown: "Desconhecido", associated: "Associado", enabled: "Habilitado", disabled: "Desabilitado", "1": "Ativo", "0": "Inativo" })[String(v ?? "").toLowerCase()] || v || "Não disponível";
 
+  // apps/access_manager/static/js/workspaces/views/juniper.js
+  var session = () => store.session?.session;
+  var read = (path2, data = {}, scope = currentScope()) => request("/api/infrastructure/" + path2, { scope, method: "POST", body: JSON.stringify({ ...data, app_session_id: session()?.session_id }) });
+  var copy = (value) => value == null ? "—" : `<span class="juniper-value" title="${esc(value)}">${esc(value)}</span><button class="icon-button" type="button" data-copy-juniper="${esc(value)}" aria-label="Copiar valor"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor"><rect x="5" y="5" width="9" height="9" rx="1"/><path d="M3 11H2V2h9v1"/></svg></button>`;
+  function wireCopy(root2 = document) {
+    root2.querySelectorAll("[data-copy-juniper]").forEach((button) => button.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copyJuniper);
+        toast("Copiado.");
+      } catch {
+        toast("Não foi possível copiar. Selecione o valor exibido.");
+      }
+    });
+  }
+  async function overview() {
+    const data = await read("system");
+    return `<section class="panel"><h2>${esc(data.model)} · Juniper</h2><p class="muted">Equipamento de infraestrutura · ${esc(data.os)}</p>${fields([["Hostname", data.hostname], ["Junos", data.firmware], ["Família", data.family], ["Tempo ligado", uptime(data.uptime_seconds)], ["Transporte", session()?.protocol_family]])}</section><section class="panel"><h2>Atendimento PPPoE</h2><p>Abra Assinantes PPPoE para consultar contrato, usuário ou IP. As buscas são filtradas no concentrador e não carregam o inventário global.</p><p class="muted">Subscriber management será confirmado por resposta do equipamento. Falhas dessa leitura não impedem consultar facts e interfaces.</p></section>`;
+  }
+  function subscribers() {
+    return `<section class="panel"><h2>Assinantes PPPoE</h2><form id="subscriber-search" class="inline-actions"><div class="field"><label for="subscriber-query">Contrato / usuário PPPoE / IP</label><input id="subscriber-query" name="query" required maxlength="80" autocomplete="off" placeholder="000123 ou brd_000123"></div><button class="button primary" type="submit">Buscar</button><button class="button" type="button" id="subscriber-cancel" disabled>Cancelar busca</button></form><p class="muted">Prefixos conhecidos: brd_, cdy_ e 364_. Zeros à esquerda são preservados.</p><p id="subscriber-status" role="status">Informe o contrato para consultar sessões ativas.</p></section><div id="subscriber-results"></div>`;
+  }
+  var controller = null;
+  var searchGeneration = 0;
+  function unmountSubscribers() {
+    controller?.abort();
+    controller = null;
+    searchGeneration++;
+  }
+  function mountSubscribers() {
+    const scope = currentScope(), form = document.querySelector("#subscriber-search"), status2 = document.querySelector("#subscriber-status"), host = document.querySelector("#subscriber-results"), cancel = document.querySelector("#subscriber-cancel");
+    cancel.onclick = () => {
+      controller?.abort();
+      searchGeneration++;
+      status2.textContent = "Busca cancelada. Nenhum resultado anterior foi aplicado.";
+      cancel.disabled = true;
+      form.querySelector("[type=submit]").disabled = false;
+    };
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      controller?.abort();
+      controller = new AbortController();
+      const generation2 = ++searchGeneration, b = form.querySelector("[type=submit]");
+      b.disabled = true;
+      cancel.disabled = false;
+      status2.textContent = "Consultando os candidatos no concentrador…";
+      host.replaceChildren();
+      try {
+        const result = await request("/api/infrastructure/subscribers/lookup", { scope, signal: controller.signal, method: "POST", body: JSON.stringify({ query: new FormData(form).get("query"), app_session_id: session()?.session_id }) });
+        if (!scopeActive(scope) || generation2 !== searchGeneration) return;
+        status2.textContent = (result.complete ? "" : "Busca incompleta. ") + (result.sessions.length ? `${result.sessions.length} sessão(ões) encontrada(s).` : result.complete ? "Nenhuma sessão ativa encontrada nesta consulta." : "Não foi possível confirmar ausência de sessão.");
+        host.innerHTML = `<section class="panel"><h3>Candidatos consultados</h3>${table([{ label: "Candidato", keys: ["candidate"] }, { label: "Resultado", render: (r) => esc({ FOUND: "Sessão encontrada", NOT_FOUND: "Sem sessão ativa", ERROR: "Erro", TIMEOUT: "Tempo esgotado", UNSUPPORTED: "Não suportado" }[r.status] || r.status) }, { label: "Detalhe", keys: ["message"] }], result.candidates)}</section>` + table([{ label: "Contrato / usuário", render: (r) => `${copy(r.username)}<small>${esc(r.contract || "")}</small>` }, { label: "Estado", keys: ["state"] }, { label: "IPv4", render: (r) => copy(r.ipv4_address) }, { label: "IPv6", render: (r) => esc(r.ipv6_addresses.join(", ") || "—") }, { label: "Interface", render: (r) => copy(r.interface) }, { label: "Sessão", render: (r) => copy(r.session_id) }, { label: "Ações", render: (r) => `<button class="button" data-subscriber="${esc(r.session_id)}" ${r.session_id ? "" : "disabled"}>Detalhes</button>` }], result.sessions);
+        wireCopy(host);
+        host.querySelectorAll("[data-subscriber]").forEach((button) => button.onclick = () => openSubscriber(button.dataset.subscriber));
+      } catch (error) {
+        if (scopeActive(scope) && generation2 === searchGeneration && !isCancelled(error)) status2.textContent = error.message;
+      } finally {
+        if (scopeActive(scope) && generation2 === searchGeneration) {
+          b.disabled = false;
+          cancel.disabled = true;
+        }
+      }
+    };
+  }
+  var groups = [["Identificação", ["contract", "username", "prefix", "type", "state"]], ["Endereçamento", ["ipv4_address", "ipv4_netmask", "ipv6_addresses", "ipv6_prefixes", "ipv6_user_prefix", "delegated_prefix", "primary_dns", "secondary_dns", "ipv6_primary_dns", "ipv6_secondary_dns"]], ["PPPoE e rede", ["interface", "underlying_interface", "pppoe_session_id", "mac_address", "routing_instance", "logical_system", "vlan_id", "stacked_vlan_id", "agent_circuit_id", "agent_remote_id", "dynamic_profile_name"]], ["AAA", ["session_id", "radius_accounting_id", "login_time", "session_uptime", "session_timeout", "idle_timeout", "accounting"]], ["Política", ["effective_shaping_rate", "actual_upstream_rate", "actual_downstream_rate", "input_filter", "output_filter", "ipv6_input_filter", "ipv6_output_filter"]], ["CGNAT", ["nat_pool", "nat_public_ip", "nat_port_block", "nat_allocation_time"]]];
+  var labels = { contract: "Contrato", username: "Usuário", prefix: "Prefixo", type: "Tipo", state: "Estado", ipv4_address: "IPv4", ipv4_netmask: "Máscara IPv4", ipv6_addresses: "Endereços IPv6", ipv6_prefixes: "Prefixos IPv6", delegated_prefix: "Prefixo delegado", interface: "Interface", underlying_interface: "Interface subjacente", mac_address: "MAC", session_id: "Subscriber Session ID", pppoe_session_id: "PPPoE Session ID", routing_instance: "Routing instance", logical_system: "Logical system", vlan_id: "VLAN", stacked_vlan_id: "S-VLAN", login_time: "Login", session_uptime: "Tempo da sessão", effective_shaping_rate: "Shaping efetivo (kbps)", nat_public_ip: "IP público NAT", nat_port_block: "Port block", radius_accounting_id: "RADIUS Accounting ID" };
+  async function openSubscriber(id) {
+    const scope = currentScope();
+    try {
+      const row = await read("subscribers/detail", { session_id: id }, scope);
+      if (!scopeActive(scope)) return;
+      const d = dialog("Sessão " + (row.username || row.session_id), groups.map(([title, keys]) => {
+        const present = keys.filter((k) => row[k] != null && row[k] !== "" && (!Array.isArray(row[k]) || row[k].length));
+        return present.length ? `<section class="profile-section"><h3>${esc(title)}</h3>${present.map((k) => `<div class="human-field"><span>${esc(labels[k] || k.replaceAll("_", " "))}</span><strong>${copy(Array.isArray(row[k]) ? row[k].join(", ") : row[k])}</strong></div>`).join("")}</section>` : "";
+      }).join("") + `<div class="inline-actions"><button class="button" data-context="pppoe">Consultar PPPoE</button><button class="button" data-context="aaa">Consultar AAA</button></div><div id="subscriber-context" role="status"></div><p class="muted">Derrubar/reconectar sessão: operação ainda não validada neste equipamento.</p>`, `<button class="button" data-refresh-subscriber>Atualizar sessão</button>`);
+      d.classList.add("juniper-dialog");
+      wireCopy(d);
+      d.querySelector("[data-refresh-subscriber]").onclick = () => {
+        d.close();
+        openSubscriber(id);
+      };
+      d.querySelectorAll("[data-context]").forEach((button) => button.onclick = async () => {
+        button.disabled = true;
+        try {
+          const result = await read("subscribers/context", { session_id: row.session_id, username: row.username, kind: button.dataset.context }, d._requestScope);
+          if (d.open) {
+            d.querySelector("#subscriber-context").innerHTML = fields(Object.entries(result.data).map(([k, v]) => [labels[k] || k.replaceAll("_", " "), v]));
+          }
+        } catch (e) {
+          if (d.open) d.querySelector("#subscriber-context").textContent = e.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+    } catch (e) {
+      if (!isCancelled(e)) toast(e.message);
+    }
+  }
+  async function interfaces() {
+    const rows2 = await read("interfaces");
+    return `<section class="panel"><h2>Interfaces Junos</h2><p class="muted">Inventário leve. Contadores detalhados são consultados ao abrir uma interface.</p></section>` + table([{ label: "Interface", render: (r) => copy(r.name) }, { label: "Admin", keys: ["admin_state"] }, { label: "Link", keys: ["oper_state"] }, { label: "Endereços", render: (r) => esc(r.addresses.join(", ")) }, { label: "Ações", render: (r) => `<button class="button" data-junos-interface="${esc(r.name)}">Detalhes</button>` }], rows2);
+  }
+  function mountInterfaces() {
+    wireCopy();
+    document.querySelectorAll("[data-junos-interface]").forEach((button) => button.onclick = async () => {
+      try {
+        const rows2 = await read("interfaces/detail", { name: button.dataset.junosInterface });
+        dialog("Interface " + button.dataset.junosInterface, rows2.map((r) => fields(Object.entries(r).map(([k, v]) => [k.replaceAll("_", " "), Array.isArray(v) ? v.join(", ") : v]))).join(""));
+      } catch (e) {
+        toast(e.message);
+      }
+    });
+  }
+  async function system() {
+    const result = await read("chassis");
+    return `<section class="panel"><h2>Routing Engines</h2><button class="button" id="juniper-resources">Consultar CPU e memória</button><div id="juniper-resources-result"></div></section><section class="panel"><h2>Hardware / chassis</h2></section>` + table([{ label: "Componente", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Serial", keys: ["serial"] }, { label: "Part number", keys: ["part_number"] }], result);
+  }
+  function mountSystem() {
+    document.querySelector("#juniper-resources").onclick = async (event) => {
+      event.currentTarget.disabled = true;
+      const scope = currentScope();
+      try {
+        const rows2 = await read("resources", {}, scope);
+        if (scopeActive(scope)) document.querySelector("#juniper-resources-result").innerHTML = table([{ label: "RE", keys: ["slot"] }, { label: "Estado", keys: ["state"] }, { label: "CPU idle (%)", keys: ["cpu_idle_percent"] }, { label: "Memória utilizada (%)", keys: ["memory_used_percent"] }, { label: "Temperatura", keys: ["temperature"] }, { label: "Load 1 min", keys: ["load_average_1"] }], rows2);
+      } catch (e) {
+        if (scopeActive(scope)) document.querySelector("#juniper-resources-result").textContent = e.message;
+      } finally {
+        if (scopeActive(scope)) document.querySelector("#juniper-resources").disabled = false;
+      }
+    };
+  }
+  function diagnostics() {
+    return `<section class="panel"><h2>Diagnóstico a partir do Juniper</h2><p class="muted">Origem: Juniper da sessão conectada. Selecione a routing instance explicitamente quando necessário.</p><form id="juniper-diagnostic-form" class="form-grid"><div class="field"><label>Destino IPv4 / IPv6</label><input name="target" required placeholder="192.0.2.10"></div><div class="field"><label>Routing instance (opcional)</label><input name="routing_instance" maxlength="127"></div><div class="field"><label>Teste</label><select name="kind"><option value="ping">Ping — 4 pacotes</option><option value="traceroute">Traceroute — até 8 saltos</option></select></div><button class="button primary" type="submit">Executar no Juniper</button></form><div id="juniper-diagnostic-result" role="status"></div></section>`;
+  }
+  function mountDiagnostics() {
+    const form = document.querySelector("#juniper-diagnostic-form"), scope = currentScope();
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const button = form.querySelector("button");
+      button.disabled = true;
+      try {
+        const result = await read("diagnostics", Object.fromEntries(new FormData(form)), scope);
+        if (scopeActive(scope)) document.querySelector("#juniper-diagnostic-result").innerHTML = fields([["Origem", "Juniper " + (result.hostname || "")], ["Destino", result.target], ["Routing instance", result.routing_instance], ["Enviados", result.packets_sent], ["Recebidos", result.packets_received], ["Perda reportada", result.packet_loss_reported], ["RTT médio (formato do firmware)", result.rtt_average_reported]]) + table([{ label: "Salto", keys: ["hop"] }, { label: "Endereços", render: (r) => esc(r.addresses.join(", ")) }, { label: "RTT reportado", render: (r) => esc(r.rtt_reported.join(", ")) }], result.hops || []);
+      } catch (e) {
+        if (scopeActive(scope)) document.querySelector("#juniper-diagnostic-result").textContent = e.message;
+      } finally {
+        button.disabled = false;
+      }
+    };
+  }
+
+  // apps/access_manager/static/js/workspaces/views/overview.js
+  var overview_exports = {};
+  __export(overview_exports, {
+    mount: () => mount2,
+    render: () => render2
+  });
+
   // apps/access_manager/static/js/workspaces/views/clients.js
   var clients_exports = {};
   __export(clients_exports, {
@@ -279,15 +429,15 @@
   }
   function topology(data, device = "Equipamento", register = true) {
     if (register) rows = data;
-    const groups = /* @__PURE__ */ new Map();
+    const groups2 = /* @__PURE__ */ new Map();
     for (const r of data) {
       const c = String(connection(r)).toLowerCase();
       const b = String(band(r));
       let key = /mesh/.test(c) ? "Mesh" : /wi.fi|wlan|wifi/.test(c) ? /2[.,]4/.test(b) ? "Wi-Fi 2.4 GHz" : /5/.test(b) ? "Wi-Fi 5 GHz" : "Wi-Fi — banda não disponível" : /ethernet|lan|eth/.test(c) ? "Ethernet" : "Conexão não disponível";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(r);
+      if (!groups2.has(key)) groups2.set(key, []);
+      groups2.get(key).push(r);
     }
-    return `<section class="panel"><h2>Topologia da rede</h2><div class="topology-root">${esc(device)}</div><div class="topology-branches">${[...groups].map(([k, v]) => `<div class="topology-branch"><h3>${esc(k)} · ${v.length}</h3>${cards(v)}</div>`).join("")}</div>${data.length ? "" : '<p class="muted">Nenhum cliente observado nesta sessão.</p>'}</section>`;
+    return `<section class="panel"><h2>Topologia da rede</h2><div class="topology-root">${esc(device)}</div><div class="topology-branches">${[...groups2].map(([k, v]) => `<div class="topology-branch"><h3>${esc(k)} · ${v.length}</h3>${cards(v)}</div>`).join("")}</div>${data.length ? "" : '<p class="muted">Nenhum cliente observado nesta sessão.</p>'}</section>`;
   }
   function mountDetails() {
     document.querySelectorAll("[data-client]").forEach((btn) => btn.onclick = () => {
@@ -1192,7 +1342,7 @@
   }
 
   // apps/access_manager/static/js/workspaces/views/misc.js
-  async function diagnostics() {
+  async function diagnostics2() {
     const c = cap("diagnostics");
     const enabled = Boolean(c.enabled?.write);
     return `<section class="panel"><div class="panel-header"><div><h2>Diagnóstico</h2><span class="muted">Execute testes a partir do equipamento conectado.</span></div></div>
@@ -1203,7 +1353,7 @@
     <div id="diagnostic-result" class="panel"><span class="muted">${enabled ? "Pronto para executar." : `Capability diagnostics.write = ${esc(c.write)}.`}</span></div>
   </section>`;
   }
-  function mountDiagnostics() {
+  function mountDiagnostics2() {
     const out = document.querySelector("#diagnostic-result");
     const wire3 = (selector, path2) => {
       const form = document.querySelector(selector);
@@ -1493,10 +1643,10 @@
       try {
         if (id === "runtime" && store.session?.session?.vendor === "zte") {
           await request("/api/device/runtime/compatibility", { scope, method: "POST", body: "{}" });
-          const session = await request("/api/session", { scope });
+          const session2 = await request("/api/session", { scope });
           if (scopeActive(scope)) {
-            store.setSession(session);
-            store.setCapabilities(session.session?.capabilities || {});
+            store.setSession(session2);
+            store.setCapabilities(session2.session?.capabilities || {});
           }
         }
         const data = await request(path2, { scope, ...id === "workstation" ? { method: "POST", body: "{}" } : { forceRefresh: true } });
@@ -1515,6 +1665,11 @@
   var connectionBusy = false;
   var viewStates = /* @__PURE__ */ new Map();
   var meta = {
+    juniperOverview: ["JUNIPER", "Visão geral"],
+    subscribers: ["JUNIPER", "Assinantes PPPoE"],
+    juniperInterfaces: ["JUNIPER", "Interfaces"],
+    juniperSystem: ["JUNIPER", "Sistema"],
+    juniperDiagnostics: ["JUNIPER", "Diagnóstico"],
     overview: ["VISÃO OPERACIONAL", "Visão geral"],
     clients: ["VISÃO OPERACIONAL", "Clientes"],
     traffic: ["VISÃO OPERACIONAL", "Tráfego"],
@@ -1530,6 +1685,11 @@
     deployment: ["AVANÇADO", "Implantação"]
   };
   var views = {
+    juniperOverview: { render: overview },
+    subscribers: { render: subscribers, mount: mountSubscribers, unmount: unmountSubscribers },
+    juniperInterfaces: { render: interfaces, mount: mountInterfaces },
+    juniperSystem: { render: system, mount: mountSystem },
+    juniperDiagnostics: { render: diagnostics, mount: mountDiagnostics },
     overview: overview_exports,
     clients: clients_exports,
     wifi: wifi_exports,
@@ -1538,7 +1698,7 @@
     capabilities: capabilities_exports,
     completeDiagnostics: complete_diagnostics_exports,
     traffic: traffic_exports,
-    diagnostics: { render: diagnostics, mount: mountDiagnostics },
+    diagnostics: { render: diagnostics2, mount: mountDiagnostics2 },
     deployment: { render: deployment },
     wan: { render: wan },
     lan: { render: lan },
@@ -1547,6 +1707,10 @@
   function syncContext() {
     const s = store.session?.session;
     const connected = Boolean(store.session?.connected);
+    const infrastructure = s?.vendor === "juniper";
+    document.querySelectorAll("#sidebar .nav,#sidebar .nav-group").forEach((element) => {
+      element.hidden = infrastructure ? !element.hasAttribute("data-juniper-nav") : element.hasAttribute("data-juniper-nav");
+    });
     document.querySelector("#login-page").hidden = connected;
     document.querySelector(".app-shell").hidden = !connected;
     const disconnect = document.querySelector("#disconnect-button");
@@ -1555,6 +1719,8 @@
     if (updated) updated.textContent = s?.updated_at ? `Atualizado ${new Date(s.updated_at).toLocaleTimeString()}` : "—";
   }
   async function render9(name = store.view, background = false) {
+    if (store.session?.session?.vendor === "juniper" && !["juniperOverview", "subscribers", "juniperInterfaces", "juniperSystem", "juniperDiagnostics"].includes(name)) name = "juniperOverview";
+    else if (store.session?.session?.vendor !== "juniper" && ["juniperOverview", "subscribers", "juniperInterfaces", "juniperSystem", "juniperDiagnostics"].includes(name)) name = "overview";
     const scope = background ? currentScope() : beginView(name);
     if (!background) {
       views[store.view]?.unmount?.();
@@ -1608,7 +1774,8 @@
       username,
       password,
       https,
-      model_hint: modelHint || null
+      model_hint: modelHint || null,
+      ...fd.get("vendor") === "juniper" ? { vendor: "juniper", transport: fd.get("transport") || "netconf", port: fd.get("port") || null } : {}
     };
   }
   async function connectFromForm(event) {
@@ -1635,7 +1802,7 @@
       syncContext();
       const password = form.querySelector('[name="password"]');
       if (password) password.value = "";
-      toast(`Conectado via ${payload.https ? "HTTPS" : "HTTP"} em ${s.session.model || s.session.vendor || payload.host}.`);
+      toast(`Conectado via ${payload.vendor === "juniper" ? s.session.protocol_family || "SSH" : payload.https ? "HTTPS" : "HTTP"} em ${s.session.model || s.session.vendor || payload.host}.`);
       await render9("overview");
     } catch (err) {
       document.querySelector("#connection-feedback").textContent = err?.message || "Não foi possível conectar ao equipamento.";
@@ -1669,6 +1836,14 @@
     const form = document.querySelector("#connect-form");
     if (!form) throw new Error("Formulário de conexão não foi encontrado.");
     form.addEventListener("submit", connectFromForm);
+    const syncVendor = () => {
+      const juniper = form.elements.vendor.value === "juniper";
+      document.querySelector("#juniper-connection").hidden = !juniper;
+      form.querySelector(".https-toggle").hidden = juniper;
+      document.querySelector(".connection-security").textContent = juniper ? "As credenciais são usadas somente na sessão SSH. A chave do equipamento deve estar validada no known_hosts." : "As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.";
+    };
+    form.elements.vendor.onchange = syncVendor;
+    syncVendor();
     document.querySelector("[data-toggle-password]").onclick = (e) => {
       const input = form.elements.password;
       input.type = input.type === "password" ? "text" : "password";
