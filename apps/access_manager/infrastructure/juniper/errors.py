@@ -1,5 +1,10 @@
 """Public errors never contain transport exception text or router payloads."""
 MESSAGES={
+ 'HOST_KEY_UNKNOWN':'Chave SSH desconhecida. Verifique a identidade do servidor nas configurações avançadas.',
+ 'HOST_KEY_CHANGED':'A chave SSH mudou. A conexão foi bloqueada; revalide a identidade do servidor.',
+ 'PAGINATED_INCOMPLETE':'Resposta paginada incompleta. Nenhum inventário parcial foi aplicado.',
+ 'COMMAND_UNSUPPORTED':'O equipamento não reconheceu esta consulta.',
+ 'REMOTE_ERROR':'O equipamento recusou esta leitura.',
  'AUTHENTICATION_FAILED':'O Juniper rejeitou a autenticação.',
  'CONNECTION_TIMEOUT':'O Juniper não respondeu no tempo esperado.',
  'NETCONF_UNAVAILABLE':'NETCONF indisponível. Verifique a porta ou selecione SSH/XML.',

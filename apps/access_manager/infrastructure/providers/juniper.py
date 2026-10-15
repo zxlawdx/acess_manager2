@@ -28,8 +28,12 @@ class JuniperProvider:
     def _read(self,feature,parser,*,value=None,timeout=None):
         if not self.connected:raise JuniperError('SSH_UNAVAILABLE')
         try:
-            result=parser(self.transport.execute(request(feature,value=value),timeout=timeout))
-            self._evidence[feature]={'status':'validated','format':'xml'}
+            command_result=self.transport.execute(request(feature,value=value),timeout=timeout)
+            result=parser(command_result)
+            from apps.access_manager.infrastructure.juniper.output import unpack
+            _,output_format=unpack(command_result)
+            self._evidence[feature]={'status':'validated','format':output_format,'transport':getattr(command_result,'transport',getattr(self.transport,'kind',None)),
+                                     'elapsed_ms':getattr(command_result,'elapsed_ms',None)}
             return result
         except JuniperError as error:
             self._evidence[feature]={'status':'ERROR_THIS_RUN','code':error.code}
@@ -52,16 +56,19 @@ class JuniperProvider:
             except (TypeError,ValueError):raise ValueError('Porta inválida.') from None
             if not 1<=port<=65535:raise ValueError('Porta inválida.')
         return hostname,port or None
-    def connect(self,host,username,password,*,transport='netconf',port=None,**_):
+    def connect(self,host,username,password,*,transport='netconf',port=None,ssh_port=None,netconf_port=None,**_):
         self.disconnect();host,port=self.target(host,port)
         client=self.transport_factory()
         try:
             logger.info('juniper.connect transport=%s',transport)
-            client.connect(host,username,password,mode=transport,port=port)
+            ports={}
+            if ssh_port is not None:ports['ssh_port']=self.target(host,ssh_port)[1]
+            if netconf_port is not None:ports['netconf_port']=self.target(host,netconf_port)[1]
+            client.connect(host,username,password,mode=transport,port=port,**ports)
             self.transport=client;self.host=host
             self._facts=self._read('facts',parsers.facts)
             self.model=self._facts['model'];self.firmware=self._facts['firmware']
-            for name in ('device','juniper_uptime','juniper_interfaces','juniper_interface','juniper_chassis','juniper_aaa','juniper_pppoe','juniper_ping','juniper_traceroute','juniper_resources','subscriber_lookup','subscriber_detail','subscriber_count'):
+            for name in ('device','juniper_uptime','juniper_interfaces','juniper_interface','juniper_chassis','juniper_aaa','juniper_pppoe','juniper_ping','juniper_traceroute','juniper_resources','juniper_accounting','juniper_route','juniper_fib','juniper_filter','juniper_lockout','juniper_health','juniper_lacp','juniper_optics','subscriber_lookup','subscriber_detail','subscriber_count'):
                 self._set_cap(name,S.SUPPORTED if name=='device' else S.PARTIAL)
             for name in ('subscriber_disconnect','subscriber_reconnect'):
                 self._set_cap(name,S.UNKNOWN,source='mutation_not_validated')
@@ -103,7 +110,7 @@ class JuniperProvider:
                 if feature=='subscriber_username':
                     if any(row['username']!=candidate for row in rows):raise JuniperError('COMMAND_ERROR')
                 else:rows=[row for row in rows if candidate in [row['ipv4_address'],*row['ipv6_addresses']]]
-                results.append({'candidate':candidate,'status':'FOUND' if rows else 'NOT_FOUND','count':len(rows)})
+                results.append({'candidate':candidate,'status':'FOUND' if rows else 'NOT_FOUND','count':len(rows),'sessions':rows})
                 sessions.extend(rows);self._set_cap('subscriber_lookup',S.SUPPORTED)
             except JuniperError as error:
                 results.append({'candidate':candidate,'status':'TIMEOUT' if error.code=='CONNECTION_TIMEOUT' else 'UNSUPPORTED' if error.code=='UNSUPPORTED_PLATFORM' else 'ERROR','code':error.code,'message':error.public_message})
@@ -126,8 +133,21 @@ class JuniperProvider:
         kind=config.get('kind')
         if kind=='pppoe':value=row['interface'];parser=parsers.pppoe;cap='juniper_pppoe'
         elif kind=='aaa':value=row['session_id'];parser=parsers.aaa;cap='juniper_aaa'
+        elif kind=='accounting':value=row['session_id'];parser=parsers.accounting;cap='juniper_accounting'
+        elif kind in {'route','fib'}:value=row['ipv4_address'];parser=getattr(parsers,kind);cap='juniper_'+kind
+        elif kind=='lockout':value=row['underlying_interface'];parser=lambda payload:parsers.lockout(payload,row.get('mac_address'));cap='juniper_lockout'
+        elif kind=='filter':
+            filters=[row.get(k) for k in ('input_filter','output_filter','ipv6_input_filter','ipv6_output_filter')]
+            filters.extend(s.get(k) for s in row.get('service_sessions',[]) for k in ('input_filter','output_filter','ipv6_input_filter','ipv6_output_filter'))
+            value=config.get('filter')
+            if not value or value not in filters:raise ValueError('Filtro não confirmado nesta sessão.')
+            parser=parsers.firewall_filter;cap='juniper_filter'
         else:raise ValueError('Detalhe Juniper inválido.')
-        data=self._read(kind,parser,value=value);self._set_cap(cap,S.SUPPORTED)
+        try:data=self._read(kind,parser,value=value)
+        except JuniperError as error:
+            if error.code=='SUBSCRIBER_NOT_FOUND':return {'session_id':row['session_id'],'kind':kind,'status':'NOT_FOUND','data':{}}
+            raise
+        self._set_cap(cap,S.SUPPORTED)
         return {'session_id':row['session_id'],'kind':kind,'data':data}
     def get_juniper_interfaces(self):
         rows=self._read('interfaces',parsers.interfaces);self._set_cap('juniper_interfaces',S.SUPPORTED);return rows
@@ -144,6 +164,20 @@ class JuniperProvider:
                 'target':config.get('target'),'routing_instance':config.get('routing_instance'),**result}
     def get_juniper_resources(self):
         result=self._read('resources',parsers.resources);self._set_cap('juniper_resources',S.SUPPORTED);return result
+    def get_juniper_health(self,config):
+        # Explicit single sections only: no inventory sweep or implicit N+1 calls.
+        kind=config.get('kind')
+        table={'radius':parsers.radius,'aaa_authentication':parsers.aaa_statistics,
+               'aaa_accounting':parsers.aaa_statistics,'aaa_dynamic':parsers.aaa_statistics,
+               'fpc':parsers.fpc,'environment':parsers.environment}
+        if kind not in table:raise ValueError('Seção de saúde inválida.')
+        return {'kind':kind,'data':self._read(kind,table[kind])}
+    def get_juniper_link(self,config):
+        kind=config.get('kind')
+        if kind not in {'lacp','optics'}:raise ValueError('Leitura de interface inválida.')
+        data=self._read(kind,getattr(parsers,kind),value=config.get('name'))
+        self._set_cap('juniper_'+kind,S.SUPPORTED)
+        return {'kind':kind,'data':data}
     def get_juniper_chassis(self):
         rows=self._read('chassis',parsers.chassis);self._set_cap('juniper_chassis',S.SUPPORTED);return rows
     def disconnect(self):

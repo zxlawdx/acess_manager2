@@ -15,7 +15,10 @@ from apps.access_manager.infrastructure.providers.juniper import JuniperProvider
 juniper_provider=JuniperProvider()
 huawei_provider=HuaweiProvider(); zte_provider=ZTEProvider(); deployment_provider=DeploymentProvider()
 router=ProviderRouter(huawei_probe=HuaweiProvider.looks_like_huawei,huawei_models=HuaweiProvider.known_models())
-sessions=SessionManager(router,{'huawei':huawei_provider,'zte':zte_provider,'deployment':deployment_provider,'juniper':juniper_provider},history=history)
+from apps.access_manager.application.infrastructure_sessions import InfrastructureSessions
+device_sessions=SessionManager(router,{'huawei':huawei_provider,'zte':zte_provider,'deployment':deployment_provider},history=history)
+infrastructure_sessions=SessionManager(router,{'juniper':juniper_provider})
+sessions=InfrastructureSessions(device_sessions,infrastructure_sessions)
 commands=DeviceCommandBus(sessions); queries=DeviceQueryBus(sessions)
 
 profiles=ProfileService(

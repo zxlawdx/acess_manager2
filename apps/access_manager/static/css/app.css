@@ -107,3 +107,19 @@ dialog.drawer{position:fixed;inset:0 0 0 auto;margin:0;height:100vh;max-height:1
 .juniper-value{display:inline-block;max-width:23ch;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;white-space:nowrap;user-select:all}.juniper-dialog{width:min(900px,94%);max-height:90%;overflow:auto}.juniper-dialog .dialog-footer{position:sticky;bottom:0;background:var(--surface);padding:12px 0}.juniper-dialog .human-field strong{min-width:0}.juniper-dialog .juniper-value{max-width:48ch}#subscriber-search{margin-top:16px}#subscriber-search .field{flex:1;min-width:200px}
 
 .app-wrapper{align-content:safe center;align-items:safe center}
+
+/* Corporate infrastructure login stays inside the shared application shell. */
+.infrastructure-login .connection-visual { display:none; }
+.infrastructure-login .connection-card { grid-template-columns:minmax(0,1fr); max-width:540px; }
+.infrastructure-login .connection-content { padding:24px 32px; }
+.infrastructure-login .connection-intro { margin-bottom:16px; }
+.infrastructure-login h1 { font-size:1.65rem; }
+.infrastructure-login #connect-form { gap:12px; }
+.infrastructure-login .connection-eyebrow,
+.infrastructure-login .connection-intro { display:none; }
+.infrastructure-login .connection-content .brand { margin-bottom:16px; }
+.infrastructure-login .connection-content .field { margin-bottom:10px; }
+.infrastructure-login .connection-content input:not([type=checkbox]) { min-height:40px; }
+.infrastructure-login .connection-security { padding-top:10px; margin-bottom:0; }
+.infrastructure-login .connection-status { padding:9px 12px; margin:10px 0; }
+.infrastructure-login #juniper-connection details { margin:10px 0; }

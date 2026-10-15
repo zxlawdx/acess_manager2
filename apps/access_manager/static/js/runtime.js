@@ -203,7 +203,7 @@
     const d = document.querySelector("#action-dialog");
     d._requestScope?.controller.abort();
     if (d.open) d.close();
-    d.classList.remove("drawer", "profile-dialog");
+    d.classList.remove("drawer", "profile-dialog", "juniper-dialog");
     const scope = childScope();
     d._requestScope = scope;
     document.querySelector("#dialog-body").innerHTML = `<div class="dialog-inner"><div class="dialog-header"><h2 id="dialog-title">${esc(title)}</h2><button class="icon-button" data-close-dialog aria-label="Fechar">×</button></div>${content}${actions ? `<div class="dialog-footer">${actions}</div>` : ""}</div>`;
@@ -267,10 +267,16 @@
     return `<section class="panel"><h2>${esc(data.model)} · Juniper</h2><p class="muted">Equipamento de infraestrutura · ${esc(data.os)}</p>${fields([["Hostname", data.hostname], ["Junos", data.firmware], ["Família", data.family], ["Tempo ligado", uptime(data.uptime_seconds)], ["Transporte", session()?.protocol_family]])}</section><section class="panel"><h2>Atendimento PPPoE</h2><p>Abra Assinantes PPPoE para consultar contrato, usuário ou IP. As buscas são filtradas no concentrador e não carregam o inventário global.</p><p class="muted">Subscriber management será confirmado por resposta do equipamento. Falhas dessa leitura não impedem consultar facts e interfaces.</p></section>`;
   }
   function subscribers() {
+    if (lastInfraId !== session()?.session_id) {
+      lastQuery = "";
+      lastInfraId = session()?.session_id;
+    }
     return `<section class="panel"><h2>Assinantes PPPoE</h2><form id="subscriber-search" class="inline-actions"><div class="field"><label for="subscriber-query">Contrato / usuário PPPoE / IP</label><input id="subscriber-query" name="query" required maxlength="80" autocomplete="off" placeholder="000123 ou brd_000123"></div><button class="button primary" type="submit">Buscar</button><button class="button" type="button" id="subscriber-cancel" disabled>Cancelar busca</button></form><p class="muted">Prefixos conhecidos: brd_, cdy_ e 364_. Zeros à esquerda são preservados.</p><p id="subscriber-status" role="status">Informe o contrato para consultar sessões ativas.</p></section><div id="subscriber-results"></div>`;
   }
   var controller = null;
   var searchGeneration = 0;
+  var lastQuery = "";
+  var lastInfraId = null;
   function unmountSubscribers() {
     controller?.abort();
     controller = null;
@@ -278,6 +284,8 @@
   }
   function mountSubscribers() {
     const scope = currentScope(), form = document.querySelector("#subscriber-search"), status2 = document.querySelector("#subscriber-status"), host = document.querySelector("#subscriber-results"), cancel = document.querySelector("#subscriber-cancel");
+    form.elements.query.value = lastQuery;
+    if (lastQuery) queueMicrotask(() => form.requestSubmit());
     cancel.onclick = () => {
       controller?.abort();
       searchGeneration++;
@@ -287,6 +295,7 @@
     };
     form.onsubmit = async (event) => {
       event.preventDefault();
+      lastQuery = form.elements.query.value;
       controller?.abort();
       controller = new AbortController();
       const generation2 = ++searchGeneration, b = form.querySelector("[type=submit]");
@@ -313,6 +322,14 @@
   }
   var groups = [["Identificação", ["contract", "username", "prefix", "type", "state"]], ["Endereçamento", ["ipv4_address", "ipv4_netmask", "ipv6_addresses", "ipv6_prefixes", "ipv6_user_prefix", "delegated_prefix", "primary_dns", "secondary_dns", "ipv6_primary_dns", "ipv6_secondary_dns"]], ["PPPoE e rede", ["interface", "underlying_interface", "pppoe_session_id", "mac_address", "routing_instance", "logical_system", "vlan_id", "stacked_vlan_id", "agent_circuit_id", "agent_remote_id", "dynamic_profile_name"]], ["AAA", ["session_id", "radius_accounting_id", "login_time", "session_uptime", "session_timeout", "idle_timeout", "accounting"]], ["Política", ["effective_shaping_rate", "actual_upstream_rate", "actual_downstream_rate", "input_filter", "output_filter", "ipv6_input_filter", "ipv6_output_filter"]], ["CGNAT", ["nat_pool", "nat_public_ip", "nat_port_block", "nat_allocation_time"]]];
   var labels = { contract: "Contrato", username: "Usuário", prefix: "Prefixo", type: "Tipo", state: "Estado", ipv4_address: "IPv4", ipv4_netmask: "Máscara IPv4", ipv6_addresses: "Endereços IPv6", ipv6_prefixes: "Prefixos IPv6", delegated_prefix: "Prefixo delegado", interface: "Interface", underlying_interface: "Interface subjacente", mac_address: "MAC", session_id: "Subscriber Session ID", pppoe_session_id: "PPPoE Session ID", routing_instance: "Routing instance", logical_system: "Logical system", vlan_id: "VLAN", stacked_vlan_id: "S-VLAN", login_time: "Login", session_uptime: "Tempo da sessão", effective_shaping_rate: "Shaping efetivo (kbps)", nat_public_ip: "IP público NAT", nat_port_block: "Port block", radius_accounting_id: "RADIUS Accounting ID" };
+  function detailData(data) {
+    if (Array.isArray(data)) return data.length ? data.map((item, index) => `<section class="profile-section"><h4>Registro ${index + 1}</h4>${detailData(item)}</section>`).join("") : '<p class="muted">Nenhum registro retornado.</p>';
+    if (data && typeof data === "object") {
+      const entries = Object.entries(data), simple = entries.filter(([, v]) => v == null || typeof v !== "object"), nested = entries.filter(([, v]) => v && typeof v === "object");
+      return fields(simple.map(([k, v]) => [labels[k] || k.replaceAll("_", " "), v])) + nested.map(([k, v]) => `<section class="profile-section"><h4>${esc(labels[k] || k.replaceAll("_", " "))}</h4>${detailData(v)}</section>`).join("");
+    }
+    return `<p>${esc(data ?? "—")}</p>`;
+  }
   async function openSubscriber(id) {
     const scope = currentScope();
     try {
@@ -321,9 +338,10 @@
       const d = dialog("Sessão " + (row.username || row.session_id), groups.map(([title, keys]) => {
         const present = keys.filter((k) => row[k] != null && row[k] !== "" && (!Array.isArray(row[k]) || row[k].length));
         return present.length ? `<section class="profile-section"><h3>${esc(title)}</h3>${present.map((k) => `<div class="human-field"><span>${esc(labels[k] || k.replaceAll("_", " "))}</span><strong>${copy(Array.isArray(row[k]) ? row[k].join(", ") : row[k])}</strong></div>`).join("")}</section>` : "";
-      }).join("") + `<div class="inline-actions"><button class="button" data-context="pppoe">Consultar PPPoE</button><button class="button" data-context="aaa">Consultar AAA</button></div><div id="subscriber-context" role="status"></div><p class="muted">Derrubar/reconectar sessão: operação ainda não validada neste equipamento.</p>`, `<button class="button" data-refresh-subscriber>Atualizar sessão</button>`);
+      }).join("") + (row.service_sessions?.length ? `<section class="profile-section"><h3>Serviços e shaping aplicado</h3>${detailData(row.service_sessions)}<p class="muted">Configuração técnica aplicada; não confirma plano comercial.</p></section>` : "") + `<div class="inline-actions"><button class="button" data-context="pppoe">Consultar PPPoE</button><button class="button" data-context="aaa">Consultar AAA</button><button class="button" data-context="accounting">Accounting acumulado</button><button class="button" data-context="route">Rota</button><button class="button" data-context="fib">Forwarding</button><button class="button" data-context="lockout">Lockout por MAC</button></div>${[...new Set([row.input_filter, row.output_filter, row.ipv6_input_filter, row.ipv6_output_filter, ...(row.service_sessions || []).flatMap((s) => [s.input_filter, s.output_filter, s.ipv6_input_filter, s.ipv6_output_filter])].filter(Boolean))].map((name) => `<button class="button" data-context="filter" data-filter="${esc(name)}">Contadores: ${esc(name)}</button>`).join("")}<div id="subscriber-context" role="status"></div><p class="muted">Derrubar/reconectar sessão: operação ainda não validada neste equipamento.</p>`, `<button class="button" data-refresh-subscriber>Atualizar sessão</button><button class="button primary" data-access-cpe ${row.ipv4_address ? "" : "disabled"}>Acessar CPE</button>`);
       d.classList.add("juniper-dialog");
       wireCopy(d);
+      d.querySelector("[data-access-cpe]").onclick = () => accessCpe(row);
       d.querySelector("[data-refresh-subscriber]").onclick = () => {
         d.close();
         openSubscriber(id);
@@ -331,9 +349,9 @@
       d.querySelectorAll("[data-context]").forEach((button) => button.onclick = async () => {
         button.disabled = true;
         try {
-          const result = await read("subscribers/context", { session_id: row.session_id, username: row.username, kind: button.dataset.context }, d._requestScope);
+          const result = await read("subscribers/context", { session_id: row.session_id, username: row.username, kind: button.dataset.context, ...button.dataset.filter ? { filter: button.dataset.filter } : {} }, d._requestScope);
           if (d.open) {
-            d.querySelector("#subscriber-context").innerHTML = fields(Object.entries(result.data).map(([k, v]) => [labels[k] || k.replaceAll("_", " "), v]));
+            d.querySelector("#subscriber-context").innerHTML = detailData(result.data);
           }
         } catch (e) {
           if (d.open) d.querySelector("#subscriber-context").textContent = e.message;
@@ -354,7 +372,18 @@
     document.querySelectorAll("[data-junos-interface]").forEach((button) => button.onclick = async () => {
       try {
         const rows2 = await read("interfaces/detail", { name: button.dataset.junosInterface });
-        dialog("Interface " + button.dataset.junosInterface, rows2.map((r) => fields(Object.entries(r).map(([k, v]) => [k.replaceAll("_", " "), Array.isArray(v) ? v.join(", ") : v]))).join(""));
+        const d = dialog("Interface " + button.dataset.junosInterface, detailData(rows2) + `<div class="inline-actions"><button class="button" data-link-kind="lacp">Consultar LACP</button><button class="button" data-link-kind="optics">Consultar óptica por lane</button></div><div id="link-read-result"></div>`);
+        d.querySelectorAll("[data-link-kind]").forEach((b) => b.onclick = async () => {
+          b.disabled = true;
+          try {
+            const result = await read("interfaces/link", { name: button.dataset.junosInterface, kind: b.dataset.linkKind }, d._requestScope);
+            if (d.open) d.querySelector("#link-read-result").innerHTML = detailData(result.data);
+          } catch (e) {
+            if (d.open) d.querySelector("#link-read-result").textContent = e.message;
+          } finally {
+            if (d.open) b.disabled = false;
+          }
+        });
       } catch (e) {
         toast(e.message);
       }
@@ -362,9 +391,21 @@
   }
   async function system() {
     const result = await read("chassis");
-    return `<section class="panel"><h2>Routing Engines</h2><button class="button" id="juniper-resources">Consultar CPU e memória</button><div id="juniper-resources-result"></div></section><section class="panel"><h2>Hardware / chassis</h2></section>` + table([{ label: "Componente", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Serial", keys: ["serial"] }, { label: "Part number", keys: ["part_number"] }], result);
+    return `<section class="panel"><h2>Routing Engines</h2><button class="button" id="juniper-resources">Consultar CPU e memória</button><div id="juniper-resources-result"></div></section><section class="panel"><h2>AAA / RADIUS e saúde do BNG</h2><p class="muted">Leituras sob demanda. Contadores globais são acumulados e não confirmam incidente pela magnitude.</p><div class="inline-actions"><button class="button" data-bng-health="radius">Servidores RADIUS</button><button class="button" data-bng-health="aaa_authentication">Autenticação</button><button class="button" data-bng-health="aaa_accounting">Accounting</button><button class="button" data-bng-health="aaa_dynamic">Dynamic requests</button><button class="button" data-bng-health="fpc">FPC</button><button class="button" data-bng-health="environment">Ambiente</button></div><div id="bng-health-result"></div></section><section class="panel"><h2>Hardware / chassis</h2></section>` + table([{ label: "Componente", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Serial", keys: ["serial"] }, { label: "Part number", keys: ["part_number"] }], result);
   }
   function mountSystem() {
+    document.querySelectorAll("[data-bng-health]").forEach((button) => button.onclick = async () => {
+      const scope = currentScope();
+      button.disabled = true;
+      try {
+        const result = await read("health", { kind: button.dataset.bngHealth }, scope);
+        if (scopeActive(scope)) document.querySelector("#bng-health-result").innerHTML = detailData(result.data);
+      } catch (e) {
+        if (scopeActive(scope)) document.querySelector("#bng-health-result").textContent = e.message;
+      } finally {
+        if (scopeActive(scope)) button.disabled = false;
+      }
+    });
     document.querySelector("#juniper-resources").onclick = async (event) => {
       event.currentTarget.disabled = true;
       const scope = currentScope();
@@ -396,6 +437,51 @@
         button.disabled = false;
       }
     };
+  }
+  async function accessCpe(row) {
+    try {
+      const draft = await read("subscribers/cpe-draft", { session_id: row.session_id, username: row.username, ipv4_address: row.ipv4_address });
+      const d = dialog("Acessar CPE", `<p>${esc(draft.contract || "")} · ${esc(draft.subscriber_username)} · via Juniper</p><p class="muted">Atualizado ${esc(new Date(draft.refreshed_at * 1e3).toLocaleTimeString())}</p><p class="muted">IP localizado no BNG. O acesso de gerenciamento parte deste computador e pode depender de rota, ACL ou porta habilitada.</p><form id="cpe-handoff" class="form-grid"><div class="field"><label>IPv4</label><input name="host" value="${esc(draft.host)}" readonly required><label><input type="checkbox" name="edit_host"> Editar endereço explicitamente</label></div><div class="field"><label>Porta</label><input name="port" type="number" min="1" max="65535" value="80" required></div><div class="field"><label>Protocolo</label><select name="protocol"><option value="auto">Automático (HTTP; HTTPS na porta 443)</option><option value="http">HTTP</option><option value="https">HTTPS</option></select></div><div class="field"><label>Fabricante</label><select name="vendor"><option value="auto">Automático</option><option value="huawei">Huawei</option><option value="zte">ZTE</option></select></div><div class="field"><label>Usuário do CPE</label><input name="username" autocomplete="off" required></div><div class="field"><label>Senha do CPE</label><input name="password" type="password" autocomplete="off" required></div><p id="cpe-feedback" role="status"></p></form>`, `<button class="button" type="button" data-probe-cpe>Verificar porta</button><button class="button primary" type="submit" form="cpe-handoff">Conectar ao CPE</button>`);
+      d.classList.add("juniper-dialog");
+      const form = d.querySelector("form");
+      form.elements.edit_host.onchange = () => {
+        form.elements.host.readOnly = !form.elements.edit_host.checked;
+      };
+      d.querySelector("[data-probe-cpe]").onclick = async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          const values = Object.fromEntries(new FormData(form));
+          delete values.password;
+          delete values.username;
+          const result = await request("/api/infrastructure/subscribers/cpe-port", { method: "POST", body: JSON.stringify({ ...draft, ...values, source_host: draft.host, edit_host: form.elements.edit_host.checked }) });
+          if (d.open) d.querySelector("#cpe-feedback").textContent = result.status === "CPE_PORT_REACHABLE" ? "Porta TCP acessível a partir deste computador. Autenticação ainda não testada." : "Porta inacessível a partir deste computador. Isso não confirma que o assinante esteja offline.";
+        } catch (e) {
+          if (d.open) d.querySelector("#cpe-feedback").textContent = e.message;
+        } finally {
+          if (d.open) button.disabled = false;
+        }
+      };
+      form.onsubmit = async (event) => {
+        event.preventDefault();
+        const button = d.querySelector("[type=submit]");
+        button.disabled = true;
+        const payload = { ...draft, ...Object.fromEntries(new FormData(form)), source_host: draft.host, edit_host: form.elements.edit_host.checked };
+        form.elements.password.value = "";
+        try {
+          const result = await request("/api/infrastructure/subscribers/connect-cpe", { method: "POST", body: JSON.stringify(payload) });
+          d.close();
+          document.dispatchEvent(new CustomEvent("session-selected", { detail: result }));
+        } catch (error) {
+          if (d.open) d.querySelector("#cpe-feedback").textContent = `Acesso de gerenciamento não confirmado: ${error.message} Isso não confirma que o assinante esteja offline.`;
+        } finally {
+          payload.password = "";
+          if (d.open) button.disabled = false;
+        }
+      };
+    } catch (error) {
+      toast(error.message);
+    }
   }
 
   // apps/access_manager/static/js/workspaces/views/overview.js
@@ -1663,6 +1749,7 @@
   var mountedRoot = null;
   var workspace = null;
   var connectionBusy = false;
+  var infrastructureSettings = {};
   var viewStates = /* @__PURE__ */ new Map();
   var meta = {
     juniperOverview: ["JUNIPER", "Visão geral"],
@@ -1713,6 +1800,26 @@
     });
     document.querySelector("#login-page").hidden = connected;
     document.querySelector(".app-shell").hidden = !connected;
+    let back = document.querySelector("#return-subscriber");
+    if (!back) {
+      back = document.createElement("button");
+      back.id = "return-subscriber";
+      back.className = "button";
+      back.textContent = "Voltar ao assinante";
+      document.querySelector("#disconnect-button").before(back);
+      back.onclick = async () => {
+        try {
+          const s2 = await request("/api/session/select", { method: "POST", body: JSON.stringify({ kind: "infrastructure" }) });
+          store.setSession(s2);
+          store.setCapabilities(s2.session?.capabilities || {});
+          syncContext();
+          await render9("subscribers");
+        } catch (e) {
+          toast(e.message);
+        }
+      };
+    }
+    back.hidden = infrastructure || !store.session?.infrastructure?.connected;
     const disconnect = document.querySelector("#disconnect-button");
     const updated = document.querySelector("#ctx-updated");
     if (disconnect) disconnect.disabled = !s;
@@ -1775,7 +1882,7 @@
       password,
       https,
       model_hint: modelHint || null,
-      ...fd.get("vendor") === "juniper" ? { vendor: "juniper", transport: fd.get("transport") || "netconf", port: fd.get("port") || null } : {}
+      ...fd.get("vendor") === "juniper" ? { vendor: "juniper", transport: fd.get("transport") || "netconf", port: fd.get("port") || null, ssh_port: fd.get("ssh_port"), netconf_port: fd.get("netconf_port") } : {}
     };
   }
   async function connectFromForm(event) {
@@ -1798,6 +1905,9 @@
         throw new Error("A API não confirmou uma sessão autenticada no equipamento.");
       }
       store.setSession(s);
+      if (payload.vendor === "juniper") {
+        infrastructureSettings = { ...infrastructureSettings, last_successful_host: payload.host, ssh_port: payload.ssh_port, netconf_port: payload.netconf_port, preferred_transport: payload.transport };
+      }
       store.setCapabilities(s.session?.capabilities || {});
       syncContext();
       const password = form.querySelector('[name="password"]');
@@ -1811,6 +1921,8 @@
       console.error("[Access Manager] Falha de conexão:", err);
     } finally {
       connectionBusy = false;
+      if (payload.vendor === "juniper") form.elements.password.value = "";
+      payload.password = "";
       if (button) {
         button.disabled = false;
         button.textContent = originalLabel;
@@ -1836,14 +1948,49 @@
     const form = document.querySelector("#connect-form");
     if (!form) throw new Error("Formulário de conexão não foi encontrado.");
     form.addEventListener("submit", connectFromForm);
+    try {
+      infrastructureSettings = await request("/api/infrastructure/settings");
+    } catch {
+    }
     const syncVendor = () => {
       const juniper = form.elements.vendor.value === "juniper";
       document.querySelector("#juniper-connection").hidden = !juniper;
       form.querySelector(".https-toggle").hidden = juniper;
-      document.querySelector(".connection-security").textContent = juniper ? "As credenciais são usadas somente na sessão SSH. A chave do equipamento deve estar validada no known_hosts." : "As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.";
+      document.querySelector("#login-page").classList.toggle("infrastructure-login", juniper);
+      form.elements.password.autocomplete = juniper ? "off" : "current-password";
+      form.elements.username.autocomplete = juniper ? "off" : "username";
+      form.querySelector("[for=connection-host]").textContent = juniper ? "Servidor" : "IP ou IP:porta";
+      form.querySelector("[for=connection-user]").textContent = juniper ? "Usuário AD" : "Usuário";
+      form.querySelector("[for=connection-password]").textContent = juniper ? "Senha AD" : "Senha";
+      if (juniper) {
+        form.elements.host.value = infrastructureSettings.last_successful_host || infrastructureSettings.default_host || "";
+        form.elements.ssh_port.value = infrastructureSettings.ssh_port || 22;
+        form.elements.netconf_port.value = infrastructureSettings.netconf_port || 830;
+        form.elements.transport.value = infrastructureSettings.preferred_transport || "ssh";
+      }
+      document.querySelector(".connection-security").textContent = juniper ? "Use sua conta corporativa no Junos. A senha é descartada após cada tentativa." : "As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.";
     };
     form.elements.vendor.onchange = syncVendor;
     syncVendor();
+    document.querySelector("#inspect-host-key").onclick = async () => {
+      try {
+        const info = await request("/api/infrastructure/host-key", { method: "POST", body: JSON.stringify({ host: form.elements.host.value, port: form.elements.transport.value === "netconf" ? form.elements.netconf_port.value : form.elements.ssh_port.value }) });
+        const d = dialog("Identidade SSH do servidor", `<p>${esc(info.host)}:${esc(info.port)} · ${esc(info.status)}</p><p>Chave apresentada: <strong>${esc(info.fingerprint)}</strong></p>${info.previous_fingerprints.length ? `<p>Chaves anteriores: ${info.previous_fingerprints.map(esc).join(", ")}</p>` : ""}<p>Compare a impressão digital com uma fonte confiável antes de aceitar. Uma chave alterada bloqueia a conexão.</p>`, `<button class="button primary" data-trust-key>Confirmei a identidade — confiar nesta chave</button>`);
+        d.querySelector("[data-trust-key]").onclick = async (event) => {
+          event.currentTarget.disabled = true;
+          try {
+            await request("/api/infrastructure/host-key/trust", { method: "POST", body: JSON.stringify({ ...info, confirm: true }) });
+            d.close();
+            toast("Chave confiável para este servidor e porta.");
+          } catch (e) {
+            toast(e.message);
+            if (d.open) event.currentTarget.disabled = false;
+          }
+        };
+      } catch (e) {
+        toast(e.message);
+      }
+    };
     document.querySelector("[data-toggle-password]").onclick = (e) => {
       const input = form.elements.password;
       input.type = input.type === "password" ? "text" : "password";
@@ -1852,11 +1999,12 @@
     const disconnect = document.querySelector("#disconnect-button");
     if (disconnect) {
       disconnect.onclick = async () => {
+        let remaining;
         try {
-          await request("/api/session", { method: "DELETE" });
+          remaining = await request("/api/session", { method: "DELETE" });
         } finally {
-          store.setSession({ connected: false, session: null });
-          store.setCapabilities({});
+          store.setSession(remaining?.session ? remaining : { connected: false, session: null });
+          store.setCapabilities(remaining?.session?.capabilities || {});
           views[store.view]?.unmount?.();
           beginView("login");
           form.elements.password.value = "";
@@ -1868,6 +2016,12 @@
         }
       };
     }
+    document.addEventListener("session-selected", (event) => {
+      store.setSession(event.detail);
+      store.setCapabilities(event.detail.session?.capabilities || {});
+      syncContext();
+      render9("overview");
+    });
     document.addEventListener("refresh-view", () => render9(store.view));
     let refreshTimer;
     document.addEventListener("snapshot-updated", (event) => {

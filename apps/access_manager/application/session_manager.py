@@ -47,7 +47,11 @@ class SessionManager:
                 decision=ProviderDecision('juniper','explicit_infrastructure_selection')
             else:
                 host, https = self._normalize_target(host, https=https)
-                decision=self.router.decide(host,model_hint=model_hint,https=https)
+                if vendor in {'huawei','zte'}:
+                    from apps.access_manager.application.provider_router import ProviderDecision
+                    decision=ProviderDecision(vendor,'explicit_cpe_selection')
+                else:
+                    decision=self.router.decide(host,model_hint=model_hint,https=https)
             logger.info(
                 "device_connect_requested host=%s transport=%s model_hint=%s",
                 host, "https" if https else "http", bool(model_hint),

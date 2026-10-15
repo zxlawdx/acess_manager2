@@ -10,7 +10,7 @@ def subscriber_detail(context=None):return safe(lambda:queries.infrastructure('s
 @api.post('/infrastructure/subscribers/context')
 def subscriber_context(context=None):
     config=body(context)
-    return safe(lambda:queries.infrastructure('juniper_pppoe' if config.get('kind')=='pppoe' else 'juniper_aaa','subscriber_context',config))
+    return safe(lambda:queries.infrastructure('juniper_'+str(config.get('kind')),'subscriber_context',config))
 
 @api.post('/infrastructure/interfaces')
 def infrastructure_interfaces(context=None):return safe(lambda:queries.infrastructure('juniper_interfaces','get_juniper_interfaces',body(context)))
@@ -29,3 +29,9 @@ def infrastructure_resources(context=None):return safe(lambda:queries.infrastruc
 
 @api.post('/infrastructure/diagnostics')
 def infrastructure_diagnostics(context=None):return safe(lambda:queries.infrastructure('juniper_'+str(body(context).get('kind')),'juniper_diagnostic',body(context)))
+
+@api.post('/infrastructure/health')
+def infrastructure_health(context=None):return safe(lambda:queries.infrastructure('juniper_health','get_juniper_health',body(context)))
+
+@api.post('/infrastructure/interfaces/link')
+def infrastructure_link(context=None):return safe(lambda:queries.infrastructure('juniper_'+str(body(context).get('kind')),'get_juniper_link',body(context)))
