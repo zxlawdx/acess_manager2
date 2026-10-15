@@ -37,6 +37,7 @@ def wan_view(row):
             'username':value(row,'username','pppoe_username'), 'service':value(row,'services','service'),
             'dns':value(row,'dns','DNSServers') or [v for v in [row.get('dns1'),row.get('dns2')] if v],
             'mtu':value(row,'mtu'), 'nat':boolean(value(row,'nat','nat_enabled')),
+            'remain_lease_time':value(row,'remain_lease_time','RemainLeaseTime'), 'connection_error':value(row,'connection_error','erro','ConnError'),
             'uptime':value(row,'uptime','uptime_seconds'), 'prefix':value(row,'ipv6_prefix','prefix'),
             'rx_bytes':value(row,'rx_bytes'), 'tx_bytes':value(row,'tx_bytes'), 'advanced':row}
 

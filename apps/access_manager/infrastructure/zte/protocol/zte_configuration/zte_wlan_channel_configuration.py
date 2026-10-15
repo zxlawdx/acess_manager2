@@ -250,11 +250,25 @@ def set_radio_config(
             + resposta[:400]
         )
 
-    return {
-        "success": True,
-        "band": band,
-        "config": config,
-    }
+    # An accepted POST is not verification. Reuse the canonical reader once;
+    # never retry a mutation when read-back is absent or disagrees.
+    expected = {key: str(value) for key,value in novo.items()
+                if key in RADIO_FIELDS and (radio.get(key) != value or key in {
+                    "AutoChannelEnabled", "Standard", "BandWidth", "CountryCode", "TxPower"
+                })}
+    if str(novo.get("AutoChannelEnabled")) == "1":
+        expected.pop("Channel", None)  # Auto may report its actual channel.
+    verified = False
+    try:
+        observed_xml = get_channel(zte)
+        zte._validar_resposta(observed_xml)
+        observed = next((row for row in zte._parse_instances(observed_xml).get("OBJ_WLANSETTING_ID", [])
+                         if row.get("Band") == band), None)
+        verified = observed is not None and all(str(observed.get(key)) == value for key,value in expected.items())
+    except Exception:
+        pass
+    return {"success": True, "band": band, "config": config,
+            "verified": verified, "uncertain": not verified}
 
 
 # =========================================================

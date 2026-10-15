@@ -40,11 +40,11 @@ class JsonProfileRepository:
         tmp.replace(self.path)
 
     def list(self) -> list[NetworkProfile]:
-        return [NetworkProfile.from_dict(value) for _, value in sorted(self._read().items())]
+        return [NetworkProfile.from_dict({"name":key,**value}) for key, value in sorted(self._read().items())]
 
     def get(self, name: str) -> NetworkProfile | None:
         value = self._read().get(name)
-        return NetworkProfile.from_dict(value) if value else None
+        return NetworkProfile.from_dict({"name":name,**value}) if value else None
 
     def save(self, profile: NetworkProfile) -> NetworkProfile:
         if not profile.name:
@@ -128,19 +128,19 @@ class ProfileService:
         for op in operations:
             if op.feature not in current_cache:
                 try:
-                    reader={'wifi':'wifi','wifi_radio':'wifi','dns':'dns','dns_hosts':'dns','dhcp':'dhcp'}.get(op.feature)
+                    reader={'wifi':'wifi','wifi_radio':'wifi_radios','dns':'dns','dns_hosts':'dns','dhcp':'dhcp'}.get(op.feature)
                     current_cache[op.feature]=getattr(self.queries,reader)() if self.queries is not None and reader else None
                 except Exception:current_cache[op.feature]=None
             current=current_cache[op.feature] or {}
             config=op.args[-1] if op.args and isinstance(op.args[-1],dict) else {}
             if op.feature=='dns_hosts':current=next((r for r in current.get('hosts',[]) if r.get('name')==config.get('name')), {})
             if op.feature=='wifi':current=next((r for r in current.get('networks',[]) if str(r.get('id'))==str(op.args[0])),{})
-            if op.feature=='wifi_radio':current=next((r for r in current.get('radios',[]) if (r.get('band') or r.get('banda'))==config.get('band')), {})
+            if op.feature=='wifi_radio':current=next((r for r in (current if isinstance(current,list) else current.get('radios',[])) if (r.get('band') or r.get('banda'))==config.get('band')), {})
             aliases={'channel':'canal','bandwidth':'largura','standard':'padrao','tx_power':'potencia','country':'pais','auto_channel':'canal_automatico','min_address':'pool_start','max_address':'pool_end','lease_time':'lease_seconds','ssid':'ssid','enabled':'ativo'}
             changes=[]
             for key,desired in config.items():
                 old=current.get(key,current.get(aliases.get(key,'')))
-                changes.append({'field':labels.get(key,key.replace('_',' ')),'current':'Oculta' if 'password' in key else display(old),'desired':'Será alterada' if 'password' in key else display(desired),'current_known':old is not None})
+                changes.append({'field':labels.get(key,key.replace('_',' ')),'current':'Oculta' if 'password' in key else display(old),'desired':'Será alterada' if 'password' in key else 'Automático' if key=='channel' and config.get('auto_channel') is True else display(desired),'current_known':old is not None})
             cap = provider.capabilities.get(op.feature)
             result.append({
                 **op.public(),

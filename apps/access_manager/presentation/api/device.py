@@ -7,6 +7,9 @@ def clients(context=None): return safe(queries.clients)
 def wifi(context=None): return safe(queries.wifi)
 @api.get("/device/wifi/ssids")
 def wifi_ssids(context=None): return safe(queries.wifi_ssids)
+@api.get("/device/wifi/channels")
+def wifi_channels(context=None): return safe(queries.wifi_channels)
+
 @api.get("/device/wifi/radios")
 def wifi_radios(context=None): return safe(queries.wifi_radios)
 @api.post("/device/wifi/reveal-password")
@@ -170,3 +173,6 @@ def full_diagnostic_history(context=None):
 def full_diagnostic_export(context=None):
     from apps.access_manager.composition import full_diagnostics
     return safe(lambda: full_diagnostics.export(body(context)))
+
+@api.post("/device/runtime/compatibility")
+def compatibility_scan(context=None): return safe(queries.compatibility_scan)

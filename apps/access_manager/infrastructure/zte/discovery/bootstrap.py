@@ -49,39 +49,9 @@ def announced_tags(payload,limit=16):
 
 
 def profile_signature(client):
-    """At most one view + the two primary client reads; no fallback/relogin.
-
-    Both roots (including valid_empty) must validate. These shared endpoints
-    establish a read strategy, never an exact H3601P model or Ethernet role.
-    """
-    probes={}
-    try:
-        payload=client.get_view('localNetStatus',_request_timeout=3)
-        if is_login_view(payload):raise ReadFailure('session_expired')
-        client._menu_context='localNetStatus'
-        probes['localNetStatus']={'status':'available'}
-    except Exception as error:
-        probes['localNetStatus']={'status':failure_category(error)}
-        return None,probes
-    selected={}
-    for feature,key in (('wifi_clients','wifi_signature'),('lan_clients','lan_signature')):
-        candidate=H3601P_V9.candidates[feature][0]
-        try:
-            objects=parse_objects(client.get_menu(candidate.tag,_request_timeout=3),allowed_roots(feature,candidate))
-            validate_client_objects(objects)
-            count=sum(len(rows) for rows in objects.values())
-            detail={'tag':candidate.tag,'view':candidate.view,'roots':list(objects),
-                    'records':count,'status':'validated' if count else 'valid_empty'}
-            selected[feature]=candidate
-            state(client)['diagnostics'][feature]=detail
-            probes[key]=dict(detail)
-        except Exception as error:
-            reason=failure_category(error)
-            probes[key]={'tag':candidate.tag,'status':reason}
-            if reason=='http_404':state(client)['missing'].add(candidate.tag)
-    if len(selected)!=2:return None,probes
-    state(client)['selected'].update(selected)
-    return H3601P_V9,probes
+    from .compatibility import scan
+    report = scan(client)
+    return (H3601P_V9 if report['validated_features'] else None), report
 
 
 @dataclass
@@ -127,7 +97,9 @@ def identify(client,model_hint,footer_reader):
         info['modelo']=model_hint;source='model_hint_unconfirmed'
     model=info.get('modelo') or 'ZTE'
     profile=select_profile(model,info.get('firmware') or info.get('firmware_extendido'))
-    if profile:profile_source='model_hint_unconfirmed' if source=='model_hint_unconfirmed' else 'model_identity'
+    if profile:
+        profile_source='model_hint_unconfirmed' if source=='model_hint_unconfirmed' else 'model_identity'
+        _,scan_report=profile_signature(client);probes.update(scan_report)
     elif not info.get('modelo') or model=='ZTE':
         profile,signature=profile_signature(client);probes.update(signature)
         if profile:profile_source=source='endpoint_signature'

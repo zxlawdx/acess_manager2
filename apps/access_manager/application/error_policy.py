@@ -31,6 +31,9 @@ def _safe_text(error: BaseException, fallback: str) -> str:
     return value
 
 def classify(error: BaseException) -> PublicFailure | None:
+    from apps.access_manager.domain.capabilities import CapabilityUnavailable
+    if isinstance(error, CapabilityUnavailable):
+        return PublicFailure('FEATURE_UNAVAILABLE','unconfirmed','Este recurso ainda não foi confirmado para o firmware conectado.',False)
     if isinstance(error, ZTEAuthenticationError):
         return PublicFailure("AUTH_REJECTED", "authentication", "O equipamento ZTE rejeitou a autenticação.", True)
     if isinstance(error, HuaweiArchitectureError):

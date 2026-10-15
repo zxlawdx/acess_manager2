@@ -40,7 +40,7 @@ class BaseProfileTranslator:
             hosts=dns.pop('hosts',[])
             host_operations=[]
             for host in hosts:
-                name=str(host.get('name') or '').strip();address=str(ip_address(str(host.get('ip') or '')))
+                name=str(host.get('name') or host.get('nome') or '').strip();address=str(ip_address(str(host.get('ip') or '')))
                 if not name:raise ValueError('Nome do host DNS é obrigatório')
                 host_operations.append(ProfileOperation(feature='dns_hosts',method='save_dns_host',args=({'name':name,'ip':address},),label='Host DNS '+name))
             servers=dns.pop('servers',None)

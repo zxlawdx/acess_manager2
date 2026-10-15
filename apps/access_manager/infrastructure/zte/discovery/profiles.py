@@ -31,12 +31,26 @@ H3601P_V9 = DeviceProfile('h3601p_v9', False, 'ethernet', {
         endpoint('accessdev_landevs_lua.lua', 'OBJ_ACCESSDEV_ID'),
         endpoint('accessdev_ssiddev_lua.lua', 'OBJ_ACCESSDEV_ID'),
     ),
+    'dns': (endpoint('dns_localdns_lua.lua','OBJ_DNS_ID','dns'),),
+    'dns_hosts': (endpoint('dns_hostname_lua.lua','ALLDNSHOST','dns'),),
+    'dhcp_config': (endpoint('Localnet_LanMgrIpv4_DHCPBasicCfg_lua.lua','OBJ_Br0AndDhcpsHosCfg_ID','lanMgrIpv4'),),
+    'dmz': (endpoint('firewall_dmz_lua.lua','OBJ_FWDMZ_ID','dmz'),),
+    'upnp': (endpoint('upnp_upnp_lua.lua','OBJ_UPNPCONFIG_ID','upnp'),),
+    'tr069': (endpoint('tr069_remotemgr_lua.lua','OBJ_MANAGESERVER_ID','remoteMgr'),),
+    'firewall': (endpoint('firewall_config_lua.lua','OBJ_FWLEVEL_ID','firewall'),),
     'wan': (endpoint('wan_internetstatus_lua.lua', 'ID_WAN_COMFIG', 'ethWanStatus',
                      (('TypeUplink', '2'), ('pageType', '1'))),),
     'lan_ports': (endpoint('status_lan_info_lua.lua', 'OBJ_PON_PORT_BASIC_STATUS_ID'),),
     'wifi_ssids': (endpoint('wlan_wlansssidconf_lua.lua', 'OBJ_WLANAP_ID', 'wlanBasic'),),
     'wifi_radios': (endpoint('wlan_wlanbasicadconf_lua.lua', 'OBJ_WLANSETTING_ID', 'wlanBasic'),),
 })
+
+
+# Same read-only scan candidates as the canonical legacy diagnostic reader.
+for _feature, _query in (('neighbor_24','ScanAP'),('neighbor_5','ScanAP5g')):
+    H3601P_V9.candidates[_feature] = tuple(endpoint(tag,'OBJ_WLANGETNEBAP_ID',view,(('APGetFrom',_query),))
+        for view in ('wlanStaScanAP','wlanBasic')
+        for tag in ('tot_wlan_wlan_profile_lua.lua','wlan_sta_wlan_profile_lua.lua','wlan_wlan_profile_lua.lua'))
 
 
 def select_profile(model, firmware=None):
@@ -64,4 +78,6 @@ def allowed_roots(feature, candidate):
         return ('OBJ_ACCESSDEV_ID','OBJ_WLAN_AD_ID','OBJ_DHCPHOSTINFO_ID')
     if feature in {'lan_clients', 'dhcp_leases'}:
         return (candidate.root, 'OBJ_DHCPHOSTINFO_ID')
+    if feature == 'wifi_radios':
+        return (candidate.root, 'OBJ_CHANNEL_ID')
     return (candidate.root,)

@@ -87,13 +87,15 @@ class ZTEProvider:
         if any(item.get('status') in {'validated','valid_empty'} for item in observed.values()) and 'FEATURES_VALIDATED' not in self._bootstrap['connection_states']:
             self._bootstrap['connection_states'].append('FEATURES_VALIDATED')
         mapping={'wan':['wan'],'clients':['lan_clients','wifi_clients'],'lan':['lan_ports'],
-                 'wifi':['wifi_ssids'],'wifi_radio':['wifi_radios'],'dhcp':['dhcp_leases']}
+                 'wifi':['wifi_ssids'],'wifi_radio':['wifi_radios'],'wifi_neighbor_scan':['neighbor_24','neighbor_5'],'dhcp':['dhcp_leases'],'wifi_channels':['wifi_radios'],'dns':['dns'],'dns_hosts':['dns_hosts'],'dmz':['dmz'],'upnp':['upnp'],'tr069':['tr069'],'firewall':['firewall']}
         safe=[]
         for name in self._caps.public():
             old=self._caps.get(name)
             if name=='optical':read=S.UNSUPPORTED if identified and self._bootstrap['profile_selection']['source']!='endpoint_signature' else S.UNKNOWN
             elif name=='device':read=S.SUPPORTED if structured and identified else S.PARTIAL
             elif name=='runtime_diagnostic':read=S.SUPPORTED
+            elif name=='dhcp':read=S.SUPPORTED if any(observed.get(k,{}).get('status') in {'validated','valid_empty'} for k in ('dhcp_leases','dhcp_config')) else S.PARTIAL
+            elif name=='wifi_channels':read=S.SUPPORTED if 'OBJ_CHANNEL_ID' in observed.get('wifi_radios',{}).get('roots',[]) else S.PARTIAL
             elif name in mapping:
                 read=S.SUPPORTED if all(observed.get(k,{}).get('status') in {'validated','valid_empty'} for k in mapping[name]) else S.PARTIAL
             elif name in {'mesh','mesh_read','traffic'}:read=S.PARTIAL
@@ -166,6 +168,8 @@ class ZTEProvider:
         items.append(Capability('speedtest',S.SUPPORTED,S.SUPPORTED,E.SOURCE_CONFIRMED,source='legacy_ais_start_and_poll'))
         items.append(Capability('mesh_read',S.SUPPORTED,S.UNKNOWN,E.SOURCE_CONFIRMED,source='legacy_netsphere_probe'))
         for name in ('backup','restore','firmware','accounts'):items.append(Capability(name,S.SUPPORTED,S.SUPPORTED,E.SOURCE_CONFIRMED,destructive=name in {'restore','firmware'},source='legacy_management_workflows'))
+        items.append(Capability('wifi_channels',S.SUPPORTED if is_native else S.PARTIAL,S.UNKNOWN,ev,source='firmware_channel_table'))
+        items.append(Capability('wifi_neighbor_scan',S.SUPPORTED if is_native else S.PARTIAL,S.UNKNOWN,ev,source='legacy_optional_neighbor_scan'))
         items.append(Capability('runtime_diagnostic',S.SUPPORTED,S.UNKNOWN,E.SOURCE_CONFIRMED,source='ported_model_shape_probe'))
         items.append(Capability('factory_reset',S.SUPPORTED,S.SUPPORTED,E.FIRMWARE_CONFIRMED,destructive=True,source='recognized_reset_template_handler'))
         items.append(Capability('nat_sessions',S.SUPPORTED,S.UNKNOWN,E.FIRMWARE_CONFIRMED,source='conntrack_counts_only'))
@@ -275,7 +279,18 @@ class ZTEProvider:
         c=self._need()
         if getattr(self,'_profile',None):
             objects=self._profile_objects('wifi_radios')
-            return [{'id':r.get('_InstID'),'banda':r.get('Band'),'canal':r.get('Channel'),'largura':r.get('BandWidth'),'padrao':r.get('Standard'),'potencia':r.get('TxPower'),'pais':r.get('CountryCode')} for r in objects.get('OBJ_WLANSETTING_ID',[])]
+            from apps.access_manager.infrastructure.zte.discovery.radio import radios
+            from apps.access_manager.infrastructure.zte.discovery.profile_runtime import state
+            result=radios(objects)
+            for row in result:
+                for key in ('standard','tx_power'):
+                    options=state(c)['form_options'].get(key,[])
+                    if key=='standard':
+                        forbidden={'a','ac'} if '2.4' in str(row['band']) else {'b','g'}
+                        options=[option for option in options if not forbidden.intersection(re.split(r'[,/ ]+',str(option['value']).lower()))]
+                    current=row.get(key)
+                    row['options'][key]=options or ([{'value':str(current),'label':str(current)}] if current is not None else [])
+            return result
         radios=c.channel_status()
         try: observed_options=radio_options(c.get_view('wlanBasic',Menu3Location=0))
         except Exception: observed_options={}
@@ -290,10 +305,31 @@ class ZTEProvider:
             except Exception: pass
             r['options']=options
         return radios
+    def get_available_channels(self, band=None, bandwidth=None, country=None):
+        if getattr(self,'_profile',None):
+            from apps.access_manager.infrastructure.zte.discovery.radio import channels
+            return channels(self._profile_objects('wifi_radios'),band=band,bandwidth=bandwidth,country=country)
+        return self._need().available_channels(band=band,bandwidth=bandwidth,country=country)
+
+    def get_wifi_neighbor_scan(self, band):
+        # Known native families retain their canonical reader. Profile readers
+        # use the bounded candidates and central strict JSON/XML parser.
+        if not getattr(self,'_profile',None):return self._need().wifi_neighbor_scan(band)
+        from apps.access_manager.infrastructure.zte.discovery.profile_runtime import read_feature, ReadFailure
+        feature='neighbor_5' if '5' in str(band) else 'neighbor_24'
+        try:
+            objects,candidate=read_feature(self._need(),feature)
+            fields={'ssid':'Essid','bssid':'MacAddr','auth':'AuthMode','signal':'Signal','noise':'Noise','channel':'Channel','secondary_channel':'ScndChannel','dtim':'DTIM','beacon_interval':'BeaconInterval'}
+            return {'band':band,'available':True,'backend':candidate.tag,
+                    'networks':[{k:r.get(v) for k,v in fields.items()} for r in objects.get('OBJ_WLANGETNEBAP_ID',[])]}
+        except ReadFailure:
+            return {'band':band,'available':False,'networks':[]}
+        finally:self._refresh_profile_caps()
+
     def get_wan(self):
         if not getattr(self,'_profile',None):return self._read('wan_status')
         objects=self._profile_objects('wan')
-        return [{k:r.get(v) for k,v in {'id':'_InstID','name':'WANCName','status':'ConnStatus','connection_type':'TransType','ipv4':'IPAddress','gateway':'GateWay','vlan':'VLANID','uptime_seconds':'UpTime'}.items()} for r in objects.get('ID_WAN_COMFIG',[])]
+        return [{k:r.get(v) for k,v in {'id':'_InstID','name':'WANCName','status':'ConnStatus','connection_type':'TransType','ipv4':'IPAddress','gateway':'GateWay','vlan':'VLANID','uptime_seconds':'UpTime','remain_lease_time':'RemainLeaseTime','connection_error':'ConnError','dns':'DNS','ipv6':'IPv6Address','rx_bytes':'RxBytes','tx_bytes':'TxBytes','dns1':'DNS1','dns2':'DNS2','dns_ipv6_1':'Dns1v6','dns_ipv6_2':'Dns2v6','prefix':'Pd','mtu':'MTU','nat':'IsNAT','rx_packets':'RxPackets','tx_packets':'TxPackets'}.items()} for r in objects.get('ID_WAN_COMFIG',[])]
     def get_lan(self):
         if not getattr(self,'_profile',None):return self._read('lan_ports')
         from apps.access_manager.infrastructure.zte.protocol.zte_configuration.zte_lan import _normalize_speed
@@ -302,13 +338,33 @@ class ZTEProvider:
     def get_dhcp(self):
         if getattr(self,'_profile',None):
             from apps.access_manager.infrastructure.zte.discovery.profile_runtime import clients
-            try:return {'leases':clients(self._need(),'dhcp_leases'),'reservations':[],'configuration_available':False}
+            try:
+                from apps.access_manager.infrastructure.zte.discovery.profile_runtime import ReadFailure
+                result={'leases':[],'reservations':[],'configuration_available':False}
+                lease_error=None
+                try:result['leases']=clients(self._need(),'dhcp_leases')
+                except ReadFailure as error:lease_error=error
+                try:
+                    objects=self._profile_objects('dhcp_config')
+                    result.update(basic=next(iter(objects.get('OBJ_Br0AndDhcpsHosCfg_ID',[])),{}),configuration_available=True)
+                except ReadFailure:
+                    if lease_error:raise lease_error
+                return result
             finally:self._refresh_profile_caps()
         if self._is_f6201b():
             from apps.access_manager.infrastructure.zte.f6201b.f6201b_dhcp import status
             return status(self._need())
         return self._read('dhcp_status')
-    def get_dns(self): return self._f6201b_dns.read(self._need()) if self._is_f6201b() else self._need().dns_status()
+    def get_dns(self):
+        if not getattr(self,'_profile',None):return self._f6201b_dns.read(self._need()) if self._is_f6201b() else self._need().dns_status()
+        objects=self._profile_objects('dns')
+        raw=next(iter(objects.get('OBJ_DNS_ID',[])),{})
+        result={k:raw.get(v) for k,v in {'id':'_InstID','domain_name':'DomainName','ipv4_1':'SerIPAddress1','ipv4_2':'SerIPAddress2','ipv6_1':'SerIPv6Address1','ipv6_2':'SerIPv6Address2'}.items()}
+        try:
+            objects=self._profile_objects('dns_hosts')
+            result['hosts']=[{'id':r.get('_InstID'),'name':r.get('HostName'),'ip':r.get('IPAddress')} for r in objects.get('ALLDNSHOST',[]) if r.get('HostName') and r.get('LeaseTime') in (None,'','isDNSHOSTInst')]
+        except Exception:result['hosts']=[]
+        return result
     def get_optical(self):
         self.capabilities.require_read('optical')
         return self._need().optical_status()
@@ -404,18 +460,27 @@ class ZTEProvider:
         return self._need().traceroute(config)
 
     def get_dmz(self):
-        rows = self._need().dmz_status()
+        rows = self._profile_objects('dmz').get('OBJ_FWDMZ_ID',[]) if getattr(self,'_profile',None) else self._need().dmz_status()
         row = rows[0] if isinstance(rows, list) and rows else rows if isinstance(rows, dict) else {}
         enabled = row.get('enabled', row.get('Enable'))
         return {'available': bool(row), 'id': row.get('id') or row.get('_InstID'),
                 'enabled': None if enabled is None else enabled is True or str(enabled)=='1',
                 'internal_client': row.get('internal_client', row.get('InternalClient')),
                 'wan': row.get('wan', row.get('WANCViewName'))}
-    def get_upnp(self): return self._need().upnp_status()
+    def get_upnp(self):
+        if not getattr(self,'_profile',None):return self._need().upnp_status()
+        row=next(iter(self._profile_objects('upnp').get('OBJ_UPNPCONFIG_ID',[])),{})
+        return {'available':bool(row),'enabled':None if 'EnableUPnPIGD' not in row else row['EnableUPnPIGD']=='1','wan':row.get('WanName'),'advertisement_period':row.get('ADPeriod'),'ttl':row.get('TTL')}
     def get_tr069(self):
+        if getattr(self,'_profile',None):
+            row=next(iter(self._profile_objects('tr069').get('OBJ_MANAGESERVER_ID',[])),{})
+            return {'available':bool(row),'url':row.get('URL')}
         result = self._need().tr069_management_status()
         return {'available': result.get('available'), 'url': (result.get('server') or {}).get('URL'), 'advanced': result}
-    def get_firewall(self): return self._need().firewall_management_status()
+    def get_firewall(self):
+        if not getattr(self,'_profile',None):return self._need().firewall_management_status()
+        row=next(iter(self._profile_objects('firewall').get('OBJ_FWLEVEL_ID',[])),{})
+        return {'available':bool(row),'enabled':None if 'Enable' not in row else row['Enable']=='1','level':row.get('Level')}
     def set_firewall(self, config):
         self.capabilities.require_write('firewall'); return self._need().set_firewall_management(config)
 
@@ -486,6 +551,18 @@ class ZTEProvider:
         data=self._need().firmware_management_status()
         return {'available':bool(data.get('objects')), 'states':[{k:v for k,v in row.items() if k in {'State','Status','Progress','Version','Error'}} for rows in data.get('objects',{}).values() for row in rows]}
     def get_accounts(self): return self._need().account_status()
+
+    def compatibility_scan(self):
+        from apps.access_manager.infrastructure.zte.discovery.compatibility import scan
+        from apps.access_manager.infrastructure.zte.discovery.profiles import H3601P_V9, fingerprint
+        report=scan(self._need(),max_endpoints=18,budget_seconds=20,features=tuple(H3601P_V9.candidates))
+        self._bootstrap['bootstrap_probes'].update(report)
+        if report['validated_features'] and not self._profile and 'IDENTIFIED' not in self._bootstrap.get('connection_states',[]):
+            self._profile=H3601P_V9;self._need().read_profile=self._profile
+            self._need().profile_fingerprint=fingerprint(self.model,self.firmware)
+            self._bootstrap['profile_selection'].update(name=self._profile.name,source='endpoint_signature')
+        self._refresh_profile_caps()
+        return report
 
     def runtime_diagnostic(self):
         report=getattr(self,'_bootstrap',{})
