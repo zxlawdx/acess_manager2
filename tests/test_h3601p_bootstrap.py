@@ -47,20 +47,20 @@ def test_direct_device_info_after_missing_view_selects_actual_identity():
     assert r['model']=='ZXHN H3601P';assert r['firmware']=='V9.0.0P1_MUL'
     assert r['profile']=='h3601p_v9'
     assert r['identification_source']=='structured_direct'
-    assert p.client.calls==[('view','statusMgr'),('data','devmgr_statusmgr_lua.lua')]
+    assert p.client.calls[:2]==[('view','statusMgr'),('data','devmgr_statusmgr_lua.lua')]
     assert p.get_device_info()['firmware']=='V9.0.0P1_MUL'
     assert p.client.calls.count(('view','statusMgr'))==1
     assert p.client.logins==1
 
 
-def test_footer_after_both_404_keeps_device_partial_and_features_lazy():
+def test_footer_after_both_404_keeps_device_partial_and_discovers_reads():
     class Footer(Status404):
         authenticated_root_html='<footer>ZTE Corporation · ZXHN H3601P V9.0.0P1_MUL</footer>'
     p=ZTEProvider(Footer);r=p.connect('example.invalid','u','p')
     assert r['identification_source']=='HTML_DETECTED'
     assert r['profile']=='h3601p_v9'
     assert p.capabilities.get('device').read.value=='PARTIAL'
-    assert p.capabilities.get('clients').read.value=='PARTIAL'
+    assert p.capabilities.get('clients').read.value=='SUPPORTED'
     before=list(p.client.calls)
     assert p.get_device_info()['device_status_available'] is False
     assert p.client.calls==before
@@ -111,18 +111,20 @@ def test_two_valid_signatures_including_empty_select_strategy_not_model(wifi,lan
     assert p.capabilities.get('clients').read.value=='SUPPORTED'
     assert p.capabilities.get('optical').read.value=='UNKNOWN'
     assert 'IDENTIFIED' not in r['connection_metadata']['connection_states']
-    assert p.client.calls==[('view','statusMgr'),('data','devmgr_statusmgr_lua.lua'),('view','localNetStatus'),('data','accessdev_ssiddev_lua.lua'),('data','accessdev_landevs_lua.lua')]
+    assert p.client.calls[:5]==[('view','statusMgr'),('data','devmgr_statusmgr_lua.lua'),('view','localNetStatus'),('data','accessdev_ssiddev_lua.lua'),('data','accessdev_landevs_lua.lua')]
+    assert len([c for c in p.client.calls[2:] if c[0]=='data'])<=8
     before=len(p.client.calls);p.get_clients()
     assert ('data','accessdev_ssiddev_lua.lua') in p.client.calls[before:]
     assert not any(tag=='wlan_client_stat_lua.lua' for _,tag in p.client.calls)
 
 
-def test_one_valid_empty_signature_is_insufficient():
+def test_one_valid_empty_signature_keeps_partial_client_reads():
     class One(Status404):
         def __init__(self,*a,**k):
             super().__init__(*a,**k);self.responses['accessdev_ssiddev_lua.lua']=fixture('valid_empty');self.responses['accessdev_landevs_lua.lua']=404
     p=ZTEProvider(One);r=p.connect('example.invalid','u','p')
-    assert r['profile'] is None;assert r['model']=='ZTE';assert r['mode']=='deployment'
+    assert r['profile']=='h3601p_v9';assert r['model']=='ZTE';assert r['mode']=='partial'
+    assert p.capabilities.get('clients').read.value=='PARTIAL'
 
 
 @pytest.mark.parametrize('bad,status',[(404,'http_404'),(403,'http_403'),(401,'http_401'),('<html>login</html>','login_page_instead_of_data'),('SessionTimeout','session_expired'),(xml('OBJ_OTHER',[]),'wrong_schema'),(xml('OBJ_DEVINFO_ID',[]),'valid_empty')])
@@ -135,13 +137,13 @@ def test_direct_probe_failures_are_classified_and_not_retried(bad,status):
     assert p.client.logins==1
 
 
-def test_localnet_view_404_stops_signature_without_blind_menu_data():
+def test_localnet_view_404_can_still_validate_known_menu_data():
     class NoView(Status404):
         def get_view(self,tag,**kwargs):self.calls.append(('view',tag));raise http_error(tag=tag)
     p=ZTEProvider(NoView);r=p.connect('example.invalid','u','p')
-    assert r['mode']=='deployment'
-    assert p.runtime_diagnostic()['bootstrap_probes']['localNetStatus']['status']=='http_404'
-    assert not any('accessdev' in tag for _,tag in p.client.calls)
+    assert r['mode']=='partial'
+    assert p.runtime_diagnostic()['bootstrap_probes']['compatibility_scan']['views']['localNetStatus']['status']=='http_404'
+    assert p.capabilities.get('clients').read.value=='SUPPORTED'
 
 
 def test_diagnostics_and_advertised_inventory_do_not_export_payloads_or_probe_actions():
@@ -205,14 +207,15 @@ def test_real_vela_http_authentication_error_is_typed_not_internal(monkeypatch):
     assert not p.connected
 
 
-def test_signature_does_not_try_secondary_wifi_or_authentication():
+def test_signature_uses_secondary_wifi_without_reauthentication():
     class PrimaryMissing(Status404):
         def __init__(self,*a,**k):
             super().__init__(*a,**k);self.responses['accessdev_ssiddev_lua.lua']=404
             self.responses['wlan_client_stat_lua.lua']=fixture('public_variant_wlan')
     p=ZTEProvider(PrimaryMissing);r=p.connect('example.invalid','u','p')
-    assert r['profile'] is None
-    assert ('data','wlan_client_stat_lua.lua') not in p.client.calls
+    assert r['profile']=='h3601p_v9'
+    assert ('data','wlan_client_stat_lua.lua') in p.client.calls
+    assert p.runtime_diagnostic()['bootstrap_probes']['compatibility_scan']['best_matching_profile']=='F6640-like'
     assert p.client.logins==1
 
 

@@ -79,3 +79,13 @@ test('overview and traffic follow different canonical structures with a single l
 
 test('consumer ranking uses complete individual counters and preserves packet details',async()=>{const x=await boot({'/api/device/traffic':{sources:[{source:'client',identity:'a',hostname:'A',counters:{rx_bytes:'10',tx_bytes:'10',rx_packets:7}},{source:'client',identity:'b',hostname:'B',counters:{rx_bytes:'30',tx_bytes:'30'}},{source:'wifi_client',identity:'partial',hostname:'Partial',counters:{rx_bytes:1000}}]}});await x.click('traffic');const d=x.w.document;assert.equal(d.querySelectorAll('.consumer-ranking li').length,2);assert.match(d.querySelector('.consumer-ranking li').textContent,/B/);assert.ok(!d.querySelector('.consumer-ranking').textContent.includes('Partial'));assert.equal(d.querySelector('[data-value="rx_packets"]').textContent,'7');x.w.close()});
 test('Ethernet gateway skips unsupported optics and displays client IPv6',async()=>{const caps={...capabilities,optical:{read:'UNSUPPORTED',write:'UNSUPPORTED',enabled:{read:false,write:false}}};const x=await boot({'/api/session':{connected:true,session:{vendor:'zte',model:'H3601P',capabilities:caps}},'/api/device/clients':[{hostname:'Device-A',ip:'192.0.2.10',ipv6:'fe80::1',mac:'02:00:00:00:00:01',connection_type:'Wi-Fi'}]});const d=x.w.document;assert.equal(d.querySelectorAll('[data-overview-optical]').length,0);assert.ok(!x.calls.some(([path])=>path==='/api/device/optical'));await x.click('clients');assert.match(d.querySelector('#client-results').textContent,/fe80::1/);d.querySelector('[data-client]').click();assert.match(d.querySelector('#action-dialog').textContent,/IPv6/);assert.match(d.querySelector('#action-dialog').textContent,/fe80::1/);x.w.close()});
+
+test('channel diagnostic renders measured manual state and confirmed recommendation',async()=>{
+ const base=require('../visual/diagnostic-fixture.cjs').result;
+ const analysis={band:'2.4GHz',current_channel:6,auto_channel:false,neighbor_scan_confirmed:true,neighbor_count:3,current_score:60,best_channel:1,best_score:0,recommendation:{message:'Considerar canal 1 após medição.'}};
+ const result={...base,wifi_environment:[{band:'2.4GHz',available_channels:[{channels:[1,6,11]}],channel_analysis:analysis}]};
+ const x=await boot({'/api/device/diagnostics/full/run':result});await x.click('completeDiagnostics');x.w.document.querySelector('#complete-run').click();await x.wait();
+ const text=x.w.document.querySelector('#complete-channels').textContent;
+ for(const expected of ['2.4GHz','6','Manual','20 MHz','1, 6, 11','Considerar canal 1'])assert.ok(text.includes(expected),expected);
+ x.w.close();
+});

@@ -1,0 +1,69 @@
+{
+  "runtime": "manage.py runapp / Vela Qt WebEngine",
+  "api": "real Bottle endpoints, no browser fetch interception",
+  "router": "synthetic structural fixtures",
+  "physicalP1Validated": false,
+  "results": [
+    {
+      "width": 1366,
+      "height": 768,
+      "pages": [
+        "overview",
+        "clients",
+        "wifi",
+        "wan",
+        "lan",
+        "dhcpdns",
+        "completeDiagnostics",
+        "profiles",
+        "management"
+      ],
+      "shellEdges": true,
+      "noHorizontalOverflow": true,
+      "modalCentered": true,
+      "modalFixedActions": true,
+      "pollPreservesPageCardSvgScrollFocus": true
+    },
+    {
+      "width": 1600,
+      "height": 900,
+      "pages": [
+        "overview",
+        "clients",
+        "wifi",
+        "wan",
+        "lan",
+        "dhcpdns",
+        "completeDiagnostics",
+        "profiles",
+        "management"
+      ],
+      "shellEdges": true,
+      "noHorizontalOverflow": true,
+      "modalCentered": true,
+      "modalFixedActions": true,
+      "pollPreservesPageCardSvgScrollFocus": true
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "pages": [
+        "overview",
+        "clients",
+        "wifi",
+        "wan",
+        "lan",
+        "dhcpdns",
+        "completeDiagnostics",
+        "profiles",
+        "management"
+      ],
+      "shellEdges": true,
+      "noHorizontalOverflow": true,
+      "modalCentered": true,
+      "modalFixedActions": true,
+      "pollPreservesPageCardSvgScrollFocus": true
+    }
+  ],
+  "applicationErrors": []
+}

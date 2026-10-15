@@ -12,6 +12,8 @@ c.responses.update({
  'wan_internetstatus_lua.lua':xml('ID_WAN_COMFIG',[{'WANCName':'Internet','ConnStatus':'Connected','IPAddress':'192.0.2.254'}]),
  'wlan_wlansssidconf_lua.lua':xml('OBJ_WLANAP_ID',[{'_InstID':'1','ESSID':'Documentation-WiFi','Enable':'1','Band':'2.4GHz'}]),
  'wlan_wlanbasicadconf_lua.lua':xml('OBJ_WLANSETTING_ID',[{'_InstID':'1','Band':'2.4GHz','Channel':'6'},{'_InstID':'2','Band':'5GHz','Channel':'36'}])})
+from apps.access_manager.infrastructure.zte.discovery.profile_runtime import reset_read_state
+reset_read_state(c)
 data={'/api/device':device_view(p.get_device_info()),'/api/device/clients':p.get_clients(),'/api/device/lan':p.get_lan(),'/api/device/wan':[wan_view(r) for r in p.get_wan()],'/api/device/wifi/ssids':p.get_wifi_networks(),'/api/device/wifi/radios':p.get_wifi_radios()}
 data['/api/session']={'connected':True,'session':{'vendor':'zte','model':'H3601P','firmware':'V9.0.0P1_MUL','capabilities':p.capabilities.public()}}
 print(json.dumps(data))
