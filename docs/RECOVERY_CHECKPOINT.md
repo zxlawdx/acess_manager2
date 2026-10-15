@@ -1,3 +1,9 @@
+# Checkpoint atual — H3601P bootstrap após login
+
+Branch preservada fix/zte-h3601p-v9, base 99e7d1f. Corrigido: statusMgr 404 não aborta login já confirmado. Device-info é opcional, fallback direto único, footer/hint opcionais, assinatura limitada LAN/WLAN sem inventar modelo, unknown autenticado em deployment. GET /device retorna metadata conhecida, sem 500 por view ausente. Diagnóstico sanitizado e auth real rejeitada com código próprio. Nenhum writer, frontend ou data/profiles.json alterado.
+
+Validação: 28 testes focados; 375 Python + 30 subtestes; 32 frontend; Vela/Qt com HTTP API real, transporte simulado, três resoluções. Evidência física fornecida pelo proprietário: login/token/refresh 200 e statusMgr 404. Clientes P1 e correção no Windows aguardam reteste físico. Ver docs/zte/H3601P_IMPLEMENTATION_REPORT.md. Os checkpoints abaixo são históricos.
+
 # Access Manager — checkpoint de recuperação
 
 Data: 2026-10-13. Branch: `feat/provider-parity-round2`. Base main: `8c6dea5c5b24069c5442a11ccf48baa569dde5b7` (PRs #1 e #2 integrados).

@@ -1,3 +1,63 @@
+# Access Manager — H3601P V9: correção de bootstrap
+
+## Rodada atual: statusMgr 404
+
+Base preservada: branch `fix/zte-h3601p-v9`, commit `99e7d1fa0cc72de7e6757700ee0263b350907345`. Não houve troca para main, reset, recriação de branch ou alteração de `data/profiles.json`. O hash desse arquivo foi comparado antes/depois. A alteração local mencionada no computador do proprietário não foi descartada; o patch remoto também não toca o arquivo.
+
+### Root cause / antes
+
+Login ThinkLua já era bem-sucedido. `connect` ainda propagava a falha em device_status quando o footer não identificava o modelo e não existia hint. Assim, a view statusMgr 404 impedia selecionar qualquer perfil e abortava POST /session.
+
+### Depois
+
+- Autenticação permanece obrigatória e separada da identificação. Login False/HTTP 401 na autenticação falha com `AUTH_REJECTED`, sem sessão deployment falsa. Não foram alterados SHA256, tokens, RSA, login_need_refresh ou refresh do protocolo.
+- Consulta normal de device-info permanece para outros ZTE. Apenas se a view retornar 404, tenta devmgr_statusmgr_lua.lua diretamente uma vez, validando XML/roots conhecidos com o normalizador existente.
+- HTML autenticado já armazenado e model_hint continuam opcionais. Ausência dos dois não lança erro de conexão.
+- Sem identidade: localNetStatus + primários accessdev_ssiddev/accessdev_landevs, no máximo três GET para assinatura. Sem brute force, fallback adicional ou reautenticação no bootstrap. Dois payloads válidos são necessários, mesmo quando vazios.
+- Assinatura seleciona estratégia de leitura, nunca inventa ModelName ou versão. Sessão permanece ZTE, profile h3601p_v9, source endpoint_signature, mode partial. Se não houver correspondência, permanece autenticada em deployment, sem capabilities/write fictícios.
+- Device-info passa a ser opcional após conectar: retorna a melhor identidade disponível, profile/source/device_status_available; não repete uma view 404 em cada GET /device e não apresenta CPU/uptime antigos como leitura atual. Native ZTE conserva o retry de leitura existente e não mascara erros de parser não relacionados.
+- Capabilities e metadata de sessão refletem os estados separados. Device PARTIAL quando status estruturado não existe; clients SUPPORTED somente após validação. Optical UNKNOWN para modelo inferido por assinatura, sem leitura PON; H3601P identificado permanece UNSUPPORTED. Writers não foram liberados.
+- Diagnóstico inclui authentication, identity, profile_selection, connection_states, bootstrap_probes e tags seguras anunciadas. Sem host, porta, credenciais, payloads ou dados de clientes. Tags anunciadas não são automaticamente executadas; ações conhecidas são excluídas.
+- Probe CLI não força model_hint H3601P e também exporta diagnóstico de ZTE desconhecido autenticado.
+
+### Evidência P1_MUL
+
+Login/token/refresh: HTTP 200 / sucesso no log físico do proprietário. statusMgr menuView: HTTP 404 no mesmo log. Device-info direto, localNetStatus e clientes LAN/WLAN ainda não foram alcançados no teste físico fornecido. Nenhum endpoint de clientes P1 foi promovido a fisicamente validado.
+
+### Testes desta correção
+
+- Regressão inicial reproduzida como teste falhando com HTTPError antes de alterar o bootstrap.
+- **28 testes focados de bootstrap aprovados**: casos obrigatórios, assinatura vazia/múltipla, limites, classes HTTP/HTML/schema, auth rejeitada, diagnóstico sanitizado, APIs reais Vela/Bottle e preservação de modelos anteriores.
+- **375 testes Python + 30 subtestes aprovados; 0 falhas e 0 skips.**
+- **32 testes frontend aprovados**, sem alterar source/bundle frontend e sem exigir rebuild.
+- collectstatic --no-tailwind e manage.py runapp validados no Vela/Qt real, 1366×768, 1600×900 e 1920×1080.
+- QA nativo usa POST /session, GET /device, GET /device/clients e diagnóstico reais, sem interceptar fetch; somente o transporte do roteador é sintético. Sessão por assinatura conecta, mostra dois clientes/IPv6 sem identidade falsa; unknown permanece conectado; autenticação rejeitada continua no login.
+- Evidências em `docs/screenshots/zte-bootstrap/qa.json` e capturas próprias dessa rodada. Dados da aplicação isolados em diretório temporário, preservando perfis do usuário.
+- F670L, F6600P, F6201B e H3600P: matriz anterior e leituras normais preservadas por testes explícitos + suíte inteira. Uma regressão de retry encontrada no primeiro passe foi corrigida sem mudar o teste antigo.
+- Windows físico após a correção: não executado aqui. Não substituir esse limite pelo QA Qt offscreen.
+
+### Arquivos e referências
+
+`discovery/bootstrap.py`, provider ZTE, extração reutilizável de device-info na facade, validação compartilhada do profile runtime, erro tipado no boundary, metadata de sessão, probe CLI e testes específicos. Nenhum source de UI, login protocol, writer ou arquivo de perfis alterado.
+
+Referência conceitual reaberta: juacas/zte_tracker, `custom_components/zte_tracker/zteclient/zte_client.py` (query_router_details/get_router_details opcional e erro isolado) e `custom_components/zte_tracker/support_bundle.py` (probes limitadas, tags anunciadas e categorização estrutural). Revisão consultada da pesquisa: f1911857e2dc2b5da8dc5b891d4ffd67d6e5c832. Licença GPL-3.0; nenhum código copiado, Home Assistant não foi transplantado.
+
+### Reteste no Windows
+
+```powershell
+git pull --ff-only origin fix/zte-h3601p-v9
+python manage.py collectstatic --no-tailwind
+python manage.py runapp
+```
+
+A branch já existe no computador do proprietário. Não recriar com switch -c, não resetar, não descartar profiles.json e não presumir que .venv existe. Nenhum npm ci/sync_frontend é necessário para este patch backend.
+
+Esperado: login OK → statusMgr 404 → tentativa direta de device-info → identidade ou assinatura limitada → sessão conectada. Se nenhuma leitura corresponder, deployment autenticado com diagnóstico, não falha inesperada. Para saída sanitizada, usar separadamente `tools/zte_probe_h3601p.py` com o endereço local do aparelho; senha sem echo.
+
+## Histórico do patch anterior (99e7d1f)
+
+Os resultados e pendências abaixo descrevem a rodada anterior, antes do log físico e desta correção.
+
 # Access Manager — H3601P V9
 
 ## Baseline e branch
