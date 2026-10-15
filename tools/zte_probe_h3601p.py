@@ -8,17 +8,17 @@ import sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from apps.access_manager.infrastructure.providers.zte import ZTEProvider
-from apps.access_manager.infrastructure.zte.discovery.profile_runtime import read_feature, diagnostic, ReadFailure
+from apps.access_manager.infrastructure.zte.discovery.profile_runtime import read_feature, ReadFailure
 
 
 def collect(provider):
     client=provider._need()
     if not getattr(client,'read_profile',None):
-        raise ValueError('Device is not the H3601P profile')
+        return provider.runtime_diagnostic()
     for feature in ('wifi_clients','lan_clients','dhcp_leases'):
         try:read_feature(client,feature)
         except ReadFailure:pass
-    return diagnostic(client)
+    return provider.runtime_diagnostic()
 
 
 def main():
@@ -34,7 +34,7 @@ def main():
     try:
         # Legacy protocol stdout is never exported or included in failures.
         with contextlib.redirect_stdout(io.StringIO()):
-            provider.connect(args.host,username,password,https=args.https,model_hint='H3601P')
+            provider.connect(args.host,username,password,https=args.https)
             report=collect(provider)
         text=json.dumps(report,ensure_ascii=False,indent=2)
         if args.output:args.output.write_text(text,encoding='utf-8')

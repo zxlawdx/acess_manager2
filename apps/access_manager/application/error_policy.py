@@ -4,6 +4,7 @@ import re
 from typing import Any
 
 from apps.access_manager.infrastructure.huawei.protocol.errors import HuaweiArchitectureError
+from apps.access_manager.infrastructure.zte.protocol.errors import ZTEAuthenticationError
 from apps.access_manager.infrastructure.huawei.protocol.negotiating_client import HuaweiTransportError, HuaweiTransportFailure
 
 try:
@@ -30,6 +31,8 @@ def _safe_text(error: BaseException, fallback: str) -> str:
     return value
 
 def classify(error: BaseException) -> PublicFailure | None:
+    if isinstance(error, ZTEAuthenticationError):
+        return PublicFailure("AUTH_REJECTED", "authentication", "O equipamento ZTE rejeitou a autenticação.", True)
     if isinstance(error, HuaweiArchitectureError):
         return PublicFailure(error.code, error.category, error.public_message, bool(error.retryable))
     if isinstance(error, HuaweiTransportError):

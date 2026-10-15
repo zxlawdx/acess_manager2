@@ -74,6 +74,13 @@ def parse_objects(payload, roots):
     return objects
 
 
+def validate_client_objects(objects):
+    rows=[row for values in objects.values() for row in values]
+    keys={'macaddress','macaddr','mac','ipaddress','ipaddr','ip','hostname','devicename','name'}
+    if any(not {k.rsplit('.',1)[-1].casefold() for k in row}.intersection(keys) for row in rows):
+        raise ReadFailure('wrong_schema')
+
+
 def _session_failure(error):
     return isinstance(error, ReadFailure) and error.category in {'session_expired', 'login_page_instead_of_data'}
 
@@ -103,8 +110,7 @@ def read_feature(zte, feature):
                     objects = parse_objects(payload, allowed_roots(feature, candidate))
                     rows = [(name, r) for name, values in objects.items() for r in values]
                     if feature.endswith('clients') or feature == 'dhcp_leases':
-                        if any(not {k.rsplit('.',1)[-1].casefold() for k in r}.intersection({'macaddress','macaddr','mac','ipaddress','ipaddr','ip','hostname','devicename','name'}) for _,r in rows):
-                            raise ReadFailure('wrong_schema')
+                        validate_client_objects(objects)
                     data['selected'][feature] = candidate
                     data['diagnostics'][feature] = {'tag': candidate.tag, 'view': candidate.view,
                         'roots': list(objects), 'records': len(rows),
@@ -188,7 +194,7 @@ def probe_profile(zte, *, max_endpoints=4, start=0):
                 'structure':{name:{'records':len(rows)} for name,rows in objects.items()}}
         except ReadFailure as error:
             endpoints[feature]={'available':False,'reason':error.category}
-    return {'model':'H3601P','family':zte.read_profile.name,'read_only':True,
+    return {'model':getattr(zte,'profile_fingerprint',{}).get('model') or 'ZTE','family':zte.read_profile.name,'read_only':True,
             'supported':any(e['available'] for e in endpoints.values()),
             'endpoints':endpoints,'next_offset':end,'total_candidates':len(features),
             'candidate_features':[{'feature':f,'status':'not_tested','writable':False} for f in features if f not in endpoints]}

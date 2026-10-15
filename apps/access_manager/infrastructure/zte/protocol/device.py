@@ -217,8 +217,10 @@ class ZTE:
 
         self._validar_resposta(xml)
 
-        dados = self._parse_instances(xml)
+        return self.device_info_from_objects(self._parse_instances(xml))
 
+    @staticmethod
+    def device_info_from_objects(dados):
         info = dados.get("OBJ_DEVINFO_ID", [])
         cpu = dados.get("OBJ_CPUMEMUSAGE_ID", [])
         uptime = dados.get("OBJ_POWERONTIME_ID", [])
