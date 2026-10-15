@@ -54,7 +54,7 @@ class SessionManager:
                     decision=self.router.decide(host,model_hint=model_hint,https=https)
             logger.info(
                 "device_connect_requested host=%s transport=%s model_hint=%s",
-                host, "https" if https else "http", bool(model_hint),
+                host, kwargs.get("transport","netconf") if vendor=="juniper" else "https" if https else "http", bool(model_hint),
             )
             logger.info("provider_selected vendor=%s reason=%s", decision.vendor, decision.reason)
             provider=self.providers[decision.vendor]
@@ -74,7 +74,7 @@ class SessionManager:
                 mode = SessionMode.SUPPORTED if any(v['read']=='SUPPORTED' or v['write']=='SUPPORTED' for v in caps.values()) else SessionMode.PARTIAL
             vendor=Vendor(decision.vendor)
             self._provider=provider
-            self._session=DeviceSession(vendor=vendor,host=host,provider=type(provider).__name__,model=result.get('model'),firmware=result.get('firmware'),protocol_family=result.get('protocol_family'),mode=mode,attendant=attendant,capabilities=caps,metadata={'route_reason': decision.reason,'scheme':'https' if https else 'http','https':bool(https)})
+            self._session=DeviceSession(vendor=vendor,host=(getattr(provider,'host',host) if decision.vendor=='juniper' else host),provider=type(provider).__name__,model=result.get('model'),firmware=result.get('firmware'),protocol_family=result.get('protocol_family'),mode=mode,attendant=attendant,capabilities=caps,metadata={'route_reason': decision.reason,'scheme':'https' if https else 'http','https':bool(https)})
             if self.history is not None:
                 try:
                     self._history_session = self.history.start_session(host=host, attendant=attendant, device={'modelo': self._session.model, 'firmware': self._session.firmware})

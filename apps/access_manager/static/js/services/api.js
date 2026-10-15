@@ -1,3 +1,8 @@
+export class ApiError extends Error {
+  constructor(message,{code,type,retryable=false,status,request_id,health}={}){
+    super(message);this.name='ApiError';Object.assign(this,{code,type,retryable,status,request_id,health});
+  }
+}
 function parseResponseBody(text) {
   if (!text) return {};
   try { return JSON.parse(text); }
@@ -23,8 +28,8 @@ export async function request(path, options = {}) {
     const text=await res.text(),data=parseResponseBody(text);
     if(!read&&!['/api/device/wifi/reveal-password','/api/device/traffic/history','/api/profiles/preview','/api/device/diagnostics/ping','/api/device/diagnostics/traceroute','/api/device/diagnostics/dns-lookup','/api/device/diagnostics/speedtest-discovery','/api/device/configuration/read','/api/device/configuration/preview','/api/device/factory-reset/preview','/api/device/diagnostics/speedtest/poll','/api/device/diagnostics/workstation','/api/device/diagnostics/full/run','/api/device/diagnostics/full/history','/api/device/diagnostics/full/export','/api/device/traffic/device-history','/api/management/artifacts/download'].includes(path))clearSnapshots();
     if(!scopeActive(scope)||(canCache&&epoch!==revision))throw cancelled();
-    if(!res.ok)throw new Error(data?.error?.message||data?.message||`HTTP ${res.status} ao acessar ${url.pathname}`);
-    if(data?.success===false)throw new Error(data?.error?.message||'Falha na operação');
+    if(!res.ok||data?.success===false){const details=data?.error||{};const error=new ApiError(details.message||data?.message||(!res.ok?`HTTP ${res.status} ao acessar ${url.pathname}`:'Falha na operação'),{...details,status:res.status});if(path.startsWith('/api/infrastructure/'))document.dispatchEvent(new CustomEvent('juniper-read-state',{detail:{failed:true,code:error.code,health:error.health,transportFailure:['CONNECTION_TIMEOUT','SSH_UNAVAILABLE','NETCONF_UNAVAILABLE'].includes(error.code)}}));throw error;}
+    if(path.startsWith('/api/infrastructure/')&&!path.endsWith('/operations')&&!path.includes('/settings')&&!path.includes('/host-key'))document.dispatchEvent(new CustomEvent('juniper-read-state',{detail:{failed:Boolean(data?.health?.last_read_failed),health:data?.health,transportFailure:Boolean(data?.health?.last_transport_failure)}}));
     if(canCache){const safe=clean(data);snapshots.set(path,{time:Date.now(),data:safe});return clone(safe)}
     return data;
   })().catch(e=>{if(!scopeActive(scope)||isCancelled(e))throw cancelled();throw e}).finally(()=>{if(pending.get(key)===work)pending.delete(key);timing(path.startsWith('/api/device/wifi')?'wifi.load.'+(path.split('/').at(-1)==='wifi'?'total':path.split('/').at(-1)):path+'.load',start)});

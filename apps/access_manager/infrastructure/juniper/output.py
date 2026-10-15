@@ -47,7 +47,7 @@ def unpack(payload):
         text = normalize(payload.raw)
         kind = detect(text)
         if payload.transport == 'netconf' and kind != 'xml':
-            raise JuniperError('COMMAND_ERROR')
+            raise JuniperError('EMPTY_RESPONSE' if kind=='empty' else 'XML_SHAPE_UNSUPPORTED')
         return text, kind
     if isinstance(payload, bytes): payload = payload.decode('utf-8', 'replace')
     text = normalize(payload) if isinstance(payload, str) else ''

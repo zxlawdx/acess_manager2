@@ -2,13 +2,16 @@
 import logging
 import ipaddress
 import time
+from uuid import uuid4
+from collections import deque
+from apps.access_manager.infrastructure.juniper import observability as telemetry
 from urllib.parse import urlsplit
 from apps.access_manager.domain.capabilities import Capability,CapabilitySet,SupportStatus as S,EvidenceLevel as E
 from apps.access_manager.domain.subscribers import SubscriberQuery
 from apps.access_manager.infrastructure.juniper import parsers
 from apps.access_manager.infrastructure.juniper.transport import JuniperTransport
 from apps.access_manager.infrastructure.juniper.requests import request,identifier
-from apps.access_manager.infrastructure.juniper.errors import JuniperError
+from apps.access_manager.infrastructure.juniper.errors import JuniperError, RETRYABLE, TRANSPORT_ERRORS
 
 logger=logging.getLogger(__name__)
 
@@ -16,7 +19,7 @@ class JuniperProvider:
     vendor='juniper'
     def __init__(self,transport_factory=JuniperTransport):
         self.transport_factory=transport_factory;self.transport=None;self.host=None;self.model=None;self.firmware=None
-        self._facts={};self._caps=CapabilitySet();self._evidence={}
+        self._facts={};self._caps=CapabilitySet();self._evidence={};self._operations=deque(maxlen=100);self._last_read=None;self._port=None;self._scheme=None
     @property
     def connected(self):return self.transport is not None and self.transport.connected
     @property
@@ -26,19 +29,47 @@ class JuniperProvider:
         caps[name]=Capability(name,status,S.UNKNOWN,E.FIXTURE_VALIDATED if status==S.SUPPORTED else E.RESEARCH_ONLY,source=source or 'junos_runtime_shape')
         self._caps=CapabilitySet(caps.values())
     def _read(self,feature,parser,*,value=None,timeout=None):
-        if not self.connected:raise JuniperError('SSH_UNAVAILABLE')
+        item=request(feature,value=value)
+        op=telemetry.operation.get() or {}
+        record={'request_id':op.get('request_id') or uuid4().hex,'feature':feature,
+                'transport':getattr(self.transport,'kind',None) or self._scheme,'host':self.host,
+                'port':getattr(self.transport,'port',None) or self._port,'logical_command':item.command,
+                'elapsed_ms':0,'lock_wait_ms':op.get('lock_wait_ms',0),'response_bytes':0,
+                'output_format':'unknown','xml_root':None,'exit_status':None,'error_code':None,
+                'retryable':False,'status':'started','timestamp':time.time()}
+        telemetry.emit('juniper.read.start',record)
+        started=time.perf_counter();shape={}
         try:
-            command_result=self.transport.execute(request(feature,value=value),timeout=timeout)
+            if not self.connected:raise JuniperError('SSH_UNAVAILABLE')
+            command_result=self.transport.execute(item,timeout=timeout)
+            self._last_read={'failed':False,'code':None,'transport_failure':False}
+            shape=telemetry.shape(command_result);record.update({k:v for k,v in shape.items() if k in telemetry.FIELDS})
             result=parser(command_result)
-            from apps.access_manager.infrastructure.juniper.output import unpack
-            _,output_format=unpack(command_result)
-            self._evidence[feature]={'status':'validated','format':output_format,'transport':getattr(command_result,'transport',getattr(self.transport,'kind',None)),
-                                     'elapsed_ms':getattr(command_result,'elapsed_ms',None)}
+            record['status']='success'
+            self._evidence[feature]={'status':'validated','format':record['output_format'],'transport':record['transport']}
+            # A parser/permission failure cannot imply offline. A subsequent transport
+            # success proves the previous transport fault is no longer current.
+            self._last_read={'failed':False,'code':None,'transport_failure':False}
             return result
         except JuniperError as error:
+            record.update(error.diagnostics);record.update(status='error',error_code=error.code,retryable=error.code in RETRYABLE)
             self._evidence[feature]={'status':'ERROR_THIS_RUN','code':error.code}
-            logger.info('juniper.rpc.error feature=%s code=%s',feature,error.code)
+            if error.code in TRANSPORT_ERRORS:
+                self._last_read={'failed':True,'code':error.code,'transport_failure':True}
+            elif not self._last_read or not self._last_read.get('transport_failure'):
+                self._last_read={'failed':True,'code':error.code,'transport_failure':False}
+            error.request_id=record['request_id'];error.health=self.connection_metadata()
+            if shape:telemetry.logger.debug('juniper.read.shape %s',__import__('json').dumps({k:shape[k] for k in ('xml_root','children') if k in shape}))
             raise
+        except Exception:
+            record.update(status='error',error_code='INTERNAL_ERROR')
+            raise
+        finally:
+            record['elapsed_ms']=round((time.perf_counter()-started)*1000,2)
+            self._operations.append(dict(record))
+            telemetry.emit('juniper.read.finish' if record['status']=='success' else 'juniper.read.error',record)
+    def get_operation_log(self):
+        return list(self._operations)
     @staticmethod
     def target(host,port):
         text=str(host or '').strip()
@@ -65,7 +96,8 @@ class JuniperProvider:
             if ssh_port is not None:ports['ssh_port']=self.target(host,ssh_port)[1]
             if netconf_port is not None:ports['netconf_port']=self.target(host,netconf_port)[1]
             client.connect(host,username,password,mode=transport,port=port,**ports)
-            self.transport=client;self.host=host
+            self.transport=client;self.host=host;self._scheme=client.kind
+            self._port=getattr(client,'port',None) or (port if transport==client.kind and port else ports.get('ssh_port',22) if client.kind=='ssh' else ports.get('netconf_port',830))
             self._facts=self._read('facts',parsers.facts)
             self.model=self._facts['model'];self.firmware=self._facts['firmware']
             for name in ('device','juniper_uptime','juniper_interfaces','juniper_interface','juniper_chassis','juniper_aaa','juniper_pppoe','juniper_ping','juniper_traceroute','juniper_resources','juniper_accounting','juniper_route','juniper_fib','juniper_filter','juniper_lockout','juniper_health','juniper_lacp','juniper_optics','subscriber_lookup','subscriber_detail','subscriber_count'):
@@ -87,7 +119,11 @@ class JuniperProvider:
         except Exception:
             client.close();self.transport=None;self._facts={};self._caps=CapabilitySet();raise
     def connection_metadata(self):
-        return {'scheme':self.transport.kind if self.transport else None,'device_role':'infrastructure',
+        return {'scheme':getattr(self.transport,'kind',None) or self._scheme,'port':self._port,'device_role':'infrastructure',
+                'session_authenticated':bool(self._facts),'transport_active':bool(self.connected),
+                'last_read_failed':bool(self._last_read and self._last_read['failed']),
+                'last_read_code':self._last_read.get('code') if self._last_read else None,
+                'last_transport_failure':bool(self._last_read and self._last_read.get('transport_failure')),
                 'family':self._facts.get('family'),'junos_os':self._facts.get('os'),
                 'connection_states':['AUTHENTICATED','IDENTIFIED','READY'] if self.connected else []}
     def get_device_info(self):return dict(self._facts)
@@ -95,7 +131,7 @@ class JuniperProvider:
         result=dict(self._facts)
         try:result['uptime_seconds']=self._read('uptime',parsers.uptime)
         except JuniperError:pass
-        result['capabilities']=self.capabilities.public();result['evidence']=dict(self._evidence)
+        result['capabilities']=self.capabilities.public();result['evidence']=dict(self._evidence);result['health']=self.connection_metadata()
         return result
     def lookup_subscribers(self,query):
         q=SubscriberQuery.parse(query);deadline=time.monotonic()+getattr(getattr(self.transport,'timeouts',None),'lookup',24);results=[];sessions=[]
@@ -118,7 +154,7 @@ class JuniperProvider:
         complete=all(r['status'] in {'FOUND','NOT_FOUND'} for r in results)
         logger.info('juniper.subscriber.lookup candidates=%s sessions=%s complete=%s',len(results),len(sessions),complete)
         return {'query':q.value,'query_type':q.kind,'candidates':results,'sessions':sessions,'complete':complete,
-                'status':'FOUND' if sessions else 'NOT_FOUND' if complete else 'ERROR'}
+                'status':'FOUND' if sessions else 'NOT_FOUND' if complete else 'ERROR','health':self.connection_metadata()}
     def get_subscriber(self,session_id):
         identity=identifier(session_id,'session')
         rows=self._read('subscriber_detail',parsers.subscribers,value=identity)
@@ -150,8 +186,11 @@ class JuniperProvider:
         self._set_cap(cap,S.SUPPORTED)
         return {'session_id':row['session_id'],'kind':kind,'data':data}
     def get_juniper_interfaces(self):
-        rows=self._read('interfaces',parsers.interfaces);self._set_cap('juniper_interfaces',S.SUPPORTED);return rows
+        rows=self._read('interfaces',parsers.infrastructure_interfaces)
+        self._set_cap('juniper_interfaces',S.SUPPORTED);return rows
     def get_juniper_interface(self,name):
+        name=identifier(name,'interface')
+        if not any(c.isdigit() for c in name) or name in {'pp0','demux0'}:raise ValueError('Informe uma interface específica.')
         rows=self._read('interface',parsers.interfaces,value=name);self._set_cap('juniper_interface',S.SUPPORTED);return rows
     def juniper_diagnostic(self,config):
         kind=config.get('kind')
@@ -167,19 +206,23 @@ class JuniperProvider:
     def get_juniper_health(self,config):
         # Explicit single sections only: no inventory sweep or implicit N+1 calls.
         kind=config.get('kind')
-        table={'radius':parsers.radius,'aaa_authentication':parsers.aaa_statistics,
-               'aaa_accounting':parsers.aaa_statistics,'aaa_dynamic':parsers.aaa_statistics,
+        table={'radius':parsers.radius,'aaa_authentication':parsers.aaa_authentication,
+               'aaa_accounting':parsers.aaa_accounting,'aaa_dynamic':parsers.aaa_dynamic,
                'fpc':parsers.fpc,'environment':parsers.environment}
         if kind not in table:raise ValueError('Seção de saúde inválida.')
         return {'kind':kind,'data':self._read(kind,table[kind])}
     def get_juniper_link(self,config):
         kind=config.get('kind')
         if kind not in {'lacp','optics'}:raise ValueError('Leitura de interface inválida.')
-        data=self._read(kind,getattr(parsers,kind),value=config.get('name'))
+        import re
+        name=identifier(config.get('name'),'interface')
+        pattern=r'ae[0-9]+' if kind=='lacp' else r'(?:et|xe|ge)-[0-9]+/[0-9]+/[0-9]+(?::[0-9]+)?'
+        if not re.fullmatch(pattern,name):raise ValueError('Informe uma interface agregada ou física específica.')
+        data=self._read(kind,getattr(parsers,kind),value=name)
         self._set_cap('juniper_'+kind,S.SUPPORTED)
         return {'kind':kind,'data':data}
     def get_juniper_chassis(self):
         rows=self._read('chassis',parsers.chassis);self._set_cap('juniper_chassis',S.SUPPORTED);return rows
     def disconnect(self):
         if self.transport:self.transport.close()
-        self.transport=None;self.host=None;self.model=None;self.firmware=None;self._facts={};self._evidence={};self._caps=CapabilitySet()
+        self.transport=None;self.host=None;self.model=None;self.firmware=None;self._facts={};self._evidence={};self._caps=CapabilitySet();self._operations.clear();self._last_read=None;self._port=None;self._scheme=None

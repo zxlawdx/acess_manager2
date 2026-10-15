@@ -35,3 +35,6 @@ def infrastructure_health(context=None):return safe(lambda:queries.infrastructur
 
 @api.post('/infrastructure/interfaces/link')
 def infrastructure_link(context=None):return safe(lambda:queries.infrastructure('juniper_'+str(body(context).get('kind')),'get_juniper_link',body(context)))
+
+@api.post('/infrastructure/operations')
+def infrastructure_operations(context=None):return safe(lambda:queries.infrastructure('device','get_operation_log',body(context)))

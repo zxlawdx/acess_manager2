@@ -11,11 +11,12 @@ def parse(payload):
     if output_format == 'error_text':
         if 'no such subscriber' in payload.lower():raise JuniperError('SUBSCRIBER_NOT_FOUND')
         if 'permission' in payload.lower():raise JuniperError('PERMISSION_DENIED')
-        raise JuniperError('COMMAND_UNSUPPORTED')
-    if not isinstance(payload,(str,bytes)) or len(payload)>4*1024*1024:raise JuniperError('COMMAND_ERROR')
-    if re.search(br'<!DOCTYPE|<!ENTITY',payload,re.I) if isinstance(payload,bytes) else re.search(r'<!DOCTYPE|<!ENTITY',payload,re.I):raise JuniperError('COMMAND_ERROR')
+        raise JuniperError('COMMAND_UNSUPPORTED' if re.search(r'syntax|unknown command',payload,re.I) else 'CLI_COMMAND_ERROR')
+    if not payload:raise JuniperError('EMPTY_RESPONSE')
+    if len(payload.encode('utf-8') if isinstance(payload,str) else payload)>4*1024*1024:raise JuniperError('RESPONSE_TOO_LARGE')
+    if re.search(br'<!DOCTYPE|<!ENTITY',payload,re.I) if isinstance(payload,bytes) else re.search(r'<!DOCTYPE|<!ENTITY',payload,re.I):raise JuniperError('XML_PARSE_ERROR')
     try:root=ET.fromstring(payload)
-    except (ET.ParseError,ValueError):raise JuniperError('COMMAND_ERROR') from None
+    except (ET.ParseError,ValueError):raise JuniperError('XML_PARSE_ERROR') from None
     for node in root.iter():node.tag=node.tag.rsplit('}',1)[-1]
     error=next(iter(root.iter('rpc-error')),None)
     if error is not None:
@@ -46,7 +47,7 @@ def values(node,*names):
 
 
 def require(root,*names):
-    if not any(next(iter(root.iter(name)),None) is not None for name in names):raise JuniperError('COMMAND_ERROR')
+    if not any(next(iter(root.iter(name)),None) is not None for name in names):raise JuniperError('XML_SHAPE_UNSUPPORTED')
 
 
 def facts(payload):
@@ -132,7 +133,7 @@ def subscribers(payload):
         if style=='service-session':
             parent_id=first(node,'underlying-session-id')
             parent=next((r for r in result if r['session_id']==parent_id),None) if parent_id else last
-            if parent is None:raise JuniperError('COMMAND_ERROR')
+            if parent is None:raise JuniperError('XML_SHAPE_UNSUPPORTED')
             parent['service_sessions'].append(_service(node));continue
         row=_subscriber_row(node)
         if not row['session_id'] and not row['username']:
@@ -141,7 +142,7 @@ def subscribers(payload):
                 for k,v in row.items():
                     if v not in (None,'',[]):last[k]=v
                 continue
-            raise JuniperError('COMMAND_ERROR')
+            raise JuniperError('XML_SHAPE_UNSUPPORTED')
         existing=next((r for r in result if row['session_id'] and r['session_id']==row['session_id']),None)
         if existing is None and style=='extensive' and last is not None and (not row['username'] or row['username']==last['username']) and (not row['session_id'] or not last['session_id']):existing=last
         if existing is not None:
@@ -178,7 +179,7 @@ def subscribers_text(text):
             node=ET.Element('subscriber');nodes.append(node)
         ET.SubElement(node,key).text=match[2]
     if not nodes or any(not first(n,'user-name') or not first(n,'session-id') for n in nodes):
-        raise JuniperError('COMMAND_ERROR')
+        raise JuniperError('XML_SHAPE_UNSUPPORTED')
     return [_subscriber_row(n) for n in nodes]
 
 
@@ -210,6 +211,12 @@ def interfaces(payload):
             'output_bytes':first(node.find('traffic-statistics'),'output-bytes') if node.find('traffic-statistics') is not None else None,
             'addresses':values(node,'ifa-local')})
     return output
+
+
+def infrastructure_interfaces(payload):
+    rows=[r for r in interfaces(payload) if re.fullmatch(r'(?:ae[0-9]+|(?:et|xe|ge)-[0-9]+/[0-9]+/[0-9]+(?::[0-9]+)?|lo[0-9]+)',r.get('name') or '')]
+    if len(rows)>512:raise JuniperError('RESPONSE_TOO_LARGE')
+    return rows
 
 
 def pppoe(payload):
@@ -247,13 +254,15 @@ def resources(payload):
 
 def accounting(payload):
     root=parse(payload);require(root,'subscribers-information','subscriber-information')
-    # Preserve family boundaries. Never turn cumulative values into Mbps.
     rows=[]
     for node in root.iter():
-        if not any(node.find(key) is not None for key in ('input-bytes','output-bytes','input-packets','output-packets')):continue
-        counters={key:((node.findtext(key.replace('_','-')) or '').strip() or None) for key in ('input_bytes','output_bytes','input_packets','output_packets')}
-        if any(v is not None for v in counters.values()):
-            rows.append({'family':first(node,'family','address-family'),'cumulative':True,**counters})
+        tags=('input-bytes','output-bytes','input-packets','output-packets')
+        if not any(node.find(tag) is not None or node.find('acc-'+tag) is not None for tag in tags):continue
+        direct=lambda tag:next(((n.text or '').strip() for name in ('acc-'+tag,tag) for n in node.findall(name) if (n.text or '').strip()),None)
+        style=next((v for k,v in node.attrib.items() if k.rsplit('}',1)[-1]=='style'),'')
+        family=first(node,'family','address-family') or ('inet6' if style=='accounting-ipv6' else 'inet' if style in {'accounting','accounting-ipv4'} else None)
+        rows.append({'family':family,'cumulative':True,**{tag.replace('-','_'):direct(tag) for tag in tags}})
+    if not rows:raise JuniperError('XML_SHAPE_UNSUPPORTED')
     return {'samples':rows,'bitrate_mbps':None}
 
 
@@ -293,37 +302,120 @@ def lockout(payload,mac=None):
 
 
 def radius(payload):
-    root=parse(payload);require(root,'radius-servers-information','radius-servers-table','radius-server-information')
-    rows=[]
+    root=parse(payload)
+    roots=('aaa-module-radius-servers-information','radius-servers-information','radius-servers-table','radius-server-information')
+    require(root,*roots)
+    rows=[];recognized=False
+    fields={'authentication-port':'authentication_port','auth-port':'authentication_port',
+            'preauthentication-port':'preauthentication_port','accounting-port':'accounting_port',
+            'available-status':'status','status':'status','server-status':'status'}
+    for container in root.iter('aaa-module-profile-radius-servers'):
+        recognized=True;profile=None;current=None
+        for child in container:
+            text=(child.text or '').strip() or None
+            if child.tag=='profile-name':
+                if current is not None:rows.append(current);current=None
+                profile=text
+            elif child.tag=='server-address':
+                if current is not None:rows.append(current)
+                current={'profile':profile,'address':text,'authentication_port':None,
+                         'preauthentication_port':None,'accounting_port':None,'status':None}
+            elif child.tag in fields:
+                if current is None:raise JuniperError('XML_SHAPE_UNSUPPORTED')
+                current[fields[child.tag]]=text
+        if current is not None:rows.append(current)
     for node in root.iter():
         if node.tag not in {'radius-server','radius-server-entry','server'}:continue
+        recognized=True
         row={key:first(node,*tags) for key,tags in {
             'profile':('profile-name','profile'),'address':('server-address','address'),
-            'status':('status','server-status'),'authentication_port':('authentication-port','auth-port'),
+            'status':('available-status','status','server-status'),'authentication_port':('authentication-port','auth-port'),
             'preauthentication_port':('preauthentication-port',),'accounting_port':('accounting-port',)}.items()}
-        if row['address']:rows.append(row)
+        if not row['address']:raise JuniperError('XML_SHAPE_UNSUPPORTED')
+        rows.append(row)
+    if any(not r['address'] for r in rows):raise JuniperError('XML_SHAPE_UNSUPPORTED')
+    containers=[n for n in root.iter() if n.tag in roots]
+    if not recognized and any(list(n) for n in containers):raise JuniperError('XML_SHAPE_UNSUPPORTED')
     return rows
+
+
+_STAT_ROOTS=('aaa-module-statistics','aaa-statistics-information','aaa-module-statistics-information')
+
+def _counters(payload,physical_root,aliases):
+    root=parse(payload);require(root,physical_root,*_STAT_ROOTS)
+    result={key:first(root,*tags) for key,tags in aliases.items()}
+    if not any(value is not None for value in result.values()) or any(value is not None and not re.fullmatch(r'[0-9]+',value) for value in result.values()):raise JuniperError('XML_SHAPE_UNSUPPORTED')
+    # Decimal strings preserve full 64-bit precision through JavaScript.
+    return {'cumulative':True,'current_incident':None,'counters':result}
+
+
+def aaa_authentication(payload):
+    return _counters(payload,'aaa-module-authentication-statistics',{
+        'requests':('requests',),'accepts':('accepts',),'rejects':('rejects',),
+        'radius_failures':('radius-failures',),'no_available_server':('rejects-no-server','no-available-server'),
+        'invalid_credentials':('rejects-invalid-credentials','invalid-credentials'),'timeouts':('timeouts',)})
+
+
+def aaa_accounting(payload):
+    aliases={key:(tag,) for key,tag in {
+        'requests':'requests','request_success':'accounting-request-success','request_failures':'accounting-request-failures',
+        'acct_on_requests':'acct-acct-on-requests','start_requests':'acct-start-requests',
+        'interim_requests':'acct-interim-requests','stop_requests':'acct-stop-requests',
+        'response_success':'accounting-response-success','response_failures':'accounting-response-failures',
+        'start_responses':'acct-start-responses','interim_responses':'acct-interim-responses','stop_responses':'acct-stop-responses',
+        'requests_pending':'acct-requests-pending','retransmissions':'acct-retransmissions','timeouts':'timeouts'}.items()}
+    return _counters(payload,'aaa-module-accounting-statistics',aliases)
+
+
+def aaa_dynamic(payload):
+    return _counters(payload,'aaa-module-dynamic-requests-statistics',{
+        'requests':('requests',),'processed_ok':('processed-ok',),'processed_initial':('processed-initial',),
+        'processing_error':('processing-error',),'silent_drops':('silent-drops',)})
 
 
 def aaa_statistics(payload):
-    root=parse(payload);require(root,'aaa-module-statistics','aaa-statistics-information','aaa-module-statistics-information')
-    names=('requests','accepts','rejects','radius-failures','no-available-server','invalid-credentials',
-        'timeouts','processed-ok','processing-error','silent-drops')
-    return {'cumulative':True,'current_incident':None,
-            'counters':{name.replace('-','_'):first(root,name) for name in names}}
+    # Compatibility dispatcher for callers that used the old authentication reader.
+    root=parse(payload)
+    if next(iter(root.iter('aaa-module-accounting-statistics')),None) is not None:return aaa_accounting(payload)
+    if next(iter(root.iter('aaa-module-dynamic-requests-statistics')),None) is not None:return aaa_dynamic(payload)
+    return aaa_authentication(payload)
 
 
 def lacp(payload):
-    root=parse(payload);require(root,'lacp-interface-information')
-    rows=[]
-    for node in root.iter():
-        if node.tag not in {'lag-lacp-protocol','lacp-interface','lacp-member'}:continue
-        rows.append({key:first(node,*tags) for key,tags in {
-            'interface':('name','interface-name'),'mux_state':('lacp-mux-state','mux-state'),
-            'collecting':('lacp-collecting','collecting'),'distributing':('lacp-distributing','distributing'),
-            'synchronization':('lacp-synchronization','synchronization'),
-            'aggregation':('lacp-aggregation','aggregation')}.items()})
-    return rows
+    root=parse(payload);require(root,'lacp-interface-information-list','lacp-interface-information')
+    groups=[];legacy=[]
+    boolean=lambda text:True if (text or '').lower()=='yes' else False if (text or '').lower()=='no' else None
+    for container in root.iter('lacp-interface-information'):
+        physical_nodes=[n for n in container if n.tag in {'lag-lacp-state','lag-lacp-info'}]
+        if physical_nodes:
+            aggregate=first(container,'aggregate-name');members={}
+            if not aggregate:raise JuniperError('XML_SHAPE_UNSUPPORTED')
+            for node in physical_nodes:
+                name=first(node,'name');role=(first(node,'lacp-role') or '').lower()
+                if not name or role not in {'actor','partner'}:raise JuniperError('XML_SHAPE_UNSUPPORTED')
+                member=members.setdefault(name,{'interface':name,'actor':{},'partner':{}})
+                target=member[role]
+                for field in ('collecting','distributing','synchronization','aggregation','expired','defaulted'):
+                    val=first(node,'lacp-'+field)
+                    if val is not None:target[field]=boolean(val)
+                for key,tag in {'timeout':'lacp-timeout','activity':'lacp-activity','system_priority':'lacp-sys-priority',
+                    'system_id':'lacp-system-id','port_priority':'lacp-port-priority','port_number':'lacp-port-number','port_key':'lacp-port-key'}.items():
+                    val=first(node,tag)
+                    if val is not None:target[key]=val
+            groups.append({'aggregate':aggregate,'members':list(members.values())})
+        else:
+            for node in container.iter():
+                if node.tag not in {'lag-lacp-protocol','lacp-interface','lacp-member'}:continue
+                row={key:first(node,*tags) for key,tags in {
+                    'interface':('name','interface-name'),'mux_state':('lacp-mux-state','mux-state'),
+                    'collecting':('lacp-collecting','collecting'),'distributing':('lacp-distributing','distributing'),
+                    'synchronization':('lacp-synchronization','synchronization'),'aggregation':('lacp-aggregation','aggregation')}.items()}
+                if not row['interface']:raise JuniperError('XML_SHAPE_UNSUPPORTED')
+                legacy.append(row)
+            if list(container) and not legacy and not first(container,'aggregate-name'):raise JuniperError('XML_SHAPE_UNSUPPORTED')
+    # Preserve the established legacy shape explicitly; physical groups carry roles.
+    if not groups and not legacy and any(n.tag!='lacp-interface-information' for n in root if n.tag!='cli') and root.tag=='lacp-interface-information-list':raise JuniperError('XML_SHAPE_UNSUPPORTED')
+    return groups+legacy
 
 
 def optics(payload):
@@ -335,7 +427,8 @@ def optics(payload):
     for node in root.iter('physical-interface'):
         lanes=[]
         for lane in node.iter('optics-diagnostics-lane-values'):
-            lanes.append({'lane':first(lane,'lane-index'),**{key:first(lane,*tags) for key,tags in measures.items()}})
+            lanes.append({'lane':first(lane,'lane-index'),**{key:first(lane,*tags) for key,tags in measures.items()},
+                'alarm_warning_thresholds':{n.tag:(n.text or '').strip() for n in lane if re.fullmatch(r'[a-z0-9-]+-(?:alarm|warning|threshold)',n.tag) and not list(n)}})
         # Module values and each lane are distinct; never choose a lane as a module reading.
         diagnostics=node.find('optics-diagnostics')
         direct=lambda tag:((diagnostics.findtext(tag) or '').strip() or None) if diagnostics is not None else None

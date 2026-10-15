@@ -76,18 +76,26 @@ async function render(name = store.view,background=false) {
   }
 
   if(!background)document.querySelector('.app-main').scrollTop=0;
-  if(!background)workspace.innerHTML='<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
+  let waitTimer;
+  if(!background){
+    workspace.innerHTML=Object.hasOwn(juniperRoutes,name)?'<section class="panel j-wait" role="status"><p data-wait-label>Consultando Juniper…</p><div class="skeleton"></div><button class="button" data-cancel-wait>Cancelar espera</button></section>':'<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
+    const cancel=workspace.querySelector('[data-cancel-wait]');
+    if(cancel){waitTimer=setTimeout(()=>{if(scopeActive(scope)&&state.loading){const label=workspace.querySelector('[data-wait-label]');if(label)label.textContent='A consulta ainda está em andamento…'}},4000);cancel.onclick=()=>{scope.controller.abort();clearTimeout(waitTimer);workspace.innerHTML='<section class="panel j-wait"><p>Espera cancelada. O comando remoto pode continuar em execução.</p><button class="button" data-resume-read>Consultar novamente</button></section>';workspace.querySelector('[data-resume-read]').onclick=()=>render(name)}}
+  }
   try {
     const view = views[name] || views.overview;
     const html=await view.render();
     if(!scopeActive(scope))return;
-    state.loading=false;
+    state.loading=false;clearTimeout(waitTimer);
     if(background)patchHTML(workspace,html);else workspace.innerHTML=html;
     view.mount?.();
   } catch (e) {
+    clearTimeout(waitTimer);
     if(!scopeActive(scope)||isCancelled(e))return;
     state.loading=false;state.error=e.message;
-    workspace.innerHTML = `<div class="notice danger" role="alert">${esc(e.message)}</div>`;
+    clearTimeout(waitTimer);
+    if(Object.hasOwn(juniperRoutes,name)){workspace.innerHTML=juniper.errorMarkup(e);juniper.wireRetry(workspace,()=>render(name))}
+    else workspace.innerHTML = `<div class="notice danger" role="alert">${esc(e.message)}</div>`;
   }
 }
 

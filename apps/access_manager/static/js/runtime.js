@@ -6,6 +6,13 @@
   };
 
   // apps/access_manager/static/js/services/api.js
+  var ApiError = class extends Error {
+    constructor(message, { code, type, retryable = false, status: status3, request_id, health: health2 } = {}) {
+      super(message);
+      this.name = "ApiError";
+      Object.assign(this, { code, type, retryable, status: status3, request_id, health: health2 });
+    }
+  };
   function parseResponseBody(text2) {
     if (!text2) return {};
     try {
@@ -37,8 +44,13 @@
       const text2 = await res.text(), data = parseResponseBody(text2);
       if (!read2 && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/diagnostics/full/run", "/api/device/diagnostics/full/history", "/api/device/diagnostics/full/export", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path2)) clearSnapshots();
       if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
-      if (!res.ok) throw new Error(data?.error?.message || data?.message || `HTTP ${res.status} ao acessar ${url.pathname}`);
-      if (data?.success === false) throw new Error(data?.error?.message || "Falha na operação");
+      if (!res.ok || data?.success === false) {
+        const details = data?.error || {};
+        const error = new ApiError(details.message || data?.message || (!res.ok ? `HTTP ${res.status} ao acessar ${url.pathname}` : "Falha na operação"), { ...details, status: res.status });
+        if (path2.startsWith("/api/infrastructure/")) document.dispatchEvent(new CustomEvent("juniper-read-state", { detail: { failed: true, code: error.code, health: error.health, transportFailure: ["CONNECTION_TIMEOUT", "SSH_UNAVAILABLE", "NETCONF_UNAVAILABLE"].includes(error.code) } }));
+        throw error;
+      }
+      if (path2.startsWith("/api/infrastructure/") && !path2.endsWith("/operations") && !path2.includes("/settings") && !path2.includes("/host-key")) document.dispatchEvent(new CustomEvent("juniper-read-state", { detail: { failed: Boolean(data?.health?.last_read_failed), health: data?.health, transportFailure: Boolean(data?.health?.last_transport_failure) } }));
       if (canCache) {
         const safe = clean(data);
         snapshots.set(path2, { time: Date.now(), data: safe });
@@ -141,12 +153,32 @@
     document.querySelector("#ctx-vendor").textContent = s?.vendor?.toUpperCase() || "—";
     document.querySelector("#ctx-model").textContent = s?.model || "Sem equipamento";
     const scheme = s?.metadata?.scheme;
-    document.querySelector("#ctx-host").textContent = s?.host ? scheme ? `${scheme}://${s.host}` : s.host : "—";
+    const host = s?.vendor === "juniper" && s?.host?.includes(":") ? `[${s.host}]` : s?.host;
+    const endpoint = s?.vendor === "juniper" && s?.metadata?.port ? `${host}:${s.metadata.port}` : host;
+    document.querySelector("#ctx-host").textContent = host ? scheme ? `${scheme}://${endpoint}` : endpoint : "—";
     const online = Boolean(store.session?.connected);
     const status3 = document.querySelector("#ctx-status");
-    status3.textContent = online ? "● Online" : "○ Desconectado";
-    status3.style.color = online ? "var(--success)" : "";
+    const degraded = s?.vendor === "juniper" && Boolean(s?.metadata?.last_transport_failure || s?.metadata?.transport_active === false);
+    status3.textContent = degraded ? "● Degradado" : online ? "● Online" : "○ Desconectado";
+    status3.title = degraded ? "Última consulta de transporte falhou. Verifique a sessão." : s?.metadata?.last_read_failed ? "Última leitura falhou; transporte permanece ativo." : "";
+    status3.style.color = degraded ? "var(--warning)" : online ? "var(--success)" : "";
+    status3.dataset.health = degraded ? "degraded" : online ? "online" : "offline";
   }
+  document.addEventListener("juniper-read-state", (event) => {
+    const s = store.session?.session;
+    if (s?.vendor !== "juniper") return;
+    const d = event.detail;
+    s.metadata = { ...s.metadata, ...d.health || {}, last_read_failed: d.failed };
+    if (!d.failed) {
+      s.metadata.last_transport_failure = false;
+      s.metadata.transport_active = true;
+      s.metadata.last_read_code = null;
+    } else if (d.transportFailure) {
+      s.metadata.last_transport_failure = true;
+      s.metadata.last_read_code = d.code;
+    }
+    renderContext();
+  });
 
   // apps/access_manager/static/js/shared/ui.js
   var esc = (value2) => String(value2 ?? "—").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -268,7 +300,7 @@
 
   // apps/access_manager/static/js/workspaces/views/juniper.js
   var session = () => store.session?.session;
-  var read = (path2, data = {}, scope = currentScope()) => request("/api/infrastructure/" + path2, { scope, method: "POST", body: JSON.stringify({ ...data, app_session_id: session()?.session_id }) });
+  var read = (path2, data = {}, scope = currentScope()) => request("/api/infrastructure/" + path2, { scope, signal: scope?.controller.signal, method: "POST", body: JSON.stringify({ ...data, app_session_id: session()?.session_id }) });
   var go = (route) => document.dispatchEvent(new CustomEvent("juniper-navigate", { detail: route }));
   var copy = (value2) => value2 == null ? "—" : `<code>${esc(value2)}</code><button class="icon-button" data-copy-juniper="${esc(value2)}" aria-label="Copiar ${esc(value2)}" title="Copiar valor"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1"/><path d="M3 11H2V2h9v1"/></svg></button>`;
   function wireCopy(root2 = document) {
@@ -292,6 +324,7 @@
   var tabGeneration = 0;
   var tab = "summary";
   var lastSubscriberRoute = null;
+  var knownInterfaces = [];
   function ensureContext() {
     if (sourceId !== session()?.session_id) {
       sourceId = session()?.session_id;
@@ -301,12 +334,13 @@
       candidates = [];
       tab = "summary";
       lastSubscriberRoute = null;
+      knownInterfaces = [];
     }
   }
   var navigation = [
     ["Visão geral", [["juniperOverview", "Visão geral"]]],
     ["Assinantes", [["subscribers", "Buscar assinante"], ["juniperSubscriber", "Sessão PPPoE"], ["juniperAccounting", "Accounting"], ["juniperServices", "Serviços"]]],
-    ["Infraestrutura", [["juniperInterfaces", "Interfaces"], ["juniperLacp", "LACP"], ["juniperOptics", "Óptica"], ["juniperRouting", "Roteamento"]]],
+    ["Infraestrutura", [["juniperInterfaces", "Interfaces"], ["juniperLacp", "LACP"], ["juniperOptics", "Óptica"], ["juniperRouting", "Roteamento do assinante"]]],
     ["AAA", [["juniperRadius", "RADIUS"], ["juniperAuth", "Autenticação"], ["juniperAaaAccounting", "Accounting AAA"], ["juniperDynamic", "Dynamic Requests"]]],
     ["Diagnóstico", [["juniperPppoe", "PPPoE"], ["juniperLockout", "Lockout"], ["juniperDiagnostics", "Ping / Traceroute"], ["juniperLogs", "Logs"]]],
     ["Sistema", [["juniperSystem", "Routing Engine"], ["juniperFpc", "FPC / Chassis"], ["juniperEnvironment", "Ambiente"], ["juniperHardware", "Hardware"]]]
@@ -331,6 +365,12 @@
     }
     return `<p>${esc(value(data))}</p>`;
   }
+  function errorMarkup(error) {
+    return `<div class="j-read-error" role="alert"><strong>${esc(error.message)}</strong><p>${esc(error.code || "READ_FAILED")}${error.request_id ? " · Referência " + esc(error.request_id) : ""}</p>${error.retryable ? '<button class="button" data-j-retry>Tentar novamente</button>' : ""}</div>`;
+  }
+  function wireRetry(host, action) {
+    host.querySelector("[data-j-retry]")?.addEventListener("click", action, { once: true });
+  }
   var panel = (title, content, actions = "") => `<section class="panel j-panel"><div class="j-panel-header"><h2>${esc(title)}</h2>${actions}</div>${content}</section>`;
   function selectedRequired() {
     return empty("Selecione um assinante", "Busque o contrato, usuário PPPoE ou IP e escolha a sessão correta.") + button("Buscar assinante", "subscribers");
@@ -341,6 +381,7 @@
     const data = results[0].status === "fulfilled" ? results[0].value : null;
     if (!data) throw results[0].reason;
     const resources = results[1].status === "fulfilled" ? results[1].value : [], interfaces2 = results[2].status === "fulfilled" ? results[2].value : [];
+    knownInterfaces = interfaces2;
     const re = resources[0], idle = Number(re?.cpu_idle_percent), cpu = re?.cpu_idle_percent != null && Number.isFinite(idle) ? `${100 - idle}%` : "—";
     return `<div class="j-intro"><div><h2>Juniper ${esc(data.model)}</h2><p>${esc(data.hostname || "—")} · ${esc(session()?.host)} · Junos ${esc(data.firmware || "—")}</p></div><div>${button("Buscar assinante", "subscribers")}<button class="button" data-j-refresh>Atualizar</button><button class="button" data-j-identity>Identidade SSH</button></div></div><div class="j-metrics">${[["Conexão", store.session?.connected ? "Online" : "Desconectado"], ["Routing Engine", re?.state || "—"], ["CPU", cpu], ["Memória", re?.memory_used_percent != null ? `${re.memory_used_percent}%` : "—"], ["Tempo ligado", uptime(data.uptime_seconds)]].map(([k, v]) => `<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("")}</div><div class="j-overview-grid">${panel("Infraestrutura", dataTable([["Interface", (r) => copy(r.name)], ["Admin", (r) => esc(r.admin_state)], ["Link", (r) => status(r.oper_state)]], interfaces2), button("Ver interfaces", "juniperInterfaces"))}${panel("AAA / RADIUS", `<p>Estado dos servidores e contadores sob demanda.</p><div class="j-link-list">${button("Servidores RADIUS", "juniperRadius")}${button("Autenticação", "juniperAuth")}${button("Accounting", "juniperAaaAccounting")}${button("Dynamic Requests", "juniperDynamic")}</div>`)}${panel("Identidade do equipamento", kv2([["Modelo", data.model], ["Junos", data.firmware], ["Família", data.family], ["Transporte", session()?.protocol_family]]))}</div>`;
   }
@@ -455,7 +496,7 @@
   var subscriberTabs = [["summary", "Resumo"], ["pppoe", "PPPoE"], ["aaa", "AAA"], ["accounting", "Accounting"], ["services", "Serviços"], ["routing", "Roteamento"], ["diagnostic", "Diagnóstico"]];
   function subscriberPage(initial2) {
     ensureContext();
-    if (initial2 && lastSubscriberRoute !== store.view) tab = initial2;
+    if (initial2 && (store.view !== "juniperSubscriber" || lastSubscriberRoute !== store.view)) tab = initial2;
     lastSubscriberRoute = store.view;
     if (!selected) return selectedRequired();
     return panel(selected.username, `<p>${status(selected.state)} · <code>${esc(selected.interface || "—")}</code></p>${tabs(subscriberTabs, tab)}<div id="subscriber-full-content"></div>`, `<div><button class="button" data-refresh-selected>Atualizar</button><button class="button primary" data-access-cpe>Acessar CPE</button></div>`);
@@ -476,7 +517,7 @@
         html = '<p class="muted">Shaping aplicado; não confirma plano comercial.</p>' + detailData(selected.service_sessions || []) + filters.map((name) => `<button class="button" data-service-filter="${esc(name)}">Contadores: ${esc(name)}</button>`).join("") + '<div id="service-filter-result"></div>';
       } else if (tab === "routing") {
         const [route, fib] = await Promise.allSettled([context("route"), context("fib")]);
-        html = [["Rota", route], ["Forwarding", fib]].map(([title, result]) => `<h3>${title}</h3>${result.status === "fulfilled" ? detailData(result.value.data) : `<p role="alert">${esc(result.reason.message)}</p>`}`).join("");
+        html = [["Rota do assinante selecionado", route], ["Forwarding do assinante selecionado", fib]].map(([title, result]) => `<h3>${title}</h3>${result.status === "fulfilled" ? detailData(result.value.data) : `<p role="alert">${esc(result.reason.message)}</p>`}`).join("");
       } else {
         const kind = tab === "diagnostic" ? "lockout" : tab;
         const result = await context(kind);
@@ -526,25 +567,57 @@
     };
     renderSubscriberTab();
   }
+  function linkData(kind, data) {
+    if (kind === "lacp" && Array.isArray(data) && data.some((g) => Array.isArray(g.members))) {
+      return data.map((group) => `<section class="j-section"><h3>Agregado ${esc(group.aggregate)}</h3>${dataTable([["Membro", (r) => `<code>${esc(r.interface)}</code>`], ["Actor · Coleta", (r) => esc(value(r.actor.collecting))], ["Actor · Distribuição", (r) => esc(value(r.actor.distributing))], ["Actor · Sync", (r) => esc(value(r.actor.synchronization))], ["Actor · Agregação", (r) => esc(value(r.actor.aggregation))], ["Partner · Coleta", (r) => esc(value(r.partner.collecting))], ["Partner · Distribuição", (r) => esc(value(r.partner.distributing))], ["Partner · Sync", (r) => esc(value(r.partner.synchronization))]], group.members)}<details class="j-advanced"><summary>Detalhes Actor / Partner</summary>${group.members.map((m) => `<h4>${esc(m.interface)}</h4><h5>Actor</h5>${detailData(m.actor)}<h5>Partner</h5>${detailData(m.partner)}`).join("")}</details></section>`).join("");
+    }
+    if (kind === "optics" && Array.isArray(data)) {
+      return data.map((module) => `<section class="j-section"><h3>${esc(module.interface)}</h3>${kv2([["Temperatura", module.temperature], ["Tensão", module.voltage]])}${dataTable([["Lane", (l) => esc(l.lane)], ["Bias", (l) => esc(l.bias_current)], ["TX", (l) => esc(l.tx_power)], ["RX", (l) => esc(l.rx_power)]], module.lanes || [])}<details class="j-advanced"><summary>Alarmes, avisos e limites do módulo</summary>${detailData(module.module_alarm_warning_thresholds || {})}${(module.lanes || []).map((l) => `<h4>Lane ${esc(l.lane)}</h4>${detailData(l.alarm_warning_thresholds || {})}`).join("")}</details></section>`).join("");
+    }
+    return detailData(data);
+  }
   async function interfaces(kind = null) {
     ensureContext();
+    if (kind) return panel(kind === "lacp" ? "LACP sob demanda" : "Óptica sob demanda", `<form id="juniper-link-form" class="j-toolbar"><label for="juniper-link-name">${kind === "lacp" ? "Interface agregada" : "Interface física"}</label><input id="juniper-link-name" name="name" list="juniper-known-links" required pattern="${kind === "lacp" ? "ae[0-9]+" : "(et|xe|ge)-[0-9]+/[0-9]+/[0-9]+(:[0-9]+)?"}" placeholder="${kind === "lacp" ? "ae…" : "et-…/…/…"}" autocomplete="off"><datalist id="juniper-known-links">${knownInterfaces.filter((r) => kind === "lacp" ? /^ae[0-9]+$/.test(r.name) : /^(et|xe|ge)-/.test(r.name)).slice(0, 128).map((r) => `<option value="${esc(r.name)}"></option>`).join("")}</datalist><button class="button primary">Consultar</button></form><p class="j-inline-status">Consulta específica; não carrega inventário global de pp0/demux.</p><div id="link-page-result" data-kind="${kind}"></div>`);
     const result = await read("interfaces");
+    knownInterfaces = result;
     return panel(kind === "lacp" ? "LACP" : kind === "optics" ? "Óptica" : "Interfaces Junos", `<p class="j-inline-status">Selecione uma interface para consultar ${kind === "lacp" ? "LACP" : kind === "optics" ? "valores por lane" : "estado e contadores"}. Leituras sob demanda.</p>${dataTable([["Interface", (r, i) => `<button class="j-text-button" data-junos-interface="${esc(r.name)}" data-link-page="${kind || ""}">${esc(r.name)}</button>`], ["Admin", (r) => esc(r.admin_state || "—")], ["Link", (r) => status(r.oper_state)], ["Speed", (r) => esc(r.speed || "—")], ["MTU", (r) => esc(r.mtu || "—")], ["Endereços", (r) => esc((r.addresses || []).join(", ") || "—")]], result)}`);
   }
   function mountInterfaces() {
+    const form = document.querySelector("#juniper-link-form");
+    if (form) {
+      form.onsubmit = async (event) => {
+        event.preventDefault();
+        const scope = currentScope(), host = document.querySelector("#link-page-result"), kind = host.dataset.kind;
+        host.innerHTML = '<p class="j-inline-status">Consultando Juniper…</p>';
+        form.querySelector("button").disabled = true;
+        try {
+          const result = await read("interfaces/link", { kind, name: form.elements.name.value.trim() }, scope);
+          if (scopeActive(scope)) host.innerHTML = linkData(kind, result.data);
+        } catch (e) {
+          if (scopeActive(scope) && !isCancelled(e)) {
+            host.innerHTML = errorMarkup(e);
+            wireRetry(host, () => form.requestSubmit());
+          }
+        } finally {
+          if (scopeActive(scope)) form.querySelector("button").disabled = false;
+        }
+      };
+      return;
+    }
     document.querySelectorAll("[data-junos-interface]").forEach((b) => b.onclick = async () => {
       const scope = currentScope();
       try {
         const name = b.dataset.junosInterface, kind = b.dataset.linkPage;
         const result = await read(kind ? "interfaces/link" : "interfaces/detail", kind ? { name, kind } : { name }, scope);
         if (!scopeActive(scope)) return;
-        const d = drawer(name, detailData(kind ? result.data : result) + `<div class="inline-actions"><button class="button" data-link-kind="lacp">LACP</button><button class="button" data-link-kind="optics">Óptica por lane</button></div><div id="link-read-result"></div>`);
+        const d = drawer(name, (kind ? linkData(kind, result.data) : detailData(result)) + `<div class="inline-actions"><button class="button" data-link-kind="lacp">LACP</button><button class="button" data-link-kind="optics">Óptica por lane</button></div><div id="link-read-result"></div>`);
         d.querySelectorAll("[data-link-kind]").forEach((x) => x.onclick = async () => {
           const drawerScope = d._requestScope;
           x.disabled = true;
           try {
             const r = await read("interfaces/link", { name, kind: x.dataset.linkKind }, d._requestScope);
-            if (d.open && d._requestScope === drawerScope) d.querySelector("#link-read-result").innerHTML = detailData(r.data);
+            if (d.open && d._requestScope === drawerScope) d.querySelector("#link-read-result").innerHTML = linkData(x.dataset.linkKind, r.data);
           } catch (e) {
             if (d.open && d._requestScope === drawerScope) d.querySelector("#link-read-result").textContent = e.message;
           } finally {
@@ -556,9 +629,18 @@
       }
     });
   }
+  var counterLabels = { requests: "Requisições", accepts: "Aceitas", rejects: "Rejeitadas", radius_failures: "Falhas RADIUS", no_available_server: "Servidor indisponível", invalid_credentials: "Credenciais inválidas", timeouts: "Tempo esgotado", processed_ok: "Processados com sucesso", processed_initial: "Processados inicialmente", processing_error: "Erros de processamento", silent_drops: "Descartados silenciosamente", request_success: "Requisições com sucesso", request_failures: "Falhas nas requisições", acct_on_requests: "Accounting-On enviados", start_requests: "Start enviados", interim_requests: "Interim enviados", stop_requests: "Stop enviados", response_success: "Respostas com sucesso", response_failures: "Falhas nas respostas", start_responses: "Respostas Start", interim_responses: "Respostas Interim", stop_responses: "Respostas Stop", requests_pending: "Requisições pendentes", retransmissions: "Retransmissões", collecting: "Coleta", distributing: "Distribuição", synchronization: "Sincronização", aggregation: "Agregação" };
+  function counterTable(data) {
+    const rows3 = Object.entries(data.counters || {});
+    return `<p class="j-inline-status">Contadores acumulados; valores históricos não confirmam incidente atual.</p><div class="j-counter-table"><table class="data-table"><thead><tr><th>Métrica</th><th>Valor</th></tr></thead><tbody>${rows3.map(([key, val]) => `<tr><th scope="row">${esc(counterLabels[key] || labels[key] || key.replaceAll("_", " "))}</th><td>${val == null ? "—" : esc(/^[0-9]+$/.test(String(val)) ? BigInt(val).toLocaleString("pt-BR") : val)}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  async function operationLogs() {
+    const rows3 = await read("operations");
+    return panel("Operações Juniper desta sessão", `<p class="j-inline-status">Até 100 leituras recentes da aplicação. Sem saída XML/CLI ou credenciais.</p>${dataTable([["Horário", (r) => esc(new Date(r.timestamp * 1e3).toLocaleTimeString())], ["Leitura", (r) => esc(r.feature)], ["Duração", (r) => esc((r.elapsed_ms / 1e3).toFixed(2) + " s")], ["Espera pelo lock", (r) => esc(r.lock_wait_ms + " ms")], ["Formato", (r) => esc(r.output_format)], ["Resultado", (r) => esc(r.error_code || "Sucesso")], ["Referência", (r) => `<code>${esc(r.request_id)}</code>`]], rows3.slice().reverse())}`);
+  }
   async function health(kind) {
     const result = await read("health", { kind });
-    return panel(titles[store.view]?.[1] || "Saúde", `${kind.startsWith("aaa_") ? '<p class="j-inline-status">Contadores acumulados. O total histórico não confirma incidente atual.</p>' : ""}${detailData(result.data)}`);
+    return panel(titles[store.view]?.[1] || "Saúde", kind.startsWith("aaa_") ? counterTable(result.data) : detailData(result.data));
   }
   async function system(kind = "resources") {
     const data = await read(kind);
@@ -570,7 +652,7 @@
     wireCopy();
   }
   function routeView(route) {
-    const map = { juniperOverview: [overview, mountCommon], subscribers: [subscribers, mountSubscribers, unmountSubscribers], juniperSubscriber: [() => subscriberPage("summary"), mountSubscriberPage], juniperAccounting: [() => subscriberPage("accounting"), mountSubscriberPage], juniperServices: [() => subscriberPage("services"), mountSubscriberPage], juniperRouting: [() => subscriberPage("routing"), mountSubscriberPage], juniperPppoe: [() => subscriberPage("pppoe"), mountSubscriberPage], juniperLockout: [() => subscriberPage("diagnostic"), mountSubscriberPage], juniperInterfaces: [() => interfaces(), mountInterfaces], juniperLacp: [() => interfaces("lacp"), mountInterfaces], juniperOptics: [() => interfaces("optics"), mountInterfaces], juniperRadius: [() => health("radius")], juniperAuth: [() => health("aaa_authentication")], juniperAaaAccounting: [() => health("aaa_accounting")], juniperDynamic: [() => health("aaa_dynamic")], juniperSystem: [() => system()], juniperFpc: [() => health("fpc")], juniperEnvironment: [() => health("environment")], juniperHardware: [() => system("chassis")], juniperDiagnostics: [diagnostics, mountDiagnostics], juniperLogs: [() => panel("Logs", empty("Leitor de logs indisponível", "A API atual não fornece logs Juniper. Nenhuma saída foi simulada."))] };
+    const map = { juniperOverview: [overview, mountCommon], subscribers: [subscribers, mountSubscribers, unmountSubscribers], juniperSubscriber: [() => subscriberPage("summary"), mountSubscriberPage], juniperAccounting: [() => subscriberPage("accounting"), mountSubscriberPage], juniperServices: [() => subscriberPage("services"), mountSubscriberPage], juniperRouting: [() => subscriberPage("routing"), mountSubscriberPage], juniperPppoe: [() => subscriberPage("pppoe"), mountSubscriberPage], juniperLockout: [() => subscriberPage("diagnostic"), mountSubscriberPage], juniperInterfaces: [() => interfaces(), mountInterfaces], juniperLacp: [() => interfaces("lacp"), mountInterfaces], juniperOptics: [() => interfaces("optics"), mountInterfaces], juniperRadius: [() => health("radius")], juniperAuth: [() => health("aaa_authentication")], juniperAaaAccounting: [() => health("aaa_accounting")], juniperDynamic: [() => health("aaa_dynamic")], juniperSystem: [() => system()], juniperFpc: [() => health("fpc")], juniperEnvironment: [() => health("environment")], juniperHardware: [() => system("chassis")], juniperDiagnostics: [diagnostics, mountDiagnostics], juniperLogs: [operationLogs] };
     const [render10, mount8, unmount] = map[route];
     return { render: render10, mount: mount8, unmount };
   }
@@ -2021,20 +2103,44 @@
       return;
     }
     if (!background) document.querySelector(".app-main").scrollTop = 0;
-    if (!background) workspace.innerHTML = '<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
+    let waitTimer;
+    if (!background) {
+      workspace.innerHTML = Object.hasOwn(juniperRoutes, name) ? '<section class="panel j-wait" role="status"><p data-wait-label>Consultando Juniper…</p><div class="skeleton"></div><button class="button" data-cancel-wait>Cancelar espera</button></section>' : '<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
+      const cancel = workspace.querySelector("[data-cancel-wait]");
+      if (cancel) {
+        waitTimer = setTimeout(() => {
+          if (scopeActive(scope) && state.loading) {
+            const label = workspace.querySelector("[data-wait-label]");
+            if (label) label.textContent = "A consulta ainda está em andamento…";
+          }
+        }, 4e3);
+        cancel.onclick = () => {
+          scope.controller.abort();
+          clearTimeout(waitTimer);
+          workspace.innerHTML = '<section class="panel j-wait"><p>Espera cancelada. O comando remoto pode continuar em execução.</p><button class="button" data-resume-read>Consultar novamente</button></section>';
+          workspace.querySelector("[data-resume-read]").onclick = () => render9(name);
+        };
+      }
+    }
     try {
       const view = views[name] || views.overview;
       const html = await view.render();
       if (!scopeActive(scope)) return;
       state.loading = false;
+      clearTimeout(waitTimer);
       if (background) patchHTML(workspace, html);
       else workspace.innerHTML = html;
       view.mount?.();
     } catch (e) {
+      clearTimeout(waitTimer);
       if (!scopeActive(scope) || isCancelled(e)) return;
       state.loading = false;
       state.error = e.message;
-      workspace.innerHTML = `<div class="notice danger" role="alert">${esc(e.message)}</div>`;
+      clearTimeout(waitTimer);
+      if (Object.hasOwn(juniperRoutes, name)) {
+        workspace.innerHTML = errorMarkup(e);
+        wireRetry(workspace, () => render9(name));
+      } else workspace.innerHTML = `<div class="notice danger" role="alert">${esc(e.message)}</div>`;
     }
   }
   function normalizeConnectionPayload(form) {

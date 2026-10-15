@@ -19,7 +19,7 @@ def identifier(value,kind):
     return value
 
 CATALOG={'facts':'show version','uptime':'show system uptime','chassis':'show chassis hardware',
-         'interfaces':'show interfaces terse','resources':'show chassis routing-engine',
+         'interfaces':'show interfaces "[aeglx]*" media','resources':'show chassis routing-engine',
          'subscriber_probe':'show subscribers client-type pppoe count',
          'radius':'show network-access aaa radius-servers detail',
          'aaa_authentication':'show network-access aaa statistics authentication detail',
