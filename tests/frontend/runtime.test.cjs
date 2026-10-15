@@ -167,3 +167,43 @@ test('Juniper SSH identity inspection uses connected endpoint rather than cleare
  d.querySelector('#connect-form').elements.host.value='';d.querySelector('[data-j-identity]').click();await x.wait();
  const call=x.calls.find(c=>c[0]==='/api/infrastructure/host-key');assert.equal(JSON.parse(call[1].body).host,'192.0.2.1');assert.match(d.querySelector('#action-dialog').textContent,/A chave SSH apresentada pelo servidor mudou/);assert.ok(!x.calls.some(c=>c[0]==='/api/infrastructure/host-key/trust'));x.w.close();
 });
+
+test('API errors retain code type retryability status and reference through frontend',async()=>{
+ const x=await boot();const esbuild=require('esbuild'),source=esbuild.buildSync({entryPoints:[base+'static/js/services/api.js'],bundle:true,format:'iife',globalName:'ApiUnderTest',write:false}).outputFiles[0].text;x.w.eval(source);
+ x.w.fetch=async()=>({ok:true,status:200,text:async()=>JSON.stringify({success:false,error:{code:'CONNECTION_TIMEOUT',message:'Tempo esgotado',type:'timeout',retryable:true,request_id:'read-123'}})});
+ await assert.rejects(x.w.ApiUnderTest.request('/api/infrastructure/health',{method:'POST'}),error=>error.code==='CONNECTION_TIMEOUT'&&error.type==='timeout'&&error.retryable===true&&error.status===200&&error.request_id==='read-123');x.w.close();
+});
+
+test('Juniper timeout degrades topbar, parser error does not fake offline and endpoint includes port',async()=>{
+ const x=await boot({...juniperBase,'/api/session':{connected:true,session:{...juniperBase['/api/session'].session,metadata:{scheme:'ssh',port:50022,transport_active:true}}}}),d=x.w.document;
+ assert.match(d.querySelector('#ctx-host').textContent,/ssh:\/\/192\.0\.2\.1:50022/);
+ d.dispatchEvent(new x.w.CustomEvent('juniper-read-state',{detail:{failed:true,code:'XML_SHAPE_UNSUPPORTED',transportFailure:false}}));assert.match(d.querySelector('#ctx-status').textContent,/Online/);
+ d.dispatchEvent(new x.w.CustomEvent('juniper-read-state',{detail:{failed:true,code:'CONNECTION_TIMEOUT',transportFailure:true}}));assert.match(d.querySelector('#ctx-status').textContent,/Degradado/);
+ d.dispatchEvent(new x.w.CustomEvent('juniper-read-state',{detail:{failed:false}}));assert.match(d.querySelector('#ctx-status').textContent,/Online/);x.w.close();
+});
+
+test('Juniper AAA counters use only corresponding schema with Portuguese labels and exact large numbers',async()=>{
+ const x=await boot({...juniperBase,'/api/infrastructure/health':{data:{cumulative:true,current_incident:null,counters:{requests:'18446744073709551615',request_success:'100',requests_pending:'2',retransmissions:'33'}}}}),d=x.w.document;
+ await x.click('juniperAaaAccounting');const table=d.querySelector('.j-counter-table');assert.ok(table);assert.match(table.textContent,/Requisições pendentes/);assert.match(table.textContent,/Retransmissões/);assert.match(table.textContent,/18\.446\.744\.073\.709\.551\.615/);assert.ok(!table.textContent.includes('Credenciais inválidas'));x.w.close();
+});
+
+test('Juniper dedicated routes force canonical tab when navigated again',async()=>{
+ const x=await boot(juniperBase),d=x.w.document;await findJuniper(x);
+ for(const [route,canonical] of [['juniperRouting','routing'],['juniperPppoe','pppoe'],['juniperAccounting','accounting'],['juniperServices','services'],['juniperLockout','diagnostic']]){
+  await x.click(route);assert.ok(d.querySelector(`[data-j-tab=${canonical}].active`));d.querySelector('[data-j-tab=diagnostic]').click();await x.wait();await x.click(route);assert.ok(d.querySelector(`[data-j-tab=${canonical}].active`));
+ }
+ assert.match(d.querySelector('[data-view=juniperRouting]').textContent,/assinante/);x.w.close();
+});
+
+test('Juniper LACP and optics open direct forms without an interface inventory request',async()=>{
+ const x=await boot(juniperBase),d=x.w.document,original=x.w.fetch;let inventories=0,links=0;
+ x.w.fetch=async(url,options)=>{const path=new URL(url).pathname;if(path==='/api/infrastructure/interfaces'){inventories++;throw Error('No global inventory permitted')};if(path==='/api/infrastructure/interfaces/link'){links++;return {ok:true,text:async()=>JSON.stringify({data:[{aggregate:'ae1',members:[]}]})}}return original(url,options)};
+ for(const [route,name] of [['juniperLacp','ae1'],['juniperOptics','et-0/0/0']]){await x.click(route);const form=d.querySelector('#juniper-link-form');assert.ok(form);form.elements.name.value=name;form.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();}
+ assert.equal(inventories,0);assert.equal(links,2);x.w.close();
+});
+
+test('Juniper page retry is explicit and cancel only stops waiting',async()=>{
+ const x=await boot(juniperBase),d=x.w.document,original=x.w.fetch,gate=deferred();let attempts=0;
+ x.w.fetch=async(url,options)=>{if(new URL(url).pathname==='/api/infrastructure/health'){attempts++;if(attempts===1)return {ok:true,status:200,text:async()=>JSON.stringify({success:false,error:{code:'CONNECTION_TIMEOUT',message:'Tempo esgotado',type:'timeout',retryable:true}})};await gate.promise;return {ok:true,status:200,text:async()=>JSON.stringify({data:[]})}}return original(url,options)};
+ await x.click('juniperRadius');assert.equal(attempts,1);assert.match(d.querySelector('#workspace [role=alert]').textContent,/CONNECTION_TIMEOUT/);d.querySelector('[data-j-retry]').click();await x.wait();assert.equal(attempts,2);d.querySelector('[data-cancel-wait]').click();assert.match(d.querySelector('#workspace').textContent,/O comando remoto pode continuar/);gate.resolve();await x.wait();assert.ok(!d.querySelector('#workspace .skeleton'));x.w.close();
+});

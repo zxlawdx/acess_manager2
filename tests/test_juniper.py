@@ -113,8 +113,10 @@ def test_details_and_lazy_aaa_pppoe_require_current_selected_identity():
 def test_facts_interfaces_chassis_and_cleanup():
     p=provider();assert p.model=='mx204' and p.firmware=='24.2R1'
     assert p.get_device_info()['uptime_seconds']==900
-    rows=p.get_juniper_interfaces();assert rows[0]['name']=='xe-0/0/0' and rows[1]['name']=='xe-0/0/0.300'
-    assert rows[0]['oper_state']=='up' and rows[1]['oper_state'] is None
+    rows=p.get_juniper_interfaces();assert [row['name'] for row in rows]==['xe-0/0/0']
+    logical=parsers.interfaces(p.transport.execute(request('interfaces')))
+    assert logical[1]['name']=='xe-0/0/0.300'
+    assert rows[0]['oper_state']=='up' and logical[1]['oper_state'] is None
     assert p.get_juniper_chassis()[0]['serial']=='SYNTHETIC'
     transport=p.transport;p.disconnect();assert not transport.connected and not p.connected
     assert p.capabilities.public()=={} and p.get_device_info()=={}
