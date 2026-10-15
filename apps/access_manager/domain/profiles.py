@@ -21,10 +21,14 @@ class NetworkProfile:
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "NetworkProfile":
+        wifi=dict(value.get('wifi') or {})
+        if not isinstance(wifi.get('radios'),list) and not isinstance(wifi.get('radio'),dict):
+            legacy=[{**config,'band':band} for band,config in wifi.items() if band in {'2.4GHz','5GHz'} and isinstance(config,dict)]
+            if legacy:wifi['radios']=legacy
         return cls(
             name=str(value.get("name") or "").strip(),
             description=str(value.get("description") or "").strip(),
-            wifi=dict(value.get("wifi") or {}),
+            wifi=wifi,
             dns=dict(value.get("dns") or {}),
             dhcp=dict(value.get("dhcp") or {}),
         )

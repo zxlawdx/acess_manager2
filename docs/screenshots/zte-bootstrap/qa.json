@@ -1,0 +1,27 @@
+{
+  "api": "real Vela/Bottle, no fetch interception",
+  "router": "synthetic transport fixtures",
+  "results": [
+    {
+      "width": 1366,
+      "height": 768,
+      "connected": true,
+      "clients": 2
+    },
+    {
+      "width": 1600,
+      "height": 900,
+      "connected": true,
+      "clients": 2
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "connected": true,
+      "clients": 2
+    }
+  ],
+  "unknownConnected": true,
+  "authenticationRejected": true,
+  "physicalP1CorrectionTest": false
+}

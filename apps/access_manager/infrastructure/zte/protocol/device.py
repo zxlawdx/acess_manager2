@@ -217,8 +217,10 @@ class ZTE:
 
         self._validar_resposta(xml)
 
-        dados = self._parse_instances(xml)
+        return self.device_info_from_objects(self._parse_instances(xml))
 
+    @staticmethod
+    def device_info_from_objects(dados):
         info = dados.get("OBJ_DEVINFO_ID", [])
         cpu = dados.get("OBJ_CPUMEMUSAGE_ID", [])
         uptime = dados.get("OBJ_POWERONTIME_ID", [])
@@ -307,6 +309,9 @@ class ZTE:
         )
 
     def wifi_clients(self):
+        if getattr(self, "read_profile", None):
+            from ..discovery.profile_runtime import clients
+            return clients(self, "wifi_clients")
         xml = self.wifi_clients_raw()
 
         self._validar_resposta(xml)
@@ -367,6 +372,9 @@ class ZTE:
     # =========================================================
 
     def lan_clients(self):
+        if getattr(self, "read_profile", None):
+            from ..discovery.profile_runtime import clients
+            return clients(self, "lan_clients")
         xml = self.lan_clients_raw()
 
         self._validar_resposta(xml)

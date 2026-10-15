@@ -24,7 +24,11 @@ def test_actual_buses_aggregate_persist_normalize_without_secrets(setup):
     assert r['wifi_quality']['label']=='Fraco' and r['wifi_quality']['avg_rssi']==-80
     assert r['traceroute'][1]['status']=='timeout' and r['traceroute'][1]['loss_percent'] is None
     assert r['resources']['cpu_percent']==0 and r['resources'].get('memory_percent') is None
-    assert len(r['alerts'])==2 and r['history_id']
+    assert len(r['alerts'])==3
+    assert r['alerts'][-1]['id']=='wifi_channel_5GHz'
+    assert r['wifi_environment'][0]['neighbor_scan']['available'] is False
+    assert r['channel_analysis'][0]['recommendation']=={}
+    assert r['history_id']
     assert service.history_rows({'hours':24})[0]['history_id']==r['history_id']
     exported=service.export({'id':r['history_id']})
     text=json.dumps(exported)

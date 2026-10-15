@@ -1,3 +1,30 @@
+
+## Functional parity round — 2026-10-15
+
+Baseline `fix/zte-h3601p-v9` / `d0c795d21f54a54feda8d1717d265148d5e65ba7`. Continued the existing tree without reset, reclone or branch replacement.
+
+The two-signature all-or-nothing bootstrap is replaced with independent bounded structural discovery. Valid-empty counts; one validated feature can select a read strategy. H288A-like/F6640-like scores and ties never manufacture model identity. Public UNKNOWN bus checks remain intact. Missing endpoints and wrong schemas are session-local negative evidence; view 404 alone no longer rules out a known menuData endpoint.
+
+Radio normalization preserves all canonical fields including AutoChannelEnabled and advanced flags; missing flags stay null. OBJ_CHANNEL_ID shares a short-lived payload with radio reads and filters band/width/country without default channel tables. Public wifi_channels query and optional neighbor-scan capability are wired. ChannelAnalyzer is ported from the legacy service; no scan/no firmware destinations/Auto/no meaningful gain means no recommendation. Full diagnosis has Canais Wi-Fi, RF-only neighbor measurements, findings and JSON/CSV summaries.
+
+Profile preview now reads radios directly, shows current manual 6 versus desired Automático, skips unknown writers, and reads legacy band-key profiles losslessly without changing storage on read. Native radio POST acceptance now requires a subsequent read-back before verified=true. DNS hosts with legacy nome remain recognized. Profile editor continues to exclude individual SSIDs and retain fixed header/footer.
+
+WAN preserves DNS, uptime, remaining lease, errors and observed counters. DHCP leases/config fail independently. DNS, hosts, DMZ, UPnP, TR-069 and firewall have known, isolated read candidates; manual compatibility scan is available in full diagnostic tools and refreshes UI capabilities. Management may attempt PARTIAL reads; writes still require SUPPORTED.
+
+Validation: **394 Python tests + 30 subtests passed**, **33 frontend tests passed**, frontend build/check and collectstatic successful. Native QA executes real `manage.py runapp`, Vela/Bottle endpoints and Qt WebEngine (Chromium), with only synthetic router transport and temporary app data. Nine pages checked at **1366×768, 1600×900, 1920×1080**. Shell edges, no horizontal shell/workspace overflow, modal centering/fixed actions and polling page/card/SVG/scroll/focus preservation passed. No app JS exceptions; existing framework Tailwind warning remains unrelated. Screenshots and QA JSON: `docs/screenshots/zte-parity/`.
+
+Physical validation remains **not performed** for the new readers/writers. Only the owner's prior authentication success/statusMgr 404 is physical evidence. P1_MUL endpoint/form/token compatibility, neighbor availability, management features and Mesh relationships remain real unknowns. No Windows WebView2 run occurred in this Linux Qt environment. No H3601P write was promoted. Mesh discovery remains an independent pending feature; clients never depend on topo_lua.
+
+`data/profiles.json` SHA256 remains `0c04d0a57d4ba19f9fcbdd91534f11252cc4ce1a8a76a29db9ffcab3b820e3de`. No change to main, no merge or force-push.
+
+---
+
+# Checkpoint atual — H3601P bootstrap após login
+
+Branch preservada fix/zte-h3601p-v9, base 99e7d1f. Corrigido: statusMgr 404 não aborta login já confirmado. Device-info é opcional, fallback direto único, footer/hint opcionais, assinatura limitada LAN/WLAN sem inventar modelo, unknown autenticado em deployment. GET /device retorna metadata conhecida, sem 500 por view ausente. Diagnóstico sanitizado e auth real rejeitada com código próprio. Nenhum writer, frontend ou data/profiles.json alterado.
+
+Validação: 28 testes focados; 375 Python + 30 subtestes; 32 frontend; Vela/Qt com HTTP API real, transporte simulado, três resoluções. Evidência física fornecida pelo proprietário: login/token/refresh 200 e statusMgr 404. Clientes P1 e correção no Windows aguardam reteste físico. Ver docs/zte/H3601P_IMPLEMENTATION_REPORT.md. Os checkpoints abaixo são históricos.
+
 # Access Manager — checkpoint de recuperação
 
 Data: 2026-10-13. Branch: `feat/provider-parity-round2`. Base main: `8c6dea5c5b24069c5442a11ccf48baa569dde5b7` (PRs #1 e #2 integrados).
@@ -82,3 +109,10 @@ Validação: 295 Python + 30 subtests, 28 DOM; Chromium e Vela real Qt nas três
 Branch feat/direct-visual-references, base main 09e6fce com PR #9 integrado. HTMLs A/B e capturas C/D conferidos. Login separado do shell, credenciais removidas do dashboard. Overview com hierarquia completa da referência; Tráfego com gráfico principal e ranking lateral; renderer SVG/polling compartilhado; Diagnóstico completo adaptado à referência HTML B. Fontes locais, nenhum mock/CDN novo, backend preservado.
 
 Validação: 295 Python + 30 subtests; 31 frontend; Chromium e Vela real Qt nas três resoluções. Capturas login/overview/traffic/complete-diagnostics em docs/screenshots/vela. Detalhes: DIRECT_VISUAL_REFERENCES_REPORT.md. Dados de equipamento sintéticos nos testes; nenhum teste físico/Windows novo.
+
+
+## H3601P V9 — rodada de compatibilidade
+
+Base `740638e1ba215246c16c77f7f91a5468e15c2a8b`, branch `fix/zte-h3601p-v9`. Perfil e runtime integrados; candidato WLAN accessdev_ssiddev, LAN accessdev_landevs, DHCP hostinfo. Parser completo/fragmentado, namespaces, IPv6, dedup por identidade e endpoint/context cache. Optical removido por capability no gateway Ethernet. Escritas não promovidas. QA Vela/Qt e Chromium em três resoluções passou com dados sintéticos; teste físico P1 e Windows não executados. Resultado final e comandos em docs/zte/H3601P_IMPLEMENTATION_REPORT.md. Demais pendências históricas não foram declaradas concluídas.
+
+Validação desta rodada H3601P: 347 testes Python + 30 subtestes; 32 testes frontend; zero falhas/skips. QA nativo e Chromium nas três resoluções. Nenhuma confirmação física P1 ou Windows.

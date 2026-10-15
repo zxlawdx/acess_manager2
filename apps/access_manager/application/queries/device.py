@@ -24,6 +24,7 @@ class DeviceQueryBus:
     def speedtest_poll(self, identity): return self.execute('speedtest','speedtest_poll',identity)
     def firmware(self): return self.execute('firmware','get_firmware')
     def accounts(self): return self.execute('accounts','get_accounts')
+    def compatibility_scan(self): return self.execute('runtime_diagnostic','compatibility_scan')
     def runtime_diagnostic(self): return self.execute('runtime_diagnostic','runtime_diagnostic')
     def device(self):
         with getattr(self.sessions, 'operation_lock', nullcontext()):
@@ -35,6 +36,8 @@ class DeviceQueryBus:
     def wifi(self): return self.execute('wifi','get_wifi')
     def wifi_ssids(self): return self.execute('wifi','get_wifi_networks')
     def wifi_radios(self): return self.execute('wifi_radio','get_wifi_radios')
+    def wifi_channels(self, band=None, bandwidth=None, country=None): return self.execute('wifi_channels','get_available_channels',band=band,bandwidth=bandwidth,country=country)
+    def wifi_neighbor_scan(self, band): return self.execute('wifi_neighbor_scan','get_wifi_neighbor_scan',band)
     def wifi_reveal(self): return {'networks':self.execute('wifi','get_wifi_networks',reveal_password=True)}
     def wan(self):
         data=self.execute('wan','get_wan')

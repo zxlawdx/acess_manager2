@@ -6,6 +6,8 @@ from . import zte_security
 
 
 def login(zte):
+    from ...discovery.profile_runtime import reset_read_state
+    reset_read_state(zte)
     print("[1] Obtendo session token...")
 
     url = f"{zte.base_url}/?_type=loginData&_tag=login_entry"
@@ -17,14 +19,14 @@ def login(zte):
         dados = resposta.json()
     except ValueError:
         print("\nResposta inesperada:")
-        print(resposta.text[:1000])
+        print("Resposta de autenticação inválida; conteúdo omitido.")
         return False
 
     zte.session_token = dados.get("sess_token")
 
     if not zte.session_token:
         print("Não encontrei sess_token.")
-        print(dados)
+        print("Token de sessão ausente; conteúdo omitido.")
         return False
 
     print("Session token recebido.")
@@ -45,7 +47,7 @@ def login(zte):
         login_token = (root.text or "").strip()
     except ET.ParseError:
         print("Não consegui interpretar login_token.")
-        print(resposta.text[:1000])
+        print("Resposta de autenticação inválida; conteúdo omitido.")
         return False
 
     if not login_token:
@@ -78,7 +80,7 @@ def login(zte):
         resultado = resposta.json()
     except ValueError:
         print("Resposta não é JSON:")
-        print(resposta.text[:1000])
+        print("Resposta de autenticação inválida; conteúdo omitido.")
         return False
 
     novo_token = resultado.get("sess_token")
@@ -106,6 +108,7 @@ def login(zte):
         # chegar ao POST sem saber que IntegCheck estava ativo ou sem a chave
         # RSA usada por asyEncode(). Resultado: o equipamento aceitava GET,
         # mas devolvia HTTP 400 para qualquer POST de configuração.
+        zte.authenticated_root_html = resposta_refresh.text
         contexto = zte_security.update_page_security(
             zte,
             resposta_refresh.text,
@@ -128,13 +131,13 @@ def login(zte):
     print({
         "login_need_refresh": bool(resultado.get("login_need_refresh")),
         "lockingTime": resultado.get("lockingTime"),
-        "loginErrMsg": resultado.get("loginErrMsg") or "",
+        "login_error": bool(resultado.get("loginErrMsg")),
         "session_token_received": bool(zte.session_token),
     })
 
     if resultado.get("loginErrMsg"):
         print("\nErro de login:")
-        print(resultado["loginErrMsg"])
+        print("Autenticação rejeitada pelo equipamento.")
         return False
 
     print("\n[OK] Login aparentemente realizado.")
@@ -142,6 +145,8 @@ def login(zte):
 
 
 def logout(zte):
+    from ...discovery.profile_runtime import reset_read_state
+    reset_read_state(zte)
     if not zte.session_token:
         return
 

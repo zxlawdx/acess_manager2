@@ -1,0 +1,9 @@
+{
+  "source_variant": "V9.0.0P2_VN1",
+  "origin": "Synthetic structural examples based on Sentinel parser/client; not captured wire responses",
+  "source_commit": "920c4c6419711d527c55bc1e619bfe516180b49f",
+  "source_url": "https://github.com/kientran1507/Sentinel",
+  "license": "MIT",
+  "p1_mul_capture": false,
+  "data": "invented documentation addresses/private test MACs"
+}

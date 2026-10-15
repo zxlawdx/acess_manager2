@@ -74,6 +74,7 @@ FAMILY: dict[str, dict[str, ReadEndpoint]] = {
 MODEL_FAMILY = {
     "F6640": "f6640", "F6645P": "f6640", "F680": "f6640",
     "F6600P": "f6640", "F8748": "f6640",
+    "H3601P": "h3601p_v9",
     "H169A": "h288a", "H288A": "h288a", "H3600P": "h288a",
     "H3640": "h288a", "H6645P": "h288a", "H6745": "h288a",
     "H388X": "h388x", "H2640": "h2640",
@@ -140,12 +141,22 @@ SENSITIVE_NAME = re.compile(
 )
 
 
+def _register_profiles():
+    from .profiles import H3601P_V9
+    FAMILY[H3601P_V9.name] = {k:v[0] for k,v in H3601P_V9.candidates.items()}
+
+
 def normalize_model(value: str | None) -> str:
     return re.sub(r"[^A-Z0-9]", "", (value or "").upper())
 
 
 def find_family(model: str | None) -> tuple[str | None, str | None]:
+    _register_profiles()
     candidate = normalize_model(model)
+    if "H3601P" in candidate:
+        from .profiles import select_profile
+        if select_profile(model): return "H3601P", "h3601p_v9"
+        return None, None
     # Mais específico primeiro: H6645P antes de outros nomes parciais.
     for key in sorted(MODEL_FAMILY, key=len, reverse=True):
         if key in candidate:
@@ -185,6 +196,7 @@ DISCOVERY_NAMES = {
 }
 
 def catalog() -> dict[str, Any]:
+    _register_profiles()
     return {
         "models": [
             {
@@ -196,12 +208,12 @@ def catalog() -> dict[str, Any]:
                     + (["pon_optical"] if model == "F6600P" else []),
                 "firmware_differences": MODEL_EXTRAS.get(model, ()),
                 "evidence": ("owner_capture_V9.3.10P7N7" if model == "F6201B"
-                             else "zte_tracker_documented"),
+                             else "Sentinel_P2_VN1_public_candidates" if model == "H3601P" else "zte_tracker_documented"),
             }
             for model, family in MODEL_FAMILY.items()
         ],
-        "tracker_models": sum(1 for name in MODEL_FAMILY if name != "F6201B"),
-        "experimental_models": ["F6201B"],
+        "tracker_models": sum(1 for name in MODEL_FAMILY if name not in {"F6201B","H3601P"}),
+        "experimental_models": ["F6201B", "H3601P"],
         "notes": (
             "O catálogo mostra candidatos zte_tracker, não garante compatibilidade. "
             "F6201B V9.3.10P7N7 tem rotas GET observadas em captura do "
@@ -253,6 +265,12 @@ def read_clients(zte, model: str, kind: str) -> list[dict[str, Any]]:
     Esta função é local ao atendimento: não registra/salva IP, MAC, hostname
     ou SSID em relatórios estruturais de suporte público.
     """
+    from .profiles import select_profile
+    profile = select_profile(model, getattr(zte,"profile_fingerprint",{}).get("firmware"))
+    if profile:
+        from .profile_runtime import clients
+        zte.read_profile = profile
+        return clients(zte, kind)
     if kind not in {"wifi_clients", "lan_clients"}:
         raise ValueError("Tipo de cliente desconhecido")
 
@@ -337,6 +355,12 @@ def probe(
             "reason": "Modelo sem perfil cadastrado; sem tentativa às cegas.",
             "endpoints": {},
         }
+
+    if family == 'h3601p_v9':
+        from .profiles import H3601P_V9
+        from .profile_runtime import probe_profile
+        zte.read_profile=H3601P_V9
+        return probe_profile(zte,max_endpoints=max_endpoints,start=start)
 
     candidates = dict(FAMILY[family])
     if selected == "F6600P":

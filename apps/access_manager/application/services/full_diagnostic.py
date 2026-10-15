@@ -36,7 +36,7 @@ def build_alerts(result):
 # Whitelisting avoids leaking secrets even inside unstructured native output.
 def select(data, keys):return {k:data[k] for k in keys if k in data}
 def safe_sections(sections):
-    schemas={'system':('model','manufacturer','firmware','serial','uptime_seconds','cpu_percent','memory_percent','temperature_c','storage_percent'), 'wan':('name','status','ipv4','ipv6','gateway','dns','vlan'), 'radios':('band','banda','channel','canal','bandwidth','largura','standard','padrao','tx_power','potencia','country','pais','enabled','radio_ativo'), 'wifi':('id','ssid','band','banda','enabled','ativo','broadcast'), 'clients':('hostname','name','ip','ipv4','mac','connection_type','band','ssid','rssi','snr'), 'lan':('port','name','link_state','speed'), 'dhcp':('enabled','lan_ip','mask','pool_start','pool_end','lease_seconds','dns1','dns2'), 'dns':('ipv4_1','ipv4_2','ipv6_1','ipv6_2','domain_name'), 'optical':('rx_dbm','tx_dbm','temperature_c','bias_ma','registration_status','los','lof')}
+    schemas={'system':('model','manufacturer','firmware','serial','uptime_seconds','cpu_percent','memory_percent','temperature_c','storage_percent'), 'wan':('name','status','ipv4','ipv6','gateway','dns','vlan'), 'radios':('band','banda','channel','canal','bandwidth','largura','standard','padrao','tx_power','potencia','country','pais','enabled','radio_ativo','auto_channel','canal_automatico','available_channels'), 'wifi':('id','ssid','band','banda','enabled','ativo','broadcast'), 'clients':('hostname','name','ip','ipv4','mac','connection_type','band','ssid','rssi','snr'), 'lan':('port','name','link_state','speed'), 'dhcp':('enabled','lan_ip','mask','pool_start','pool_end','lease_seconds','dns1','dns2'), 'dns':('ipv4_1','ipv4_2','ipv6_1','ipv6_2','domain_name'), 'optical':('rx_dbm','tx_dbm','temperature_c','bias_ma','registration_status','los','lof')}
     out={}
     for key,keys in schemas.items():
         data=sections.get(key)
@@ -154,15 +154,21 @@ class FullDiagnosticService:
                     if key.endswith('_percent') and resources[key] is not None and not 0<=resources[key]<=100:resources[key]=None
                 try:resources['active_sessions']=self.queries.nat_sessions()['active'] if test is None else None
                 except Exception:resources['active_sessions']=None
+                from .wifi_environment import collect_environment
+                environment=collect_environment(self.queries,clean.get('radios',[])) if test is None else []
                 bands=[]
                 for radio in clean.get('radios',[]):
                     band=radio.get('band') or radio.get('banda');members=[c for c in clients if c.get('band')==band]
                     rssis=[n for c in members if (n:=numeric(c.get('rssi'))) is not None];snrs=[n for c in members if (n:=numeric(c.get('snr'))) is not None]
-                    bands.append({'band':band,'radio':radio,'clients':len(members),'avg_rssi':sum(rssis)/len(rssis) if rssis else None,'avg_snr':sum(snrs)/len(snrs) if snrs else None,'interference':None,'ssids':[w.get('ssid') for w in clean.get('wifi',[]) if (w.get('band') or w.get('banda'))==band]})
-                result={'kind':'full_diagnostic','test_type':test or 'complete','started_at':started,'finished_at':datetime.now(timezone.utc).isoformat(),'device':device,'connectivity':connectivity,'traceroute':hops,'latency_ms':ping.get('duration_ms'),'packet_loss_percent':ping.get('details',{}).get('loss_percent'),'availability_percent':None,'wifi_quality':{'avg_rssi':avg,'label':rssi_quality(avg),'bands':bands},'resources':resources,'sections':clean,'section_errors':errors}
+                    bands.append({'band':band,'radio':radio,'clients':len(members),'avg_rssi':sum(rssis)/len(rssis) if rssis else None,'avg_snr':sum(snrs)/len(snrs) if snrs else None,'interference':next((e['channel_analysis'] for e in environment if e['band']==band),None),'ssids':[w.get('ssid') for w in clean.get('wifi',[]) if (w.get('band') or w.get('banda'))==band]})
+                result={'kind':'full_diagnostic','test_type':test or 'complete','started_at':started,'finished_at':datetime.now(timezone.utc).isoformat(),'device':device,'connectivity':connectivity,'traceroute':hops,'latency_ms':ping.get('duration_ms'),'packet_loss_percent':ping.get('details',{}).get('loss_percent'),'availability_percent':None,'wifi_quality':{'avg_rssi':avg,'label':rssi_quality(avg),'bands':bands},'resources':resources,'sections':clean,'section_errors':errors,'wifi_environment':environment,'channel_analysis':[e['channel_analysis'] for e in environment]}
                 states=[r['status'] for r in connectivity]
                 result['status']='failure' if 'failure' in states else 'warning' if 'warning' in states else 'partial' if errors or 'unknown' in states else 'success'
-                result['alerts']=build_alerts(result);result['summary']='Diagnóstico '+result['status']
+                result['alerts']=build_alerts(result)
+                for item in environment:
+                    analysis=item['channel_analysis']
+                    result['alerts'].append({'id':'wifi_channel_'+str(item['band']),'level':'warning' if analysis['recommendation'] else 'info' if not analysis['neighbor_scan_confirmed'] else 'ok','title':'Canal Wi-Fi '+str(item['band']),'detail':analysis['recommendation'].get('message') or item.get('message') or 'Sem indicação de troca nesta medição.'})
+                result['summary']='Diagnóstico '+result['status']
                 identity=self.history.save_diagnostic(getattr(self.sessions,'_history_session',None),result)
                 return {**result,'history_id':identity}
     def history_rows(self,config):
@@ -183,5 +189,12 @@ class FullDiagnosticService:
         stream=io.StringIO();writer=csv.writer(stream);writer.writerow(['Data','Equipamento','Teste','Origem','Resultado','Tempo ms','Perda %'])
         for r in item['connectivity']:
             values=[item['finished_at'],item['device']['model'],r['label'],r['origin'],r['status'],r.get('duration_ms'),r.get('details',{}).get('loss_percent')]
+            writer.writerow(["'"+v if isinstance(v,str) and v.startswith(('=','+','-','@')) else v for v in values])
+        writer.writerow([])
+        writer.writerow(['band','current_channel','auto_channel','bandwidth','neighbor_count','best_channel','recommendation'])
+        radios=item.get('sections',{}).get('radios',[])
+        for environment in item.get('wifi_environment',[]):
+            analysis=environment['channel_analysis']
+            values=[analysis.get(k) for k in ('band','current_channel','auto_channel')]+[next((r.get('bandwidth',r.get('largura')) for r in radios if (r.get('band') or r.get('banda'))==analysis['band']),None),analysis.get('neighbor_count'),analysis.get('best_channel'),analysis.get('recommendation',{}).get('title','')]
             writer.writerow(["'"+v if isinstance(v,str) and v.startswith(('=','+','-','@')) else v for v in values])
         return {'filename':'access-manager-diagnostic.csv','content':stream.getvalue()}
