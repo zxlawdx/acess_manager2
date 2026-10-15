@@ -19,10 +19,15 @@ class DeviceCommandBus:
                     history.save_change(getattr(self.sessions, '_history_session', None), operation=method, target=feature, before=None, after=result, success=outcome=='verified', outcome=outcome)
                 except Exception:
                     logging.getLogger(__name__).exception('Could not persist operation history')
+            support = getattr(self, 'support_reports', None)
+            context = support.before_command(feature, method, args) if support else None
             try:
                 result = target(*args, **kwargs)
             except Exception as error:
                 record({'error_type': type(error).__name__}, 'uncertain')
+                if support: support.after_command(feature, method, args, {'error_type': type(error).__name__}, context, failed=True)
+                if method == 'set_ssid_config' and len(args)>1 and args[1].get('password'):
+                    raise RuntimeError('Não foi possível confirmar a alteração Wi-Fi') from None
                 raise
             outcome = 'attempted'
             if isinstance(result, dict):
@@ -31,6 +36,7 @@ class DeviceCommandBus:
                 elif result.get('verified') is True: outcome = 'verified'
                 elif result.get('success') is True: outcome = 'accepted'
             record(result, outcome)
+            if support: support.after_command(feature, method, args, result, context)
             return result
     def dns_lookup(self, config): return self.execute('dns_lookup','dns_lookup',config)
     def discover_speedtest(self): return self.execute('speedtest_discovery','discover_speedtest')
@@ -99,4 +105,6 @@ class DeviceCommandBus:
             allowed={'system','wan','optical','wifi','radios','clients','lan','dhcp','dns','traffic','mesh','ping','trace','lookup'}
             data={k:clean(v) for k,v in (config.get('sections') or {}).items() if k in allowed}
             identity=history.save_snapshot(getattr(self.sessions,'_history_session',None),'complete_diagnostics',{'source':'ui_collection','device':{'host':session.host,'model':session.model,'firmware':session.firmware},'sections':data})
+            support=getattr(self,'support_reports',None)
+            if support and support.active():support.event(support.active(),'diagnostic','collection','Coleta de diagnóstico registrada',result=data)
             return {'success':True,'snapshot_id':identity}

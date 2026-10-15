@@ -1,0 +1,21 @@
+from .common import *
+from apps.access_manager.composition import support_reports
+
+@api.get('/support/current')
+def support_current(context=None): return safe(support_reports.detail)
+@api.get('/support/history')
+def support_history(context=None): return safe(support_reports.repository.recent)
+@api.post('/support/start')
+def support_start(context=None): return safe(lambda: support_reports.start(body(context)))
+@api.post('/support/triage')
+def support_triage(context=None): return safe(support_reports.refresh)
+@api.post('/support/detail')
+def support_detail(context=None): return safe(lambda: support_reports.detail(body(context).get('id')))
+@api.post('/support/note')
+def support_note(context=None): return safe(lambda: support_reports.note(body(context)))
+@api.post('/support/finish')
+def support_finish(context=None): return safe(lambda: support_reports.finish(body(context)))
+@api.post('/support/credentials')
+def support_credentials(context=None): return safe(lambda: support_reports.credentials(body(context).get('id'),body(context).get('event_id')))
+@api.post('/support/export')
+def support_export(context=None): return safe(lambda: support_reports.export(body(context)))

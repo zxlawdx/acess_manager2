@@ -169,6 +169,9 @@ class FullDiagnosticService:
                     analysis=item['channel_analysis']
                     result['alerts'].append({'id':'wifi_channel_'+str(item['band']),'level':'warning' if analysis['recommendation'] else 'info' if not analysis['neighbor_scan_confirmed'] else 'ok','title':'Canal Wi-Fi '+str(item['band']),'detail':analysis['recommendation'].get('message') or item.get('message') or 'Sem indicação de troca nesta medição.'})
                 result['summary']='Diagnóstico '+result['status']
+                support=getattr(self.commands,'support_reports',None)
+                if support and support.active():
+                    support.event(support.active(),'diagnostic','full_diagnostic','Diagnóstico completo executado',result=result)
                 identity=self.history.save_diagnostic(getattr(self.sessions,'_history_session',None),result)
                 return {**result,'history_id':identity}
     def history_rows(self,config):

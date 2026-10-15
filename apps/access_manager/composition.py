@@ -34,3 +34,9 @@ artifacts=ManagementArtifacts(sessions,commands)
 
 from apps.access_manager.application.services.full_diagnostic import FullDiagnosticService
 full_diagnostics=FullDiagnosticService(sessions,queries,commands,history)
+
+from apps.access_manager.infrastructure.support_reports import SupportReportRepository
+from apps.access_manager.application.services.support_report import SupportReportService
+support_reports=SupportReportService(sessions,queries,SupportReportRepository(history))
+commands.support_reports=support_reports
+queries.support_reports=support_reports

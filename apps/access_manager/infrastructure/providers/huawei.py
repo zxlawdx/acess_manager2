@@ -263,6 +263,7 @@ class HuaweiProvider:
                 item.destructive or old.destructive,
                 item.source if erank[item.evidence] >= erank[old.evidence] else old.source,
             )
+        merged['wifi_password_read'] = Capability('wifi_password_read',S(self.wifi_password_read_status),S.UNSUPPORTED,E.SOURCE_CONFIRMED,source='eg8041_runtime_targeted_wlan_reader' if self.wifi_password_read_status=='PARTIAL' else 'credential_reader_not_proven')
         return CapabilitySet(merged.values())
 
     def _need(self):
@@ -285,6 +286,12 @@ class HuaweiProvider:
             return self.runtime.clients()
         from apps.access_manager.domain.clients import merge_clients
         return merge_clients(self.captured.lan_clients(), self.captured.wifi_clients())
+
+    @property
+    def wifi_password_read_status(self):
+        # EG8041 runtime has a targeted WLAN passphrase reader; captured/X6
+        # surfaces deliberately return hidden values.
+        return 'PARTIAL' if self.runtime is not None and hasattr(self.runtime, '_wifi_password_for_band') else 'UNKNOWN'
 
     def get_wifi(self, reveal_password: bool = False):
         return {'networks':self.get_wifi_networks(reveal_password), 'radios':self.get_wifi_radios()}

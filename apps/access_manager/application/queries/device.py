@@ -16,7 +16,11 @@ class DeviceQueryBus:
                 acquired=time.perf_counter()
                 p=self.sessions.provider
                 p.capabilities.require_read(feature)
-                return getattr(p,method)(*args,**kwargs)
+                result = getattr(p,method)(*args,**kwargs)
+                support = getattr(self, 'support_reports', None)
+                if support and not kwargs.get('reveal_password'):
+                    support.record_read(feature, result)
+                return result
         finally:
             logging.getLogger(__name__).debug("read.%s.%s total_ms=%.1f lock_wait_ms=%.1f",feature,method,(time.perf_counter()-started)*1000,(locals().get('acquired',time.perf_counter())-started)*1000)
     def surface_catalog(self): return self.execute('configuration_surfaces','surface_catalog')
@@ -107,7 +111,15 @@ class DeviceQueryBus:
                         raise JuniperError('STALE_SESSION')
                     args=() if method in {'get_juniper_system','get_juniper_interfaces','get_juniper_chassis','get_juniper_resources','get_operation_log'} else (config.get('query'),) if method=='lookup_subscribers' else (config.get('session_id'),) if method=='get_subscriber' else (config.get('name'),) if method=='get_juniper_interface' else (config,)
                     manager.provider.capabilities.require_read(feature)
-                    return getattr(manager.provider,method)(*args)
+                    result = getattr(manager.provider,method)(*args)
+                    support = getattr(self, 'support_reports', None)
+                    if support and self.sessions.active is manager and method != 'get_operation_log':
+                        report = support.active()
+                        if report:
+                            key = feature
+                            report['current_snapshot'][key] = __import__('apps.access_manager.infrastructure.support_reports',fromlist=['sanitize']).sanitize(result)
+                            support.event(report, 'diagnostic' if method == 'juniper_diagnostic' else 'measurement', feature, method, result=result)
+                    return result
                 finally:operation.reset(token)
         finally:
             elapsed=(time.perf_counter()-started)*1000

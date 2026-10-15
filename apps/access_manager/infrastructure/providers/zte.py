@@ -173,6 +173,7 @@ class ZTEProvider:
         items.append(Capability('runtime_diagnostic',S.SUPPORTED,S.UNKNOWN,E.SOURCE_CONFIRMED,source='ported_model_shape_probe'))
         items.append(Capability('factory_reset',S.SUPPORTED,S.SUPPORTED,E.FIRMWARE_CONFIRMED,destructive=True,source='recognized_reset_template_handler'))
         items.append(Capability('nat_sessions',S.SUPPORTED,S.UNKNOWN,E.FIRMWARE_CONFIRMED,source='conntrack_counts_only'))
+        items.append(Capability('wifi_password_read',S(self.wifi_password_read_status),S.UNSUPPORTED,E.SOURCE_CONFIRMED,source='legacy_explicit_wifi_reveal' if self.wifi_password_read_status=='PARTIAL' else 'credential_reader_not_proven'))
         return CapabilitySet(items)
     def _need(self):
         if self.client is None: raise RuntimeError('ZTE session is not connected')
@@ -263,6 +264,11 @@ class ZTEProvider:
         for row in result:
             if warnings:row['collection_warnings']=warnings
         return result
+    @property
+    def wifi_password_read_status(self):
+        # Only the legacy Lua reader has an explicit reveal contract. Discovered
+        # firmware profiles never gain credential read support by vendor name.
+        return 'PARTIAL' if not getattr(self, '_profile', None) and any(name in self._compact(self.model) for name in ('F670L','F6600P','F6201B')) else 'UNKNOWN'
     def get_wifi(self, reveal_password=False):
         return {'networks':self.get_wifi_networks(reveal_password),'radios':self.get_wifi_radios()}
     def get_wifi_networks(self, reveal_password=False):

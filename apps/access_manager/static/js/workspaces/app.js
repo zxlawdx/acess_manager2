@@ -1,5 +1,6 @@
 import {request,beginView,scopeActive,isCancelled,currentScope} from '../services/api.js';
 import {store} from '../core/store.js';
+import {triage,supportReport} from './views/support.js';
 import * as juniper from './views/juniper.js';
 import * as overview from './views/overview.js';
 import * as clients from './views/clients.js';
@@ -20,7 +21,7 @@ let connectionBusy=false;
 let infrastructureSettings={};
 const viewStates=new Map();
 
-const meta = {juniperOverview:['JUNIPER','Visão geral'],subscribers:['JUNIPER','Assinantes PPPoE'],juniperInterfaces:['JUNIPER','Interfaces'],juniperSystem:['JUNIPER','Sistema'],juniperDiagnostics:['JUNIPER','Diagnóstico'],
+const meta = {triage:["ATENDIMENTO","Triagem"],supportReport:["ATENDIMENTO","Relatório"],juniperOverview:['JUNIPER','Visão geral'],subscribers:['JUNIPER','Assinantes PPPoE'],juniperInterfaces:['JUNIPER','Interfaces'],juniperSystem:['JUNIPER','Sistema'],juniperDiagnostics:['JUNIPER','Diagnóstico'],
   overview:['VISÃO OPERACIONAL','Visão geral'], clients:['VISÃO OPERACIONAL','Clientes'],
   traffic:['VISÃO OPERACIONAL','Tráfego'], wifi:['REDE','Wi-Fi e SSIDs'], wan:['REDE','WAN'],
   lan:['REDE','LAN'], dhcpdns:['REDE','DHCP e DNS'], diagnostics:['OPERAÇÕES','Diagnóstico'],
@@ -31,7 +32,7 @@ Object.assign(meta,Object.fromEntries(Object.entries(juniper.titles).map(([key,[
 meta.subscribers[1]='Assinantes PPPoE';
 const juniperRoutes=Object.fromEntries(Object.keys(juniper.titles).map(key=>[key,juniper.routeView(key)]));
 const views = {
-  ...juniperRoutes,overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
+  triage,supportReport,...juniperRoutes,overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
   traffic, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
   wan:{render:network.wan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
 };
@@ -42,7 +43,7 @@ function syncContext() {
   const infrastructure=s?.vendor==='juniper';
   document.querySelector('.app-shell').classList.toggle('juniper-shell',infrastructure);
   document.querySelector('#action-dialog').classList.toggle('juniper-surface',infrastructure);
-  document.querySelectorAll('#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group').forEach(element=>{element.hidden=infrastructure?!element.hasAttribute('data-juniper-nav'):element.hasAttribute('data-juniper-nav')});
+  document.querySelectorAll('#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group').forEach(element=>{element.hidden=element.hasAttribute('data-shared-nav')?false:infrastructure?!element.hasAttribute('data-juniper-nav'):element.hasAttribute('data-juniper-nav')});
   document.querySelector('#login-page').hidden=connected;
   document.querySelector('.app-shell').hidden=!connected;
   let back=document.querySelector('#return-subscriber');
@@ -55,7 +56,7 @@ function syncContext() {
 }
 
 async function render(name = store.view,background=false) {
-  if(store.session?.session?.vendor==='juniper'&&!Object.hasOwn(juniperRoutes,name))name='juniperOverview';
+  if(store.session?.session?.vendor==='juniper'&&!['triage','supportReport'].includes(name)&&!Object.hasOwn(juniperRoutes,name))name='juniperOverview';
   else if(store.session?.session?.vendor!=='juniper'&&Object.hasOwn(juniperRoutes,name))name='overview';
   const scope=background?currentScope():beginView(name);
   if(!background){views[store.view]?.unmount?.();const d=document.querySelector('#action-dialog');if(d?.open)d.close()}
