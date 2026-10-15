@@ -97,7 +97,7 @@ test('Juniper workspace hides CPE navigation and performs normalized subscriber 
  const d=x.w.document;assert.equal(d.querySelector('[data-view="wifi"]').hidden,true);assert.equal(d.querySelector('[data-view="subscribers"]').hidden,false);assert.ok(!x.calls.some(c=>c[0]==='/api/device/wifi/radios'));
  await x.click('subscribers');d.querySelector('#subscriber-query').value='000123';d.querySelector('#subscriber-search').dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.match(d.querySelector('#subscriber-status').textContent,/2 sessão/);assert.equal(d.querySelectorAll('[data-subscriber]').length,2);
  const call=x.calls.find(c=>c[0]==='/api/infrastructure/subscribers/lookup');assert.equal(JSON.parse(call[1].body).query,'000123');assert.ok(!call[1].body.includes('show subscribers'));
- d.querySelector('[data-subscriber]').click();await x.wait();assert.match(d.querySelector('#action-dialog').textContent,/000123/);assert.ok(d.querySelector('[data-context="aaa"]'));x.w.close();
+ d.querySelector('[data-subscriber]').click();await x.wait();assert.match(d.querySelector('#subscriber-detail').textContent,/000123/);assert.equal(d.querySelector('#action-dialog').open,false);assert.ok(d.querySelector('[data-side-tab="service"]'));d.querySelector('[data-juniper-route="juniperSubscriber"]').click();await x.wait();assert.ok(d.querySelector('[data-j-tab="aaa"]'));x.w.close();
 });
 
 test('Juniper partial candidate failures never present confirmed offline',async()=>{
@@ -122,4 +122,48 @@ test('Juniper login discards AD password on failure and keeps corporate layout',
  f.elements.username.value='corporate-user';f.elements.password.value='never-persist';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();
  assert.equal(f.elements.password.value,'');assert.equal(f.elements.host.value,'bng.example.invalid');
  assert.equal(x.w.localStorage.length,0);assert.equal(x.w.sessionStorage.length,0);x.dom.window.close();
+});
+
+const juniperRow={username:'brd_000123',session_id:'100',contract:'000123',state:'Active',interface:'pp0.1',ipv4_address:'192.0.2.10',ipv6_addresses:[],service_sessions:[{id:'200',name:'service',bandwidth_in:'200M'}]};
+const juniperBase={'/api/session':{connected:true,session:{session_id:'pajamas',vendor:'juniper',host:'192.0.2.1',model:'mx204',capabilities:{}}},'/api/infrastructure/system':{model:'mx204',firmware:'23.4R2',hostname:'test-bng'},'/api/infrastructure/resources':[{slot:'0',cpu_idle_percent:'80',memory_used_percent:'40'}],'/api/infrastructure/interfaces':[{name:'ae1',admin_state:'up',oper_state:'up',addresses:[]}],'/api/infrastructure/subscribers/lookup':{complete:true,sessions:[juniperRow],candidates:[{candidate:juniperRow.username,status:'FOUND'}]},'/api/infrastructure/subscribers/detail':juniperRow,'/api/infrastructure/subscribers/context':{data:{state:'Session Up'}},'/api/infrastructure/health':{data:[{status:'UP'}]},'/api/infrastructure/chassis':[{name:'Chassis',description:'MX204'}]};
+async function findJuniper(x){await x.click('subscribers');const f=x.w.document.querySelector('#subscriber-search');f.elements.query.value='000123';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();x.w.document.querySelector('[data-subscriber]').click();await x.wait()}
+test('Juniper groups collapse, active navigation reopens group and every route has content',async()=>{
+ const x=await boot(juniperBase),d=x.w.document;
+ assert.ok(d.querySelector('.juniper-shell'));assert.equal(d.querySelectorAll('.juniper-nav-group').length,6);
+ const group=d.querySelector('[data-view=juniperRadius]').closest('details');group.open=false;await x.click('juniperRadius');assert.equal(group.open,true);assert.equal(d.querySelector('[data-view=juniperRadius]').getAttribute('aria-current'),'page');
+ for(const b of d.querySelectorAll('.nav[data-juniper-nav]')){await x.click(b.dataset.view);assert.ok(d.querySelector('#workspace').textContent.trim(),b.dataset.view)}
+ assert.match(d.querySelector('#workspace').textContent,/MX204/);x.w.close();
+});
+test('Juniper inline selection, filters and full tabs persist subscriber across routes',async()=>{
+ const x=await boot(juniperBase),d=x.w.document;await findJuniper(x);
+ assert.ok(d.querySelector('#subscriber-results tr.is-selected'));assert.equal(d.querySelector('#action-dialog').open,false);
+ d.querySelector('[data-side-tab=service]').click();assert.match(d.querySelector('#subscriber-detail').textContent,/200M/);
+ d.querySelector('[data-toggle-filters]').click();assert.equal(d.querySelector('#subscriber-filters').hidden,false);
+ await x.click('juniperAccounting');await x.wait();assert.ok(d.querySelector('[data-j-tab=accounting].active'));assert.match(d.querySelector('#workspace').textContent,/brd_000123/);
+ await x.click('juniperRadius');await x.click('subscribers');await x.wait();assert.match(d.querySelector('#subscriber-detail').textContent,/brd_000123/);assert.equal(d.querySelector('#subscriber-query').value,'000123');x.w.close();
+});
+test('Juniper CPE drawer keeps empty separate credentials and cleans them on close',async()=>{
+ const x=await boot({...juniperBase,'/api/infrastructure/subscribers/cpe-draft':{host:'192.0.2.10',subscriber_username:'brd_000123',subscriber_session_id:'100',app_session_id:'pajamas',contract:'000123',refreshed_at:1}}),d=x.w.document;await findJuniper(x);d.querySelector('[data-access-cpe]').click();await x.wait();
+ const drawer=d.querySelector('#action-dialog');assert.ok(drawer.classList.contains('j-drawer'));const f=d.querySelector('#cpe-handoff');assert.equal(f.elements.host.readOnly,true);assert.equal(f.elements.password.value,'');f.elements.password.value='cpe-secret';drawer.close();assert.equal(d.querySelector('#cpe-handoff'),null);assert.match(d.querySelector('#subscriber-detail').textContent,/brd_000123/);x.w.close();
+});
+test('Juniper ignores stale tab responses after a newer tab is selected',async()=>{
+ const x=await boot(juniperBase),d=x.w.document;await findJuniper(x);await x.click('juniperSubscriber');const gate=deferred(),original=x.w.fetch;
+ x.w.fetch=async(url,options)=>{if(new URL(url).pathname.endsWith('/subscribers/context')&&JSON.parse(options.body).kind==='accounting'){await gate.promise;return {ok:true,text:async()=>JSON.stringify({data:{state:'OLD_ACCOUNTING'}})}}return original(url,options)};
+ d.querySelector('[data-j-tab=accounting]').click();d.querySelector('[data-j-tab=services]').click();await x.wait();gate.resolve();await x.wait();assert.match(d.querySelector('#subscriber-full-content').textContent,/200M/);assert.ok(!d.querySelector('#workspace').textContent.includes('OLD_ACCOUNTING'));x.w.close();
+});
+
+test('Juniper search empty and failed read stay local and do not open fake details',async()=>{
+ const x=await boot({...juniperBase,'/api/infrastructure/subscribers/lookup':{complete:true,sessions:[],candidates:[{candidate:'brd_1',status:'NOT_FOUND'}]}}),d=x.w.document;await x.click('subscribers');const f=d.querySelector('#subscriber-search');f.elements.query.value='1';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.match(d.querySelector('#subscriber-status').textContent,/Nenhuma sessão ativa/);assert.equal(d.querySelectorAll('[data-subscriber]').length,0);assert.equal(d.querySelector('#action-dialog').open,false);x.w.close();
+});
+
+test('Juniper advanced attributes and returned filter reads remain available',async()=>{
+ const row={...juniperRow,primary_dns:'192.0.2.53',ipv6_prefixes:['2001:db8::/64'],service_sessions:[{id:'200',name:'service',input_filter:'confirmed-filter-pp0.1-in'}]};
+ const x=await boot({...juniperBase,'/api/infrastructure/subscribers/detail':row}),d=x.w.document;await findJuniper(x);await x.click('juniperSubscriber');assert.match(d.querySelector('.j-advanced').textContent,/192.0.2.53/);assert.match(d.querySelector('.j-advanced').textContent,/2001:db8/);
+ d.querySelector('[data-j-tab=services]').click();await x.wait();d.querySelector('[data-service-filter]').click();await x.wait();const call=x.calls.find(c=>c[0].endsWith('/subscribers/context')&&JSON.parse(c[1].body).kind==='filter');assert.equal(JSON.parse(call[1].body).filter,'confirmed-filter-pp0.1-in');x.w.close();
+});
+
+test('Juniper SSH identity inspection uses connected endpoint rather than cleared login form',async()=>{
+ const x=await boot({...juniperBase,'/api/infrastructure/host-key':{host:'192.0.2.1',port:22,status:'HOST_KEY_CHANGED',algorithm:'ssh-ed25519',fingerprint:'SHA256:SYNTHETIC',previous_fingerprints:['SHA256:PREVIOUS']}}),d=x.w.document;
+ d.querySelector('#connect-form').elements.host.value='';d.querySelector('[data-j-identity]').click();await x.wait();
+ const call=x.calls.find(c=>c[0]==='/api/infrastructure/host-key');assert.equal(JSON.parse(call[1].body).host,'192.0.2.1');assert.match(d.querySelector('#action-dialog').textContent,/A chave SSH apresentada pelo servidor mudou/);assert.ok(!x.calls.some(c=>c[0]==='/api/infrastructure/host-key/trust'));x.w.close();
 });

@@ -1,0 +1,546 @@
+{
+  "runtime": "real manage.py runapp / Vela Qt WebEngine / Bottle",
+  "remoteTransports": "synthetic Junos and ZTE only; synthetic host-key inspection for UI",
+  "physical": false,
+  "windows": false,
+  "results": [
+    {
+      "width": 1366,
+      "height": 768,
+      "routes": [
+        {
+          "route": "juniperOverview",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "subscribers",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperSubscriber",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAccounting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperServices",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperInterfaces",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLacp",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperOptics",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperRouting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperRadius",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAuth",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAaaAccounting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperDynamic",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperPppoe",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLockout",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperDiagnostics",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLogs",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperSystem",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperFpc",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperEnvironment",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperHardware",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        }
+      ],
+      "inlineDetail": true,
+      "cpeDrawer": true,
+      "hostKeyModalCentered": true,
+      "independentSessions": true,
+      "subscriberPreserved": true
+    },
+    {
+      "width": 1600,
+      "height": 900,
+      "routes": [
+        {
+          "route": "juniperOverview",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "subscribers",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperSubscriber",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAccounting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperServices",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperInterfaces",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLacp",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperOptics",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperRouting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperRadius",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAuth",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAaaAccounting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperDynamic",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperPppoe",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLockout",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperDiagnostics",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLogs",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperSystem",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperFpc",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperEnvironment",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperHardware",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        }
+      ],
+      "inlineDetail": true,
+      "cpeDrawer": true,
+      "hostKeyModalCentered": true,
+      "independentSessions": true,
+      "subscriberPreserved": true
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "routes": [
+        {
+          "route": "juniperOverview",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "subscribers",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperSubscriber",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAccounting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperServices",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperInterfaces",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLacp",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperOptics",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperRouting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperRadius",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAuth",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperAaaAccounting",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperDynamic",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperPppoe",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLockout",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperDiagnostics",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperLogs",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperSystem",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperFpc",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperEnvironment",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        },
+        {
+          "route": "juniperHardware",
+          "navigation": true,
+          "content": true,
+          "readerError": false,
+          "shellEdges": true,
+          "noShellHorizontalOverflow": true
+        }
+      ],
+      "inlineDetail": true,
+      "cpeDrawer": true,
+      "hostKeyModalCentered": true,
+      "independentSessions": true,
+      "subscriberPreserved": true
+    }
+  ],
+  "applicationErrors": []
+}
