@@ -19,3 +19,7 @@ Physical source is the user's final MX204 prompt: manual SSH/CLI observations on
 | Disconnect / reconnect / CoA / shaping writes | Not implemented | UNKNOWN / blocked | Separate authorized physical mutation validation required |
 
 No reader is marked PHYSICALLY_VALIDATED by this agent run. SUPPORTED is a runtime shape result carrying FIXTURE_VALIDATED evidence, not a physical acceptance claim. Missing/unknown shapes fail explicitly and do not become offline subscribers.
+
+## P0 runtime físico — atualização
+
+Parsers de RADIUS/AAA/accounting/LACP corrigidos contra os trechos físicos enviados em 15/10; óptica preserva também limites/alarmes por lane. Evidência PHYSICAL_CAPTURE_SHAPE + AUTOMATED_FIXTURE_VALIDATED; não PHYSICALLY_EXECUTED. Sem promoção de writes. Novo histórico read-only limitado de operações da sessão e erros classificados. Inventário filtrado/documentado, com limite de bytes/linhas; LACP/óptica independem dele. Relatório e limites: P0_PHYSICAL_RUNTIME_REPAIR.md. 502 Python +30 subtestes, 50 frontend; Vela Qt três resoluções. Windows/MX204 com novo patch não executados.

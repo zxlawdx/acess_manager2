@@ -21,3 +21,7 @@ Local acceptance: real manage.py runapp, real Vela/Bottle API, Qt WebEngine on L
 9. Validate Windows WebView2 at 1366×768, 1600×900 and 1920×1080, including resize/maximize, modal, shell boundaries and scrolling. This step remains unexecuted here.
 
 Writes, CGNAT public mapping and direct policer reads remain outside physical acceptance. Ping/traceroute remain unvalidated physically, not declared unsupported.
+
+## Novos trechos físicos — reparo P0
+
+Recebido Markdown colado(20261015-105226).md com roots/tags/ordem real RADIUS, schemas AAA, acc-* e lag-lacp-state/info. Sete fixtures PHYSICAL_SHAPE_SANITIZED transcrevem esses trechos, sanitizando e documentando complementações de valores/linhas omitidos. Código validado por 502 testes Python +30 subtestes e 50 frontend, além de Vela/Qt real com transporte simulado em três resoluções. Nenhuma execução física nova do agente nem Windows. O comando de inventário filtrado por wildcard/media possui referência documental oficial; execução no release/conta do alvo ainda pendente. Relatório: P0_PHYSICAL_RUNTIME_REPAIR.md.

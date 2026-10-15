@@ -53,3 +53,7 @@ Profiles SHA256 remains `0c04d0a57d4ba19f9fcbdd91534f11252cc4ce1a8a76a29db9ffcab
 ## Atualização visual posterior — Pajamas adaptado
 
 O frontend desta integração recebeu novo shell Juniper, 21 rotas, detalhes laterais e tabs, com drawers para CPE/interfaces e modal SSH preservado. Backend e contratos acima permanecem intactos. Resultado atual: 464 Python +30 subtestes, 44 frontend e QA Vela/Qt três resoluções com transportes sintéticos. Relatório atual de UI/arquivos/matriz por rota/capturas e limites: [JUNIPER_PAJAMAS_REDESIGN_REPORT.md](JUNIPER_PAJAMAS_REDESIGN_REPORT.md). Sem nova validação física ou Windows.
+
+## Reparo P0 posterior contra os trechos físicos
+
+A leitura RADIUS sequencial, os schemas AAA reais, acc-* e lag-lacp-state/info agora substituem as suposições sintéticas conflitantes. Timeouts, taxonomia e observabilidade seguros corrigidos; Logs da sessão, estado degradado, counters/tab/endpoint e consultas específicas acrescentados. 502 Python +30 subtestes, 50 frontend; Vela/Qt três resoluções com shape físico sanitizado e transporte remoto simulado. Sem novo teste físico ou Windows. Relatório autoritativo desta rodada: [juniper/P0_PHYSICAL_RUNTIME_REPAIR.md](juniper/P0_PHYSICAL_RUNTIME_REPAIR.md).

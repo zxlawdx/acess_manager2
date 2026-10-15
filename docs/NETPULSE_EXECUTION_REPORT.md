@@ -125,3 +125,7 @@ feat/juniper-bng: Juniper+CPE independentes, handoff com contexto fresco, login 
 ## Access Manager — redesign Juniper/Pajamas
 
 Frontend real adaptado ao HTML de referência, com identidade Access Manager: 21 rotas, grupos recolhíveis, detalhe lateral, tabs, tabelas e drawers compactos; CPE/host key preservados. Backend e APIs intactos. 464 Python +30 subtestes, 44 frontend; QA Vela/Qt real em 1366×768, 1600×900 e 1920×1080, transportes remotos sintéticos. Relatório e matriz por rota: JUNIPER_PAJAMAS_REDESIGN_REPORT.md. Sem validação física/Windows nova; logs/advanced lookup continuam limitações do backend.
+
+## Access Manager — Juniper P0 runtime físico
+
+Reparo implementado sobre feat/juniper-bng/4076ef6: parsers físicos RADIUS/AAA/accounting/LACP, timeouts por feature, observabilidade segura/locks, códigos preservados até UI, counters e tabs consistentes; inventário limitado e consultas LACP/óptica diretas; Logs da sessão read-only. 502 Python +30 subtestes, 50 frontend e QA Vela/Qt três resoluções passaram. Fixtures derivam de trechos físicos sanitizados; novo patch não executado no MX204/Windows. Sem writes ou alteração de perfis. Relatório: juniper/P0_PHYSICAL_RUNTIME_REPAIR.md.
