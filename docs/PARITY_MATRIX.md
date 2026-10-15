@@ -20,3 +20,8 @@
 | reboot.write | NOT PROVEN | UNKNOWN | EG8041X6-10 | reboot page/surface mapped, but no proven production writer/read-back for X6 | reboot.read surface probe; reboot.write UNKNOWN; test_reboot.py | NO_FALSE_CLAIM |
 | ZTE diagnostics | YES | YES | F670L/F6600P/F6201B | zte_configuration diagnostics + F6201B captured diagnostics | ZTEProvider diagnostics write promoted for known models + test_zte_provider.py | PARITY_AUTOMATED |
 | ZTE traffic | YES COUNTERS | YES COUNTERS | ZTE families | WAN/LAN/Wi-Fi RX/TX counter fields | ZTEProvider.get_traffic uses WAN/LAN/Wi-Fi counter sources | MIGRATED_NOT_FIXTURE_COMPLETE |
+
+
+## ZTE H3601P V9 — compatibilidade adicional
+
+Perfil próprio, menu context/cache/re-auth, clientes LAN/WLAN/DHCP normalizados (IPv6 e dedup), roots/Style A/B validados. P1_MUL físico não testado; fixtures estruturais P2 públicas e sintéticas. WAN/LAN/Wi-Fi são candidatos com promoção por shape da sessão. Optical UNSUPPORTED por papel Ethernet; writes UNKNOWN. Não representa migração integral concluída. Ver docs/zte/H3601P_IMPLEMENTATION_REPORT.md.

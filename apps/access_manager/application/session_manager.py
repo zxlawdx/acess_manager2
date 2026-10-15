@@ -83,4 +83,6 @@ class SessionManager:
                 try: self._provider.disconnect()
                 finally: self._provider=None; self._session=None
     def status(self):
+        if self._session is not None and self._provider is not None:
+            self._session.capabilities=self._provider.capabilities.public()
         return {'connected': self._provider is not None and bool(getattr(self._provider,'connected',False)), 'session': self._session.public() if self._session else None}

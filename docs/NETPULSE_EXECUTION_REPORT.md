@@ -89,3 +89,10 @@ Validação: 295 Python + 30 subtests, 28 DOM; Chromium e Vela real Qt nas três
 Branch feat/direct-visual-references, base main 09e6fce com PR #9 integrado. HTMLs A/B e capturas C/D conferidos. Login separado do shell, credenciais removidas do dashboard. Overview com hierarquia completa da referência; Tráfego com gráfico principal e ranking lateral; renderer SVG/polling compartilhado; Diagnóstico completo adaptado à referência HTML B. Fontes locais, nenhum mock/CDN novo, backend preservado.
 
 Validação: 295 Python + 30 subtests; 31 frontend; Chromium e Vela real Qt nas três resoluções. Capturas login/overview/traffic/complete-diagnostics em docs/screenshots/vela. Detalhes: DIRECT_VISUAL_REFERENCES_REPORT.md. Dados de equipamento sintéticos nos testes; nenhum teste físico/Windows novo.
+
+
+## H3601P V9 — rodada de compatibilidade
+
+Base `740638e1ba215246c16c77f7f91a5468e15c2a8b`, branch `fix/zte-h3601p-v9`. Perfil e runtime integrados; candidato WLAN accessdev_ssiddev, LAN accessdev_landevs, DHCP hostinfo. Parser completo/fragmentado, namespaces, IPv6, dedup por identidade e endpoint/context cache. Optical removido por capability no gateway Ethernet. Escritas não promovidas. QA Vela/Qt e Chromium em três resoluções passou com dados sintéticos; teste físico P1 e Windows não executados. Resultado final e comandos em docs/zte/H3601P_IMPLEMENTATION_REPORT.md. Demais pendências históricas não foram declaradas concluídas.
+
+Validação desta rodada H3601P: 347 testes Python + 30 subtestes; 32 testes frontend; zero falhas/skips. QA nativo e Chromium nas três resoluções. Nenhuma confirmação física P1 ou Windows.

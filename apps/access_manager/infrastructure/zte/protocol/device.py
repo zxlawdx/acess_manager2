@@ -307,6 +307,9 @@ class ZTE:
         )
 
     def wifi_clients(self):
+        if getattr(self, "read_profile", None):
+            from ..discovery.profile_runtime import clients
+            return clients(self, "wifi_clients")
         xml = self.wifi_clients_raw()
 
         self._validar_resposta(xml)
@@ -367,6 +370,9 @@ class ZTE:
     # =========================================================
 
     def lan_clients(self):
+        if getattr(self, "read_profile", None):
+            from ..discovery.profile_runtime import clients
+            return clients(self, "lan_clients")
         xml = self.lan_clients_raw()
 
         self._validar_resposta(xml)

@@ -269,3 +269,8 @@ Validação: 295 Python + 30 subtests, 28 DOM; Chromium e Vela real Qt nas três
 Branch feat/direct-visual-references, base main 09e6fce com PR #9 integrado. HTMLs A/B e capturas C/D conferidos. Login separado do shell, credenciais removidas do dashboard. Overview com hierarquia completa da referência; Tráfego com gráfico principal e ranking lateral; renderer SVG/polling compartilhado; Diagnóstico completo adaptado à referência HTML B. Fontes locais, nenhum mock/CDN novo, backend preservado.
 
 Validação: 295 Python + 30 subtests; 31 frontend; Chromium e Vela real Qt nas três resoluções. Capturas login/overview/traffic/complete-diagnostics em docs/screenshots/vela. Detalhes: DIRECT_VISUAL_REFERENCES_REPORT.md. Dados de equipamento sintéticos nos testes; nenhum teste físico/Windows novo.
+
+
+## ZTE H3601P V9 — compatibilidade adicional
+
+Perfil próprio, menu context/cache/re-auth, clientes LAN/WLAN/DHCP normalizados (IPv6 e dedup), roots/Style A/B validados. P1_MUL físico não testado; fixtures estruturais P2 públicas e sintéticas. WAN/LAN/Wi-Fi são candidatos com promoção por shape da sessão. Optical UNSUPPORTED por papel Ethernet; writes UNKNOWN. Não representa migração integral concluída. Ver docs/zte/H3601P_IMPLEMENTATION_REPORT.md.

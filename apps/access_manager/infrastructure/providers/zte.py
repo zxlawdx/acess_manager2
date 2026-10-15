@@ -21,11 +21,82 @@ class ZTEProvider:
     @staticmethod
     def _compact(x): return re.sub(r'[^A-Z0-9]+','',str(x or '').upper())
     def connect(self, host, username, password, *, https=False, model_hint=None, **_):
-        self.disconnect(); c=self.client_factory(host,username,password,https=https); c.login(); info=c.device_status(); self.client=c; self.host=host; self.model=info.get('modelo') or model_hint or 'ZTE'; self.firmware=info.get('firmware') or info.get('firmware_extendido'); self._caps=self._build_caps(); known=any(x in self._compact(self.model) for x in ('F670L','F6600P','F6201B')); return {'vendor':'zte','model':self.model,'firmware':self.firmware,'protocol_family':'thinklua','capabilities':self._caps.public(),'mode':'supported' if known else 'deployment'}
+        from apps.access_manager.infrastructure.zte.discovery.profiles import select_profile, fingerprint
+        from apps.access_manager.infrastructure.zte.discovery.profile_runtime import reset_read_state
+        self.disconnect()
+        c=self.client_factory(host,username,password,https=https)
+        if c.login() is False:
+            raise RuntimeError('Falha na autenticação ZTE.')
+        try:
+            info=c.device_status()
+        except Exception:
+            info=self._footer_identity(c)
+            if not info and select_profile(model_hint):
+                info={'modelo':model_hint,'identification_source':'model_hint_unconfirmed'}
+            if not info:raise
+        if not info.get('modelo'):
+            try:info={**info,**self._footer_identity(c)}
+            except Exception:pass  # Empty status remains deployment on unknown families.
+            if not info.get('modelo') and select_profile(model_hint):
+                info.update(modelo=model_hint,identification_source='model_hint_unconfirmed')
+        self.client=c;self.host=host;self.model=info.get('modelo') or model_hint or 'ZTE'
+        self.firmware=info.get('firmware') or info.get('firmware_extendido')
+        self._identity=info
+        self._profile=select_profile(self.model,self.firmware)
+        c.read_profile=self._profile
+        if self._profile:
+            reset_read_state(c)
+            c.profile_fingerprint=fingerprint(self.model,self.firmware,info.get('firmware_extendido'),info.get('hardware'))
+        self._caps=self._build_caps()
+        if self._profile:self._refresh_profile_caps()
+        known=(self._profile is not None and info.get('identification_source')!='model_hint_unconfirmed') or any(x in self._compact(self.model) for x in ('F670L','F6600P','F6201B'))
+        return {'vendor':'zte','model':self.model,'firmware':self.firmware,'protocol_family':'thinklua',
+                'profile':self._profile.name if self._profile else None,
+                'capabilities':self._caps.public(),'mode':'supported' if known else 'deployment'}
+
+    @staticmethod
+    def _footer_identity(client):
+        from apps.access_manager.infrastructure.zte.discovery.profile_runtime import is_login_view
+        html=getattr(client,'authenticated_root_html','')
+        if not html and hasattr(client,'session') and hasattr(client.session,'get'):
+            response=client.session.get(client.base_url+'/',timeout=10)
+            response.raise_for_status();html=response.text
+        match=re.search(r'ZXHN\s+H3601P\s+(V9\.[0-9A-Za-z_.-]+)',html,re.I)
+        if match and re.search(r'ZTE\s+Corporation',html,re.I) and not is_login_view(html):
+            return {'modelo':'ZXHN H3601P','firmware':match[1],'identification_source':'HTML_DETECTED'}
+        return {}
+
+    def _refresh_profile_caps(self):
+        if not getattr(self,'_profile',None):return
+        from apps.access_manager.infrastructure.zte.discovery.profile_runtime import state
+        observed=state(self._need())['diagnostics']
+        mapping={'wan':['wan'],'clients':['lan_clients','wifi_clients'],'lan':['lan_ports'],
+                 'wifi':['wifi_ssids'],'wifi_radio':['wifi_radios'],'dhcp':['dhcp_leases']}
+        safe=[]
+        for name in self._caps.public():
+            old=self._caps.get(name)
+            if name=='optical':read=S.UNSUPPORTED
+            elif name=='device':read=S.PARTIAL if self._identity.get('identification_source')=='model_hint_unconfirmed' else S.SUPPORTED
+            elif name=='runtime_diagnostic':read=S.SUPPORTED
+            elif name in mapping:
+                read=S.SUPPORTED if all(observed.get(k,{}).get('status') in {'validated','valid_empty'} for k in mapping[name]) else S.PARTIAL
+            elif name in {'mesh','mesh_read','traffic'}:read=S.PARTIAL
+            else:read=S.UNKNOWN
+            safe.append(Capability(name,read,S.UNSUPPORTED if name=='optical' else S.UNKNOWN,
+                        E.AUTOMATED_TESTED if read==S.SUPPORTED else E.RESEARCH_ONLY,
+                        old.destructive,source='h3601p_v9_shape_validated_reads_no_writers'))
+        self._caps=CapabilitySet(safe)
+
+    def _profile_objects(self, feature):
+        from apps.access_manager.infrastructure.zte.discovery.profile_runtime import read_feature
+        try:return read_feature(self._need(),feature)[0]
+        finally:self._refresh_profile_caps()
+
     def disconnect(self):
         if self.client is not None:
             try: self.client.logout()
             except Exception: pass
+        self._profile=None;self._identity={}
         self._surfaces.clear();self._speedtest.clear();self._reset.clear()
         self.client=None; self.host=None; self.model=None; self.firmware=None; self._caps=CapabilitySet(); self._f6201b_wifi.clear(); self._f6201b_dns.clear()
     def _build_caps(self):
@@ -97,20 +168,67 @@ class ZTEProvider:
             if 'SessionTimeout' not in str(error) and 'view necessária' not in str(error):
                 raise
             return reader()
-    def get_device_info(self): return self._read('device_status')
+    def get_device_info(self):
+        try:
+            info=self._read('device_status')
+            if getattr(self,'_profile',None) and not info.get('modelo'):return dict(self._identity)
+            if getattr(self,'_profile',None):
+                from apps.access_manager.infrastructure.zte.discovery.profile_runtime import reset_read_state
+                from apps.access_manager.infrastructure.zte.discovery.profiles import fingerprint
+                firmware=info.get('firmware') or info.get('firmware_extendido')
+                if firmware and firmware!=self.firmware:
+                    self.firmware=firmware;reset_read_state(self._need())
+                self._identity=info
+                self._need().profile_fingerprint=fingerprint(self.model,self.firmware,info.get('firmware_extendido'),info.get('hardware'))
+                self._refresh_profile_caps()
+            return info
+        except Exception:
+            if getattr(self,'_profile',None):return dict(self._identity)
+            raise
     def get_clients(self):
         from apps.access_manager.domain.clients import merge_clients
-        return merge_clients(self._need().lan_clients(), self._need().wifi_clients())
+        if not getattr(self,'_profile',None):
+            return merge_clients(self._need().lan_clients(), self._need().wifi_clients())
+        from apps.access_manager.infrastructure.zte.discovery.profile_runtime import clients, ReadFailure
+        collections=[];warnings=[]
+        for kind in ('lan_clients','wifi_clients'):
+            try:collections.append(clients(self._need(),kind))
+            except ReadFailure:
+                collections.append([])
+                warnings.append('Clientes Wi-Fi indisponíveis neste firmware.' if kind=='wifi_clients' else 'Clientes LAN indisponíveis neste firmware.')
+        result=merge_clients(*collections,identity_fallback=True)
+        if result:
+            try:
+                leases=clients(self._need(),'dhcp_leases')
+                by_mac={self._compact(r.get('mac')):r for r in leases if r.get('mac')}
+                for row in result:
+                    lease=by_mac.get(self._compact(row.get('mac')), {})
+                    for k in ('hostname','ip','ipv4','ipv6','ipv6_addresses'):
+                        if row.get(k) in (None,'',[]):row[k]=lease.get(k)
+            except ReadFailure:pass
+        self._refresh_profile_caps()
+        if len(warnings)==2:
+            raise ReadFailure('clients_unavailable')
+        for row in result:
+            if warnings:row['collection_warnings']=warnings
+        return result
     def get_wifi(self, reveal_password=False):
         return {'networks':self.get_wifi_networks(reveal_password),'radios':self.get_wifi_radios()}
     def get_wifi_networks(self, reveal_password=False):
         from apps.access_manager.infrastructure.radio_options import radio_options
         c=self._need()
+        if getattr(self,'_profile',None):
+            if reveal_password:raise RuntimeError('Revelação de senha não comprovada neste firmware.')
+            objects=self._profile_objects('wifi_ssids')
+            return [{'id':r.get('_InstID'),'ssid':r.get('ESSID'),'enabled':None if r.get('Enable') is None else r['Enable']=='1','band':r.get('Band'),'broadcast':None if r.get('SSIDAdvertisementEnabled') is None else r['SSIDAdvertisementEnabled']=='1'} for r in objects.get('OBJ_WLANAP_ID',[])]
         networks=self._f6201b_wifi.list_ssids(c) if self._is_f6201b() and not reveal_password else (c.wifi_networks(reveal_password=True) if reveal_password else c.wifi_networks())
         return networks
     def get_wifi_radios(self):
         from apps.access_manager.infrastructure.radio_options import radio_options
         c=self._need()
+        if getattr(self,'_profile',None):
+            objects=self._profile_objects('wifi_radios')
+            return [{'id':r.get('_InstID'),'banda':r.get('Band'),'canal':r.get('Channel'),'largura':r.get('BandWidth'),'padrao':r.get('Standard'),'potencia':r.get('TxPower'),'pais':r.get('CountryCode')} for r in objects.get('OBJ_WLANSETTING_ID',[])]
         radios=c.channel_status()
         try: observed_options=radio_options(c.get_view('wlanBasic',Menu3Location=0))
         except Exception: observed_options={}
@@ -125,16 +243,32 @@ class ZTEProvider:
             except Exception: pass
             r['options']=options
         return radios
-    def get_wan(self): return self._read('wan_status')
-    def get_lan(self): return self._read('lan_ports')
+    def get_wan(self):
+        if not getattr(self,'_profile',None):return self._read('wan_status')
+        objects=self._profile_objects('wan')
+        return [{k:r.get(v) for k,v in {'id':'_InstID','name':'WANCName','status':'ConnStatus','connection_type':'TransType','ipv4':'IPAddress','gateway':'GateWay','vlan':'VLANID','uptime_seconds':'UpTime'}.items()} for r in objects.get('ID_WAN_COMFIG',[])]
+    def get_lan(self):
+        if not getattr(self,'_profile',None):return self._read('lan_ports')
+        from apps.access_manager.infrastructure.zte.protocol.zte_configuration.zte_lan import _normalize_speed
+        objects=self._profile_objects('lan_ports')
+        return [{'id':r.get('_InstID'),'port':r.get('Port') or r.get('IFName') or r.get('_InstID'),'link_state':r.get('Status'),'speed':_normalize_speed(r.get('Speed')),'duplex':r.get('Duplex'),'rx_bytes':r.get('InBytes'),'tx_bytes':r.get('OutBytes')} for r in objects.get('OBJ_PON_PORT_BASIC_STATUS_ID',[])]
     def get_dhcp(self):
+        if getattr(self,'_profile',None):
+            from apps.access_manager.infrastructure.zte.discovery.profile_runtime import clients
+            try:return {'leases':clients(self._need(),'dhcp_leases'),'reservations':[],'configuration_available':False}
+            finally:self._refresh_profile_caps()
         if self._is_f6201b():
             from apps.access_manager.infrastructure.zte.f6201b.f6201b_dhcp import status
             return status(self._need())
         return self._read('dhcp_status')
     def get_dns(self): return self._f6201b_dns.read(self._need()) if self._is_f6201b() else self._need().dns_status()
-    def get_optical(self): return self._need().optical_status()
+    def get_optical(self):
+        self.capabilities.require_read('optical')
+        return self._need().optical_status()
     def get_traffic(self):
+        if getattr(self,'_profile',None):
+            rows=self.get_lan()
+            return {'sources':[{'source':'lan','identity':r.get('id'),'counters':{k:r[k] for k in ('rx_bytes','tx_bytes') if r.get(k) not in (None,'')}} for r in rows if r.get('rx_bytes') not in (None,'') or r.get('tx_bytes') not in (None,'')], 'partial':True}
         c=self._need()
         legacy_errors=[]
         def read_legacy(method):
@@ -277,20 +411,28 @@ class ZTEProvider:
     def surface_catalog(self): return self._surfaces.catalog()
     def surface_read(self, feature): return self._surfaces.inspect(self._need(),feature)
     def surface_preview(self, config): return self._surfaces.preview(self._need(),self.host,config['feature'],config['instance'],config.get('changes') or {},config.get('action','update'))
-    def surface_apply(self, config): return self._surfaces.apply(self._need(),self.host,config['nonce'],config.get('confirmation'))
+    def surface_apply(self, config):
+        self.capabilities.require_write('configuration_surfaces')
+        return self._surfaces.apply(self._need(),self.host,config['nonce'],config.get('confirmation'))
 
-    def speedtest_start(self, config): return self._speedtest.start(self._need(),config.get('server_url'))
+    def speedtest_start(self, config):
+        self.capabilities.require_write('speedtest')
+        return self._speedtest.start(self._need(),config.get('server_url'))
     def speedtest_poll(self, identity): return self._speedtest.poll(self._need(),identity)
 
     def get_mesh(self):
+        if getattr(self,'_profile',None):
+            return {'nodes':[],'links':[],'available':False,'source':'synthesized_access_devices','reason':'Relações Mesh não comprovadas; clientes não implicam enlaces Mesh.'}
         from apps.access_manager.domain.mesh import normalize_mesh
         return normalize_mesh(self._need().mesh_status())
 
     def export_backup(self): return self._need().export_user_configuration(device=self.get_device_info())
     def restore_backup(self, path):
+        self.capabilities.require_write('restore')
         try: return self._need().restore_configuration(path)
         except Exception as error:return {'success':False,'uncertain':True,'error_type':type(error).__name__,'message':'Restore sem confirmação. Não reenviar automaticamente; confira o equipamento.'}
     def upload_firmware(self, path):
+        self.capabilities.require_write('firmware')
         try:return self._need().upload_firmware(path)
         except Exception as error:return {'success':False,'uncertain':True,'error_type':type(error).__name__,'message':'Upload sem confirmação. Não reenviar automaticamente; confira o equipamento.'}
     def get_firmware(self):
@@ -299,9 +441,14 @@ class ZTEProvider:
     def get_accounts(self): return self._need().account_status()
 
     def runtime_diagnostic(self):
+        if getattr(self,'_profile',None):
+            from apps.access_manager.infrastructure.zte.discovery.profile_runtime import diagnostic
+            return diagnostic(self._need())
         from apps.access_manager.infrastructure.zte.discovery.diagnostic import diagnostic
         return diagnostic(self._need(),self.model,include_clients=False)
 
     def factory_reset_preview(self): return self._reset.preview(self._need(),self.host)
-    def factory_reset_apply(self, config): return self._reset.apply(self._need(),self.host,config.get("nonce"),config.get("confirmation"))
+    def factory_reset_apply(self, config):
+        self.capabilities.require_write('factory_reset')
+        return self._reset.apply(self._need(),self.host,config.get("nonce"),config.get("confirmation"))
     def get_nat_sessions(self): return conntrack_status(self._need())

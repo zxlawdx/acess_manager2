@@ -4,6 +4,7 @@ from . import zte_security
 
 
 def get_view(zte, tag, **extras):
+    request_timeout = extras.pop("_request_timeout", 10)
     params = {
         "_type": "menuView",
         "_tag": tag,
@@ -17,7 +18,7 @@ def get_view(zte, tag, **extras):
     resposta = zte.session.get(
         zte.base_url + "/",
         params=params,
-        timeout=10,
+        timeout=request_timeout,
     )
 
     print("URL:", resposta.url)
@@ -44,10 +45,12 @@ def get_view(zte, tag, **extras):
         }
     )
 
+    zte._menu_context = tag
     return resposta.text
 
 
 def get_menu(zte, tag, **extras):
+    request_timeout = extras.pop("_request_timeout", 10)
     params = {
         "_type": "menuData",
         "_tag": tag,
@@ -61,7 +64,7 @@ def get_menu(zte, tag, **extras):
     resposta = zte.session.get(
         zte.base_url + "/",
         params=params,
-        timeout=10,
+        timeout=request_timeout,
     )
 
     print("URL:", resposta.url)

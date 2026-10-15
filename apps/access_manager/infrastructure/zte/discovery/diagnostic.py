@@ -230,6 +230,15 @@ def diagnostic(
     section: str | None = None,
 ) -> dict[str, Any]:
     """Consulta completa ou uma seção por requisição para UI progressiva."""
+    from .profiles import select_profile
+    profile=select_profile(model)
+    if profile:
+        from .profile_runtime import diagnostic as profile_diagnostic, read_feature, ReadFailure
+        zte.read_profile=profile
+        if section in profile.candidates:
+            try:read_feature(zte,section)
+            except ReadFailure:pass
+        return profile_diagnostic(zte)
     supported_sections = {
         "device", "wan", "dsl", "optical", "wifi_ssids",
         "wifi_clients", "lan_clients",
