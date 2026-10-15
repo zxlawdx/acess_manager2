@@ -25,3 +25,8 @@
 ## ZTE H3601P V9 — compatibilidade adicional
 
 Perfil próprio, menu context/cache/re-auth, clientes LAN/WLAN/DHCP normalizados (IPv6 e dedup), roots/Style A/B validados. P1_MUL físico não testado; fixtures estruturais P2 públicas e sintéticas. WAN/LAN/Wi-Fi são candidatos com promoção por shape da sessão. Optical UNSUPPORTED por papel Ethernet; writes UNKNOWN. Não representa migração integral concluída. Ver docs/zte/H3601P_IMPLEMENTATION_REPORT.md.
+
+
+## Juniper infrastructure patch (feat/juniper-bng)
+
+Independent provider + explicit connection, NETCONF/SSH XML, three-prefix filtered subscriber lookup (leading zeros, multi-session), IPv4/IPv6, selected-session PPPoE/AAA, interfaces/chassis/RE resources and finite ping/traceroute implemented. Evidence: synthetic XML + 39 focused tests, full 433 Python + 30 subtests, 36 frontend, real Vela/Qt QA at three sizes. No physical Juniper or Windows runtime validation. Disconnect/reconnect remain UNKNOWN and unimplemented; optional logs/lockout/optics/route/ARP/RADIUS/CUPS remain research only. See `JUNIPER_INTEGRATION_REPORT.md` and `juniper/` for exact boundaries.

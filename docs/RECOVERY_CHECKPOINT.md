@@ -1,3 +1,9 @@
+## Juniper integration checkpoint
+
+Branch `feat/juniper-bng`, based on `8d115be`. Juniper infrastructure provider and workspace integrated independently from CPE providers. Filtered contract/user/IP lookup, leading zeros/three prefixes/multiple sessions, lazy PPPoE/AAA, facts/interfaces/chassis/resources and finite diagnostics implemented. Full tests: 433 + 30 subtests, frontend 36. Real Vela/Qt QA + ZTE regression passed at three sizes. Saved profiles hash unchanged. Physical Juniper and Windows/WebView2 execution unavailable; disconnect/reconnect deliberately unimplemented/UNKNOWN pending those prerequisites. Detailed evidence and remaining work: `docs/JUNIPER_INTEGRATION_REPORT.md`.
+
+---
+
 
 ## Functional parity round — 2026-10-15
 
