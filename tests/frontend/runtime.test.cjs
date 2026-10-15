@@ -89,3 +89,121 @@ test('channel diagnostic renders measured manual state and confirmed recommendat
  for(const expected of ['2.4GHz','6','Manual','20 MHz','1, 6, 11','Considerar canal 1'])assert.ok(text.includes(expected),expected);
  x.w.close();
 });
+
+test('Juniper workspace hides CPE navigation and performs normalized subscriber lookup',async()=>{
+ const caps=Object.fromEntries(['device','subscriber_lookup','subscriber_detail'].map(k=>[k,{read:'SUPPORTED',write:'UNKNOWN',enabled:{read:true,write:false}}]));
+ const row={username:'brd_000123',contract:'000123',session_id:'100',state:'Active',interface:'pp0.3221226000',ipv4_address:'192.0.2.10',ipv6_addresses:['2001:db8::10']};
+ const x=await boot({'/api/session':{connected:true,session:{session_id:'juniper-test',vendor:'juniper',model:'mx204',protocol_family:'junos_netconf',capabilities:caps}},'/api/infrastructure/system':{model:'mx204',family:'MX',firmware:'24.2R1',hostname:'synthetic-bng'},'/api/infrastructure/subscribers/lookup':{complete:true,sessions:[row,{...row,session_id:'205'}],candidates:[{candidate:'brd_000123',status:'FOUND'}]},'/api/infrastructure/subscribers/detail':row});
+ const d=x.w.document;assert.equal(d.querySelector('[data-view="wifi"]').hidden,true);assert.equal(d.querySelector('[data-view="subscribers"]').hidden,false);assert.ok(!x.calls.some(c=>c[0]==='/api/device/wifi/radios'));
+ await x.click('subscribers');d.querySelector('#subscriber-query').value='000123';d.querySelector('#subscriber-search').dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.match(d.querySelector('#subscriber-status').textContent,/2 sessão/);assert.equal(d.querySelectorAll('[data-subscriber]').length,2);
+ const call=x.calls.find(c=>c[0]==='/api/infrastructure/subscribers/lookup');assert.equal(JSON.parse(call[1].body).query,'000123');assert.ok(!call[1].body.includes('show subscribers'));
+ d.querySelector('[data-subscriber]').click();await x.wait();assert.match(d.querySelector('#subscriber-detail').textContent,/000123/);assert.equal(d.querySelector('#action-dialog').open,false);assert.ok(d.querySelector('[data-side-tab="service"]'));d.querySelector('[data-juniper-route="juniperSubscriber"]').click();await x.wait();assert.ok(d.querySelector('[data-j-tab="aaa"]'));x.w.close();
+});
+
+test('Juniper partial candidate failures never present confirmed offline',async()=>{
+ const x=await boot({'/api/session':{connected:true,session:{session_id:'j',vendor:'juniper',model:'mx204',capabilities:{}}},'/api/infrastructure/system':{model:'mx204'},'/api/infrastructure/subscribers/lookup':{complete:false,sessions:[],candidates:[{candidate:'brd_1',status:'TIMEOUT',message:'Tempo esgotado'}]}});
+ await x.click('subscribers');const d=x.w.document;d.querySelector('#subscriber-query').value='1';d.querySelector('#subscriber-search').dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.match(d.querySelector('#subscriber-status').textContent,/Busca incompleta/);assert.ok(!d.querySelector('#subscriber-status').textContent.includes('Nenhuma sessão ativa'));x.w.close();
+});
+
+test('connection offers explicit Juniper and all three transports without HTTP routing',async()=>{
+ const x=await boot({'/api/session':{connected:false,session:null},'/api/infrastructure/system':{model:'mx204'}}),d=x.w.document,f=d.querySelector('#connect-form');
+ assert.equal(f.elements.vendor.options.length,2);assert.equal(f.elements.transport.options.length,3);
+ f.elements.vendor.value='juniper';f.elements.vendor.dispatchEvent(new x.w.Event('change'));assert.equal(d.querySelector('#juniper-connection').hidden,false);assert.equal(f.querySelector('.https-toggle').hidden,true);
+ const original=x.w.fetch;x.w.fetch=async(url,options)=>new URL(url).pathname==='/api/session'&&options.method==='POST'?{ok:true,text:async()=>JSON.stringify({connected:true,session:{session_id:'j',vendor:'juniper',model:'mx204',protocol_family:'junos_netconf',capabilities:{}}})}:original(url,options);
+ f.elements.host.value='example.invalid';f.elements.username.value='synthetic';f.elements.password.value='synthetic-only';f.elements.port.value='830';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.equal(d.querySelector('#login-page').hidden,true);assert.equal(f.elements.password.value,'');assert.equal(d.querySelector('[data-view=subscribers]').hidden,false);x.w.close();
+});
+
+test('Juniper login discards AD password on failure and keeps corporate layout',async()=>{
+ const x=await boot({'/api/session':{connected:false,session:null},'/api/infrastructure/settings':{last_successful_host:'bng.example.invalid',ssh_port:50022,netconf_port:830,preferred_transport:'ssh'}});
+ const f=x.w.document.querySelector('#connect-form');f.elements.vendor.value='juniper';f.elements.vendor.dispatchEvent(new x.w.Event('change'));
+ assert.equal(f.elements.host.value,'bng.example.invalid');assert.equal(f.elements.ssh_port.value,'50022');
+ assert.ok(x.w.document.querySelector('#login-page').classList.contains('infrastructure-login'));
+ const original=x.w.fetch;x.w.fetch=async(url,options)=>new URL(url).pathname==='/api/session'&&options?.method==='POST'?{ok:true,text:async()=>JSON.stringify({success:false,error:{message:'Autenticação recusada'}})}:original(url,options);
+ f.elements.username.value='corporate-user';f.elements.password.value='never-persist';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();
+ assert.equal(f.elements.password.value,'');assert.equal(f.elements.host.value,'bng.example.invalid');
+ assert.equal(x.w.localStorage.length,0);assert.equal(x.w.sessionStorage.length,0);x.dom.window.close();
+});
+
+const juniperRow={username:'brd_000123',session_id:'100',contract:'000123',state:'Active',interface:'pp0.1',ipv4_address:'192.0.2.10',ipv6_addresses:[],service_sessions:[{id:'200',name:'service',bandwidth_in:'200M'}]};
+const juniperBase={'/api/session':{connected:true,session:{session_id:'pajamas',vendor:'juniper',host:'192.0.2.1',model:'mx204',capabilities:{}}},'/api/infrastructure/system':{model:'mx204',firmware:'23.4R2',hostname:'test-bng'},'/api/infrastructure/resources':[{slot:'0',cpu_idle_percent:'80',memory_used_percent:'40'}],'/api/infrastructure/interfaces':[{name:'ae1',admin_state:'up',oper_state:'up',addresses:[]}],'/api/infrastructure/subscribers/lookup':{complete:true,sessions:[juniperRow],candidates:[{candidate:juniperRow.username,status:'FOUND'}]},'/api/infrastructure/subscribers/detail':juniperRow,'/api/infrastructure/subscribers/context':{data:{state:'Session Up'}},'/api/infrastructure/health':{data:[{status:'UP'}]},'/api/infrastructure/chassis':[{name:'Chassis',description:'MX204'}]};
+async function findJuniper(x){await x.click('subscribers');const f=x.w.document.querySelector('#subscriber-search');f.elements.query.value='000123';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();x.w.document.querySelector('[data-subscriber]').click();await x.wait()}
+test('Juniper groups collapse, active navigation reopens group and every route has content',async()=>{
+ const x=await boot(juniperBase),d=x.w.document;
+ assert.ok(d.querySelector('.juniper-shell'));assert.equal(d.querySelectorAll('.juniper-nav-group').length,6);
+ const group=d.querySelector('[data-view=juniperRadius]').closest('details');group.open=false;await x.click('juniperRadius');assert.equal(group.open,true);assert.equal(d.querySelector('[data-view=juniperRadius]').getAttribute('aria-current'),'page');
+ for(const b of d.querySelectorAll('.nav[data-juniper-nav]')){await x.click(b.dataset.view);assert.ok(d.querySelector('#workspace').textContent.trim(),b.dataset.view)}
+ assert.match(d.querySelector('#workspace').textContent,/MX204/);x.w.close();
+});
+test('Juniper inline selection, filters and full tabs persist subscriber across routes',async()=>{
+ const x=await boot(juniperBase),d=x.w.document;await findJuniper(x);
+ assert.ok(d.querySelector('#subscriber-results tr.is-selected'));assert.equal(d.querySelector('#action-dialog').open,false);
+ d.querySelector('[data-side-tab=service]').click();assert.match(d.querySelector('#subscriber-detail').textContent,/200M/);
+ d.querySelector('[data-toggle-filters]').click();assert.equal(d.querySelector('#subscriber-filters').hidden,false);
+ await x.click('juniperAccounting');await x.wait();assert.ok(d.querySelector('[data-j-tab=accounting].active'));assert.match(d.querySelector('#workspace').textContent,/brd_000123/);
+ await x.click('juniperRadius');await x.click('subscribers');await x.wait();assert.match(d.querySelector('#subscriber-detail').textContent,/brd_000123/);assert.equal(d.querySelector('#subscriber-query').value,'000123');x.w.close();
+});
+test('Juniper CPE drawer keeps empty separate credentials and cleans them on close',async()=>{
+ const x=await boot({...juniperBase,'/api/infrastructure/subscribers/cpe-draft':{host:'192.0.2.10',subscriber_username:'brd_000123',subscriber_session_id:'100',app_session_id:'pajamas',contract:'000123',refreshed_at:1}}),d=x.w.document;await findJuniper(x);d.querySelector('[data-access-cpe]').click();await x.wait();
+ const drawer=d.querySelector('#action-dialog');assert.ok(drawer.classList.contains('j-drawer'));const f=d.querySelector('#cpe-handoff');assert.equal(f.elements.host.readOnly,true);assert.equal(f.elements.password.value,'');f.elements.password.value='cpe-secret';drawer.close();assert.equal(d.querySelector('#cpe-handoff'),null);assert.match(d.querySelector('#subscriber-detail').textContent,/brd_000123/);x.w.close();
+});
+test('Juniper ignores stale tab responses after a newer tab is selected',async()=>{
+ const x=await boot(juniperBase),d=x.w.document;await findJuniper(x);await x.click('juniperSubscriber');const gate=deferred(),original=x.w.fetch;
+ x.w.fetch=async(url,options)=>{if(new URL(url).pathname.endsWith('/subscribers/context')&&JSON.parse(options.body).kind==='accounting'){await gate.promise;return {ok:true,text:async()=>JSON.stringify({data:{state:'OLD_ACCOUNTING'}})}}return original(url,options)};
+ d.querySelector('[data-j-tab=accounting]').click();d.querySelector('[data-j-tab=services]').click();await x.wait();gate.resolve();await x.wait();assert.match(d.querySelector('#subscriber-full-content').textContent,/200M/);assert.ok(!d.querySelector('#workspace').textContent.includes('OLD_ACCOUNTING'));x.w.close();
+});
+
+test('Juniper search empty and failed read stay local and do not open fake details',async()=>{
+ const x=await boot({...juniperBase,'/api/infrastructure/subscribers/lookup':{complete:true,sessions:[],candidates:[{candidate:'brd_1',status:'NOT_FOUND'}]}}),d=x.w.document;await x.click('subscribers');const f=d.querySelector('#subscriber-search');f.elements.query.value='1';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.match(d.querySelector('#subscriber-status').textContent,/Nenhuma sessão ativa/);assert.equal(d.querySelectorAll('[data-subscriber]').length,0);assert.equal(d.querySelector('#action-dialog').open,false);x.w.close();
+});
+
+test('Juniper advanced attributes and returned filter reads remain available',async()=>{
+ const row={...juniperRow,primary_dns:'192.0.2.53',ipv6_prefixes:['2001:db8::/64'],service_sessions:[{id:'200',name:'service',input_filter:'confirmed-filter-pp0.1-in'}]};
+ const x=await boot({...juniperBase,'/api/infrastructure/subscribers/detail':row}),d=x.w.document;await findJuniper(x);await x.click('juniperSubscriber');assert.match(d.querySelector('.j-advanced').textContent,/192.0.2.53/);assert.match(d.querySelector('.j-advanced').textContent,/2001:db8/);
+ d.querySelector('[data-j-tab=services]').click();await x.wait();d.querySelector('[data-service-filter]').click();await x.wait();const call=x.calls.find(c=>c[0].endsWith('/subscribers/context')&&JSON.parse(c[1].body).kind==='filter');assert.equal(JSON.parse(call[1].body).filter,'confirmed-filter-pp0.1-in');x.w.close();
+});
+
+test('Juniper SSH identity inspection uses connected endpoint rather than cleared login form',async()=>{
+ const x=await boot({...juniperBase,'/api/infrastructure/host-key':{host:'192.0.2.1',port:22,status:'HOST_KEY_CHANGED',algorithm:'ssh-ed25519',fingerprint:'SHA256:SYNTHETIC',previous_fingerprints:['SHA256:PREVIOUS']}}),d=x.w.document;
+ d.querySelector('#connect-form').elements.host.value='';d.querySelector('[data-j-identity]').click();await x.wait();
+ const call=x.calls.find(c=>c[0]==='/api/infrastructure/host-key');assert.equal(JSON.parse(call[1].body).host,'192.0.2.1');assert.match(d.querySelector('#action-dialog').textContent,/A chave SSH apresentada pelo servidor mudou/);assert.ok(!x.calls.some(c=>c[0]==='/api/infrastructure/host-key/trust'));x.w.close();
+});
+
+test('API errors retain code type retryability status and reference through frontend',async()=>{
+ const x=await boot();const esbuild=require('esbuild'),source=esbuild.buildSync({entryPoints:[base+'static/js/services/api.js'],bundle:true,format:'iife',globalName:'ApiUnderTest',write:false}).outputFiles[0].text;x.w.eval(source);
+ x.w.fetch=async()=>({ok:true,status:200,text:async()=>JSON.stringify({success:false,error:{code:'CONNECTION_TIMEOUT',message:'Tempo esgotado',type:'timeout',retryable:true,request_id:'read-123'}})});
+ await assert.rejects(x.w.ApiUnderTest.request('/api/infrastructure/health',{method:'POST'}),error=>error.code==='CONNECTION_TIMEOUT'&&error.type==='timeout'&&error.retryable===true&&error.status===200&&error.request_id==='read-123');x.w.close();
+});
+
+test('Juniper timeout degrades topbar, parser error does not fake offline and endpoint includes port',async()=>{
+ const x=await boot({...juniperBase,'/api/session':{connected:true,session:{...juniperBase['/api/session'].session,metadata:{scheme:'ssh',port:50022,transport_active:true}}}}),d=x.w.document;
+ assert.match(d.querySelector('#ctx-host').textContent,/ssh:\/\/192\.0\.2\.1:50022/);
+ d.dispatchEvent(new x.w.CustomEvent('juniper-read-state',{detail:{failed:true,code:'XML_SHAPE_UNSUPPORTED',transportFailure:false}}));assert.match(d.querySelector('#ctx-status').textContent,/Online/);
+ d.dispatchEvent(new x.w.CustomEvent('juniper-read-state',{detail:{failed:true,code:'CONNECTION_TIMEOUT',transportFailure:true}}));assert.match(d.querySelector('#ctx-status').textContent,/Degradado/);
+ d.dispatchEvent(new x.w.CustomEvent('juniper-read-state',{detail:{failed:false}}));assert.match(d.querySelector('#ctx-status').textContent,/Online/);x.w.close();
+});
+
+test('Juniper AAA counters use only corresponding schema with Portuguese labels and exact large numbers',async()=>{
+ const x=await boot({...juniperBase,'/api/infrastructure/health':{data:{cumulative:true,current_incident:null,counters:{requests:'18446744073709551615',request_success:'100',requests_pending:'2',retransmissions:'33'}}}}),d=x.w.document;
+ await x.click('juniperAaaAccounting');const table=d.querySelector('.j-counter-table');assert.ok(table);assert.match(table.textContent,/Requisições pendentes/);assert.match(table.textContent,/Retransmissões/);assert.match(table.textContent,/18\.446\.744\.073\.709\.551\.615/);assert.ok(!table.textContent.includes('Credenciais inválidas'));x.w.close();
+});
+
+test('Juniper dedicated routes force canonical tab when navigated again',async()=>{
+ const x=await boot(juniperBase),d=x.w.document;await findJuniper(x);
+ for(const [route,canonical] of [['juniperRouting','routing'],['juniperPppoe','pppoe'],['juniperAccounting','accounting'],['juniperServices','services'],['juniperLockout','diagnostic']]){
+  await x.click(route);assert.ok(d.querySelector(`[data-j-tab=${canonical}].active`));d.querySelector('[data-j-tab=diagnostic]').click();await x.wait();await x.click(route);assert.ok(d.querySelector(`[data-j-tab=${canonical}].active`));
+ }
+ assert.match(d.querySelector('[data-view=juniperRouting]').textContent,/assinante/);x.w.close();
+});
+
+test('Juniper LACP and optics open direct forms without an interface inventory request',async()=>{
+ const x=await boot(juniperBase),d=x.w.document,original=x.w.fetch;let inventories=0,links=0;
+ x.w.fetch=async(url,options)=>{const path=new URL(url).pathname;if(path==='/api/infrastructure/interfaces'){inventories++;throw Error('No global inventory permitted')};if(path==='/api/infrastructure/interfaces/link'){links++;return {ok:true,text:async()=>JSON.stringify({data:[{aggregate:'ae1',members:[]}]})}}return original(url,options)};
+ for(const [route,name] of [['juniperLacp','ae1'],['juniperOptics','et-0/0/0']]){await x.click(route);const form=d.querySelector('#juniper-link-form');assert.ok(form);form.elements.name.value=name;form.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();}
+ assert.equal(inventories,0);assert.equal(links,2);x.w.close();
+});
+
+test('Juniper page retry is explicit and cancel only stops waiting',async()=>{
+ const x=await boot(juniperBase),d=x.w.document,original=x.w.fetch,gate=deferred();let attempts=0;
+ x.w.fetch=async(url,options)=>{if(new URL(url).pathname==='/api/infrastructure/health'){attempts++;if(attempts===1)return {ok:true,status:200,text:async()=>JSON.stringify({success:false,error:{code:'CONNECTION_TIMEOUT',message:'Tempo esgotado',type:'timeout',retryable:true}})};await gate.promise;return {ok:true,status:200,text:async()=>JSON.stringify({data:[]})}}return original(url,options)};
+ await x.click('juniperRadius');assert.equal(attempts,1);assert.match(d.querySelector('#workspace [role=alert]').textContent,/CONNECTION_TIMEOUT/);d.querySelector('[data-j-retry]').click();await x.wait();assert.equal(attempts,2);d.querySelector('[data-cancel-wait]').click();assert.match(d.querySelector('#workspace').textContent,/O comando remoto pode continuar/);gate.resolve();await x.wait();assert.ok(!d.querySelector('#workspace .skeleton'));x.w.close();
+});

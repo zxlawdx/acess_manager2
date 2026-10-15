@@ -1,3 +1,9 @@
+## Juniper integration checkpoint
+
+Branch `feat/juniper-bng`, based on `8d115be`. Juniper infrastructure provider and workspace integrated independently from CPE providers. Filtered contract/user/IP lookup, leading zeros/three prefixes/multiple sessions, lazy PPPoE/AAA, facts/interfaces/chassis/resources and finite diagnostics implemented. Full tests: 433 + 30 subtests, frontend 36. Real Vela/Qt QA + ZTE regression passed at three sizes. Saved profiles hash unchanged. Physical Juniper and Windows/WebView2 execution unavailable; disconnect/reconnect deliberately unimplemented/UNKNOWN pending those prerequisites. Detailed evidence and remaining work: `docs/JUNIPER_INTEGRATION_REPORT.md`.
+
+---
+
 
 ## Functional parity round — 2026-10-15
 
@@ -116,3 +122,23 @@ Validação: 295 Python + 30 subtests; 31 frontend; Chromium e Vela real Qt nas 
 Base `740638e1ba215246c16c77f7f91a5468e15c2a8b`, branch `fix/zte-h3601p-v9`. Perfil e runtime integrados; candidato WLAN accessdev_ssiddev, LAN accessdev_landevs, DHCP hostinfo. Parser completo/fragmentado, namespaces, IPv6, dedup por identidade e endpoint/context cache. Optical removido por capability no gateway Ethernet. Escritas não promovidas. QA Vela/Qt e Chromium em três resoluções passou com dados sintéticos; teste físico P1 e Windows não executados. Resultado final e comandos em docs/zte/H3601P_IMPLEMENTATION_REPORT.md. Demais pendências históricas não foram declaradas concluídas.
 
 Validação desta rodada H3601P: 347 testes Python + 30 subtestes; 32 testes frontend; zero falhas/skips. QA nativo e Chromium nas três resoluções. Nenhuma confirmação física P1 ou Windows.
+
+## MX204 — handoff e correção do parser — 2026-10-15
+
+Continuada feat/juniper-bng a partir de 18c0e52, sem reset/reclone/merge main. Dois managers independentes via coordenador: Juniper + CPE. Lookup → sessão selecionada → releitura → draft → credenciais próprias CPE → provider existente → Voltar ao assinante. Desconexões independentes, IP/ID/user obsoletos rejeitados, teste TCP opcional sem concluir offline. Login AD compacto, preferências sem secrets e confiança SSH explícita por host/porta.
+
+Parser agrega detail/extensive/service, vincula child DHCP, distingue três IDs, count0/No such subscriber, XML/CLI text, paginação e framing. RPC AAA corrigido; leitores lazy accounting/rota/FIB/filter/lockout, RADIUS/AAA/FPC/ambiente/LACP/optics acrescentados. Capability/evidência não confundem fixture com físico.
+
+Validação: 464 Python + 30 subtestes, 37 frontend; Vela/API/WebView Qt reais nas três resoluções com transportes remotos sintéticos, handoff ZTE e sessões independentes. QA em screenshots/juniper-mx204. Evidência manual MX204 recebida do usuário; nenhuma nova autenticação física do agente ou execução Windows. Perfis SHA256 preservado. Relatório atual: JUNIPER_INTEGRATION_REPORT.md. Pendentes: full XML alvo por leitor, advanced MAC/interface, topologia física automática comprovada, amostragem/delta, história de assinante, auto protocolo completo e Windows. Writes/CGNAT mapping não promovidos. Migração integral não concluída.
+
+## Juniper — linguagem Pajamas adaptada — 2026-10-15
+
+Continuação de feat/juniper-bng/09959b1. Redesign somente frontend: topbar 48px, sidebar clara com 6 grupos recolhíveis/21 rotas, tabela compacta e detalhe lateral persistente; tabs de sessão, atributos avançados, filtros retornados, interfaces/LACP/óptica em drawers; CPE drawer e host-key modal preservam APIs e sessões. CSS isolado em juniper.css; componentes em shared/juniper-ui.js. Backend/providers/capabilities não alterados.
+
+464 Python +30 subtestes e 44 frontend passaram. QA Vela/Bottle/Qt real, 21 rotas nas três resoluções, com Junos/ZTE e inspeção de host-key sintéticos. Capturas em screenshots/juniper-pajamas; matriz e pendências em JUNIPER_PAJAMAS_REDESIGN_REPORT.md. Logs sem leitor explícito, MAC/Session ID avançado não prometidos, raw não exposto, sem novo teste físico ou Windows. Perfis idênticos. Main sem merge; migração continua pendente.
+
+## Juniper P0 — reparo do runtime físico
+
+Base 4076ef6, feat/juniper-bng preservada. Implementação c5f8dfa, testes/capturas b73d179. RADIUS sequencial, AAA separado/aliases físicos, subscriber acc-* e LACP Actor/Partner agrupados; óptica/thresholds preservados. Timeout por feature não truncado em 8s, limite 4MiB com erro próprio, inventário scope físico/512linhas e LACP/óptica sem pré-requisito global. Logs JSON correlacionados/lock wait, histórico de 100 operações por sessão e API/Logs read-only. Frontend ApiError mantém códigos; Degradado para transporte, parser distinto, counters alinhados/pt-BR, tabs canônicas e endpoint SSH com porta. Sem writes novos.
+
+502 Python +30 subtestes, 50 frontend; Vela/Qt real 21 rotas nas três resoluções com fixtures de shape físico/transportes sintéticos e falhas injetadas. Sem execução física nova do MX204 ou Windows. Relatório completo/evidência/limites: juniper/P0_PHYSICAL_RUNTIME_REPAIR.md. Capturas: screenshots/juniper-p0-runtime. Perfis SHA256 preservado. Main sem merge; migração continua pendente.

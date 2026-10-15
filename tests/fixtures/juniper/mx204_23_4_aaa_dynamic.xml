@@ -1,0 +1,2 @@
+<!-- PHYSICAL_SHAPE_SANITIZED: transcribed from user-supplied MX204 23.4R2-S5.6 snippets; not a complete raw capture. -->
+<rpc-reply xmlns:junos="http://xml.juniper.net/junos/23.4R2-S5.6/junos"><aaa-module-dynamic-requests-statistics><requests>6450760</requests><processed-ok>620237</processed-ok><processed-initial>0</processed-initial><processing-error>5821051</processing-error><silent-drops>9467</silent-drops></aaa-module-dynamic-requests-statistics></rpc-reply>

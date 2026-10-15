@@ -12,4 +12,6 @@ def safe(fn):
     try: return fn()
     except Exception as exc:
         failure=public_error(exc)
-        return {'success':False,'error':{'code':failure['code'],'message':failure['error'],'type':failure['type'],'retryable':failure['retryable']}}
+        from apps.access_manager.infrastructure.juniper.errors import JuniperError
+        extra={'request_id':exc.request_id,'health':getattr(exc,'health',None)} if isinstance(exc,JuniperError) else {}
+        return {'success':False,'error':{'code':failure['code'],'message':failure['error'],'type':failure['type'],'retryable':failure['retryable'],**extra}}

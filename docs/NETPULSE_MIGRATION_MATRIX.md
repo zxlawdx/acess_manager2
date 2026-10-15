@@ -295,3 +295,25 @@ Validação: 295 Python + 30 subtests; 31 frontend; Chromium e Vela real Qt nas 
 ## ZTE H3601P V9 — compatibilidade adicional
 
 Perfil próprio, menu context/cache/re-auth, clientes LAN/WLAN/DHCP normalizados (IPv6 e dedup), roots/Style A/B validados. P1_MUL físico não testado; fixtures estruturais P2 públicas e sintéticas. WAN/LAN/Wi-Fi são candidatos com promoção por shape da sessão. Optical UNSUPPORTED por papel Ethernet; writes UNKNOWN. Não representa migração integral concluída. Ver docs/zte/H3601P_IMPLEMENTATION_REPORT.md.
+
+## Access Manager — estado MX204 em 2026-10-15
+
+| Entrega | Estado |
+|---|---|
+| Sessões Juniper/CPE independentes e handoff | Implementado/testado; QA nativo sintético nas três resoluções |
+| XML/CLI text, estilos/IDs/child, not-found | Implementado/testado; replay completo alvo pendente |
+| Accounting/route/FIB/filter/lockout | Leitores lazy e semântica testados; aceitação física app pendente |
+| RADIUS/AAA/chassis/LACP/optics | Leitores e UI sob demanda, testes construídos; todos os XMLs físicos completos pendentes |
+| MAC/interface avançado e path automático | Pendente; não inferir topologia |
+| Writes/CoA/CGNAT mapping | Não promovidos |
+| Windows e teste físico app | Não executados nesta rodada |
+
+Suíte: 464 Python +30 subtestes, 37 frontend. Relatório: JUNIPER_INTEGRATION_REPORT.md. Nome do produto: Access Manager. Migração integral continua pendente.
+
+## Juniper UI / Pajamas adaptado
+
+21 páginas navegáveis com estado e componentes reais, detalhe inline, CPE/interface drawers e modal de identidade SSH. 464 Python +30 subtestes, 44 frontend e QA Vela três resoluções passaram. Backend/protocolos/capabilities inalterados; Logs informa ausência de leitor e busca continua contrato/username/IP. A matriz completa rota/navegação/conteúdo/QA está em JUNIPER_PAJAMAS_REDESIGN_REPORT.md. Sem nova evidência física ou Windows; migração integral não concluída.
+
+## Juniper P0 físico — estado atual
+
+RADIUS sequencial/available-status, três schemas AAA, subscriber acc-* e LACP roles corrigidos; óptica com lanes/thresholds preservados. Timeouts reais por feature, RESPONSE_TOO_LARGE, ApiError e logs estruturados com operação/lock wait implementados. Inventário restrito; LACP/óptica específicos sem dump global. UI com counters pt-BR, abas por rota, endpoint com porta e transporte degradado distinto de parser. 502 Python +30 subtestes, 50 frontend, Vela/Qt três resoluções. Evidência automatizada de shape físico, não execução física nova/Windows; writes não promovidos. Limites e referência do filtro de interfaces: juniper/P0_PHYSICAL_RUNTIME_REPAIR.md.

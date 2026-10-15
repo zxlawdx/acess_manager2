@@ -1,0 +1,52 @@
+{
+  "runtime": "real manage.py runapp / Vela Qt WebEngine",
+  "api": "real Bottle endpoints",
+  "transport": "synthetic Junos XML fixtures only",
+  "physical": false,
+  "windows": false,
+  "results": [
+    {
+      "width": 1366,
+      "height": 768,
+      "pages": 5,
+      "duplicateSessions": 2,
+      "prefixesPreserved": true,
+      "ipv6": true,
+      "lazyPppoe": true,
+      "lazyAaa": true,
+      "resources": true,
+      "diagnostics": true,
+      "shellEdges": true,
+      "noHorizontalOverflow": true
+    },
+    {
+      "width": 1600,
+      "height": 900,
+      "pages": 5,
+      "duplicateSessions": 2,
+      "prefixesPreserved": true,
+      "ipv6": true,
+      "lazyPppoe": true,
+      "lazyAaa": true,
+      "resources": true,
+      "diagnostics": true,
+      "shellEdges": true,
+      "noHorizontalOverflow": true
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "pages": 5,
+      "duplicateSessions": 2,
+      "prefixesPreserved": true,
+      "ipv6": true,
+      "lazyPppoe": true,
+      "lazyAaa": true,
+      "resources": true,
+      "diagnostics": true,
+      "shellEdges": true,
+      "noHorizontalOverflow": true
+    }
+  ],
+  "applicationErrors": []
+}

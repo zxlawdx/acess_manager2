@@ -8,6 +8,7 @@ from uuid import uuid4
 class Vendor(StrEnum):
     HUAWEI = "huawei"
     ZTE = "zte"
+    JUNIPER = "juniper"
     DEPLOYMENT = "deployment"
 
 class SessionMode(StrEnum):
