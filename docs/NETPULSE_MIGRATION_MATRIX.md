@@ -317,3 +317,17 @@ Suíte: 464 Python +30 subtestes, 37 frontend. Relatório: JUNIPER_INTEGRATION_R
 ## Juniper P0 físico — estado atual
 
 RADIUS sequencial/available-status, três schemas AAA, subscriber acc-* e LACP roles corrigidos; óptica com lanes/thresholds preservados. Timeouts reais por feature, RESPONSE_TOO_LARGE, ApiError e logs estruturados com operação/lock wait implementados. Inventário restrito; LACP/óptica específicos sem dump global. UI com counters pt-BR, abas por rota, endpoint com porta e transporte degradado distinto de parser. 502 Python +30 subtestes, 50 frontend, Vela/Qt três resoluções. Evidência automatizada de shape físico, não execução física nova/Windows; writes não promovidos. Limites e referência do filtro de interfaces: juniper/P0_PHYSICAL_RUNTIME_REPAIR.md.
+
+## Atendimento / Triagem — 2026-10-15
+
+| Área | Estado e evidência | Limite |
+| --- | --- | --- |
+| Triagem CPE | Implementada com leitores/capabilities Huawei/ZTE existentes; achados estruturados, testes automatizados e Vela real com roteador sintético | Campos ausentes não viram zero; thresholds de modelo dependem de evidência |
+| Triagem BNG | Facts/interfaces/contexto e consultas explícitas existentes; telas compartilhadas | Não infere ONT óptica/Wi-Fi nem varre assinantes automaticamente |
+| Relatório vivo | SQLite dedicado, eventos centrais, inicial imutável, atual/final, comparação MAC/ID, notas e resultado manual | Encerrar normalmente exige sessão ainda conectada |
+| Wi-Fi credential history | Evento isolado, old/new, read-back independente; UI Mostrar/Copiar; TXT/JSON/HTML | ZTE Lua nativo e Huawei EG8041 runtime PARTIAL; perfis ZTE/H3601P, Huawei X6/captured UNKNOWN; sem nova prova física |
+| Segurança | Sanitização dos demais segredos, logs/representação seguros, histórico resumido sem senha; testes | Sem criptografia/retention policy nova no SQLite local |
+| QA | 539 Python +30 subtestes, 53 frontend, real Vela/Qt nas três resoluções; screenshots/support-report | Sem execução física nova ou Windows/WebView2 |
+| PDF e visita | HTML exportável; sugestão de visita por evidência óptica crítica | PDF não implementado; WAN física e negociação persistentemente anormal aguardam contexto comprovado |
+
+Detalhes: `TRIAGE_AND_SUPPORT_REPORT.md`. Não altera a classificação dos writers DNS/DHCP/Mesh pendentes em seções anteriores. A migração integral permanece pendente.
