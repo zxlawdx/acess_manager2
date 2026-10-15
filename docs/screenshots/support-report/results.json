@@ -1,0 +1,54 @@
+{
+  "environment": "Real Vela Qt WebEngine, synthetic remote router. No physical device or Windows validation.",
+  "results": [
+    {
+      "width": 1366,
+      "height": 768,
+      "sideX": 0,
+      "sideBottom": 768,
+      "topY": 0,
+      "horizontal": false,
+      "mainOverflow": false,
+      "immutable": true,
+      "status": "finished",
+      "formats": {
+        "txt": true,
+        "json": true,
+        "html": true
+      }
+    },
+    {
+      "width": 1600,
+      "height": 900,
+      "sideX": 0,
+      "sideBottom": 900,
+      "topY": 0,
+      "horizontal": false,
+      "mainOverflow": false,
+      "immutable": true,
+      "status": "finished",
+      "formats": {
+        "txt": true,
+        "json": true,
+        "html": true
+      }
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "sideX": 0,
+      "sideBottom": 1080,
+      "topY": 0,
+      "horizontal": false,
+      "mainOverflow": false,
+      "immutable": true,
+      "status": "finished",
+      "formats": {
+        "txt": true,
+        "json": true,
+        "html": true
+      }
+    }
+  ],
+  "errors": []
+}
