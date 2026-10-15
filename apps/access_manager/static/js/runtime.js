@@ -5,13 +5,53 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // apps/access_manager/static/js/services/api.js
-  function parseResponseBody(text2) {
-    if (!text2) return {};
+  // apps/access_manager/static/js/shared/theme.js
+  var key = "access-manager.theme";
+  var preference = "system";
+  try {
+    const saved2 = localStorage.getItem(key);
+    if (["light", "dark", "system"].includes(saved2)) preference = saved2;
+  } catch {
+  }
+  var media = window.matchMedia?.("(prefers-color-scheme: dark)");
+  function apply() {
+    const resolved = preference === "system" ? media?.matches ? "dark" : "light" : preference;
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.dataset.themePreference = preference;
+    document.querySelectorAll("[data-theme-select]").forEach((el) => el.value = preference);
+    document.dispatchEvent(new CustomEvent("theme-changed", { detail: { preference, resolved } }));
+  }
+  function setTheme(value) {
+    if (!["light", "dark", "system"].includes(value)) return;
+    preference = value;
     try {
-      return JSON.parse(text2);
+      localStorage.setItem(key, value);
+    } catch {
+    }
+    apply();
+  }
+  function mountTheme() {
+    document.querySelectorAll("[data-theme-select]").forEach((el) => el.onchange = () => setTheme(el.value));
+    apply();
+  }
+  media?.addEventListener?.("change", () => {
+    if (preference === "system") apply();
+  });
+  window.addEventListener("storage", (e) => {
+    if (e.key === key) {
+      preference = ["light", "dark", "system"].includes(e.newValue) ? e.newValue : "system";
+      apply();
+    }
+  });
+  apply();
+
+  // apps/access_manager/static/js/services/api.js
+  function parseResponseBody(text3) {
+    if (!text3) return {};
+    try {
+      return JSON.parse(text3);
     } catch (_) {
-      return { raw: text2 };
+      return { raw: text3 };
     }
   }
   async function request(path2, options = {}) {
@@ -28,13 +68,13 @@
       });
       return clone(entry.data);
     }
-    const key = cacheSession + ":" + (scope?.identity ?? "global") + ":" + path2;
-    if (canCache && pending.has(key)) return pending.get(key);
+    const key2 = cacheSession + ":" + (scope?.identity ?? "global") + ":" + path2;
+    if (canCache && pending.has(key2)) return pending.get(key2);
     const start = performance.now(), epoch = revision;
     const work = (async () => {
       const url = new URL(path2, window.location.origin);
       const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
-      const text2 = await res.text(), data = parseResponseBody(text2);
+      const text3 = await res.text(), data = parseResponseBody(text3);
       if (!read && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/diagnostics/full/run", "/api/device/diagnostics/full/history", "/api/device/diagnostics/full/export", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path2)) clearSnapshots();
       if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
       if (!res.ok) throw new Error(data?.error?.message || data?.message || `HTTP ${res.status} ao acessar ${url.pathname}`);
@@ -49,10 +89,10 @@
       if (!scopeActive(scope) || isCancelled(e)) throw cancelled();
       throw e;
     }).finally(() => {
-      if (pending.get(key) === work) pending.delete(key);
+      if (pending.get(key2) === work) pending.delete(key2);
       timing(path2.startsWith("/api/device/wifi") ? "wifi.load." + (path2.split("/").at(-1) === "wifi" ? "total" : path2.split("/").at(-1)) : path2 + ".load", start);
     });
-    if (canCache) pending.set(key, work);
+    if (canCache) pending.set(key2, work);
     return work;
   }
   var generation = 0;
@@ -93,12 +133,12 @@
     pending.clear();
   }
   function sessionKey() {
-    const key = window.__amStore?.session?.session?.session_id ?? "disconnected";
-    if (cacheSession !== key) {
+    const key2 = window.__amStore?.session?.session?.session_id ?? "disconnected";
+    if (cacheSession !== key2) {
       clearSnapshots();
-      cacheSession = key;
+      cacheSession = key2;
     }
-    return key;
+    return key2;
   }
   function clean(value) {
     if (Array.isArray(value)) return value.map(clean);
@@ -169,10 +209,10 @@
   }
   var technicalLabel = (label) => /IP|MAC|DNS|VLAN|MTU|Mbps|latência|perda|enviados|recebidos|mínimo|médio|máximo|RX|TX|RSSI|SNR|banda|canal|largura|padrão|potência|país|velocidade|bytes|lease|uptime|tempo|memória|CPU|RAM|temperatura|máscara|pool|gateway|prefixo|firmware|hardware|serial|clientes|óptico/i.test(label);
   function valueClass(value, technical = true) {
-    const text2 = String(value ?? "");
-    if (!text2 || /^(—|Não disponível|Aguardando|Sem dados|Não configurado)/i.test(text2)) return "muted";
-    if (/^(online|ativo|conectado|connected|up|associado|associated|habilitado|saudável|verificado)$/i.test(text2)) return "value-success";
-    if (/^(offline|erro|falha|desconectado|disconnected|down|sem link)$/i.test(text2)) return "value-danger";
+    const text3 = String(value ?? "");
+    if (!text3 || /^(—|Não disponível|Aguardando|Sem dados|Não configurado)/i.test(text3)) return "muted";
+    if (/^(online|ativo|conectado|connected|up|associado|associated|habilitado|saudável|verificado)$/i.test(text3)) return "value-success";
+    if (/^(offline|erro|falha|desconectado|disconnected|down|sem link)$/i.test(text3)) return "value-danger";
     return technical ? "tech-value" : "";
   }
   function valueMarkup(value, label = "") {
@@ -194,8 +234,9 @@
     return window.__amStore?.capabilities?.[feature] || { read: "UNKNOWN", write: "UNKNOWN", enabled: { read: false, write: false }, evidence: "UNKNOWN" };
   }
   function capBadge(state) {
-    const kind = state === "SUPPORTED" ? "ok" : state === "PARTIAL" || state === "UNKNOWN" ? "warn" : "bad";
-    return badge(state, kind);
+    const labels = { SUPPORTED: "Disponível", PARTIAL: "Parcial", UNKNOWN: "Não detectado", UNSUPPORTED: "Não suportado", READ_ONLY: "Somente leitura" };
+    const kind = state === "SUPPORTED" ? "ok" : state === "PARTIAL" ? "warn" : "neutral";
+    return `<span class="badge ${kind}" title="Suporte informado: ${esc(state)}">${esc(labels[state] || state)}</span>`;
   }
   function toast(message) {
     if (!message) return;
@@ -283,9 +324,9 @@
     for (const r of data) {
       const c = String(connection(r)).toLowerCase();
       const b = String(band(r));
-      let key = /mesh/.test(c) ? "Mesh" : /wi.fi|wlan|wifi/.test(c) ? /2[.,]4/.test(b) ? "Wi-Fi 2.4 GHz" : /5/.test(b) ? "Wi-Fi 5 GHz" : "Wi-Fi — banda não disponível" : /ethernet|lan|eth/.test(c) ? "Ethernet" : "Conexão não disponível";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(r);
+      let key2 = /mesh/.test(c) ? "Mesh" : /wi.fi|wlan|wifi/.test(c) ? /2[.,]4/.test(b) ? "Wi-Fi 2.4 GHz" : /5/.test(b) ? "Wi-Fi 5 GHz" : "Wi-Fi — banda não disponível" : /ethernet|lan|eth/.test(c) ? "Ethernet" : "Conexão não disponível";
+      if (!groups.has(key2)) groups.set(key2, []);
+      groups.get(key2).push(r);
     }
     return `<section class="panel"><h2>Topologia da rede</h2><div class="topology-root">${esc(device)}</div><div class="topology-branches">${[...groups].map(([k, v]) => `<div class="topology-branch"><h3>${esc(k)} · ${v.length}</h3>${cards(v)}</div>`).join("")}</div>${data.length ? "" : '<p class="muted">Nenhum cliente observado nesta sessão.</p>'}</section>`;
   }
@@ -325,7 +366,7 @@
   var streamKey = (s) => s.source + ":" + s.identity;
   var rate = (v) => v == null ? "Não disponível" : Number(v).toFixed(2) + " Mbps";
   function trafficChart(title) {
-    return `<section class="am-panel traffic-main" data-stream=""><div class="am-section-head"><h2>${title}</h2><select data-stream-select aria-label="Interface do gráfico"><option value="">Aguardando fonte</option></select></div><div class="traffic-current"><span>RX <strong class="tech-value" data-value="rx_mbps">—</strong></span><span>TX <strong class="tech-value" data-value="tx_mbps">—</strong></span></div><div class="traffic-chart-wrap"><svg viewBox="0 0 700 260" role="img" aria-label="RX azul e TX violeta"><g class="chart-grid">${[20, 80, 140, 200, 230].map((y) => `<line x1="42" x2="680" y1="${y}" y2="${y}"/>`).join("")}</g><text x="2" y="20" data-axis-max>—</text><text x="2" y="234">0</text><path data-area-rx class="chart-area-rx"/><path data-area-tx class="chart-area-tx"/><path data-line-rx class="chart-line-rx"/><path data-line-tx class="chart-line-tx"/><polyline data-rx opacity="0"/><polyline data-tx opacity="0"/></svg><div class="chart-tooltip" hidden></div></div><div class="chart-legend"><span class="legend-rx">● RX / recebido</span><span class="legend-tx">● TX / enviado</span><small data-chart-label>Aguardando amostras</small></div><p class="muted" data-sample-status></p><div class="traffic-totals"><span>Recebido <strong class="tech-value" data-value="rx_bytes">—</strong></span><span>Enviado <strong class="tech-value" data-value="tx_bytes">—</strong></span></div><details class="traffic-counter-details"><summary>Contadores da interface</summary><p class="mono" data-counter-identity></p><div class="human-fields">${[["rx_packets", "Pacotes RX"], ["tx_packets", "Pacotes TX"], ["rx_errors", "Erros RX"], ["tx_errors", "Erros TX"], ["rx_discard", "Descartes RX"], ["tx_discard", "Descartes TX"]].map(([key, label]) => `<div class="human-field"><span>${label}</span><strong class="tech-value" data-value="${key}">Não disponível</strong></div>`).join("")}</div></details></section>`;
+    return `<section class="am-panel traffic-main" data-stream=""><div class="am-section-head"><h2>${title}</h2><select data-stream-select aria-label="Interface do gráfico"><option value="">Aguardando fonte</option></select></div><div class="traffic-current"><span>RX <strong class="tech-value" data-value="rx_mbps">—</strong></span><span>TX <strong class="tech-value" data-value="tx_mbps">—</strong></span></div><div class="traffic-chart-wrap"><svg viewBox="0 0 700 260" role="img" aria-label="RX azul e TX violeta"><g class="chart-grid">${[20, 80, 140, 200, 230].map((y) => `<line x1="42" x2="680" y1="${y}" y2="${y}"/>`).join("")}</g><text x="2" y="20" data-axis-max>—</text><text x="2" y="234">0</text><path data-area-rx class="chart-area-rx"/><path data-area-tx class="chart-area-tx"/><path data-line-rx class="chart-line-rx"/><path data-line-tx class="chart-line-tx"/><polyline data-rx opacity="0"/><polyline data-tx opacity="0"/></svg><div class="chart-tooltip" hidden></div></div><div class="chart-legend"><span class="legend-rx">● RX / recebido</span><span class="legend-tx">● TX / enviado</span><small data-chart-label>Aguardando amostras</small></div><p class="muted" data-sample-status></p><div class="traffic-totals"><span>Recebido <strong class="tech-value" data-value="rx_bytes">—</strong></span><span>Enviado <strong class="tech-value" data-value="tx_bytes">—</strong></span></div><details class="traffic-counter-details"><summary>Contadores da interface</summary><p class="mono" data-counter-identity></p><div class="human-fields">${[["rx_packets", "Pacotes RX"], ["tx_packets", "Pacotes TX"], ["rx_errors", "Erros RX"], ["tx_errors", "Erros TX"], ["rx_discard", "Descartes RX"], ["tx_discard", "Descartes TX"]].map(([key2, label]) => `<div class="human-field"><span>${label}</span><strong class="tech-value" data-value="${key2}">Não disponível</strong></div>`).join("")}</div></details></section>`;
   }
   function text(el, value) {
     if (el && el.textContent !== value) el.textContent = value;
@@ -352,30 +393,30 @@
     }
     let selected = "", seconds = 300, timer, busy = false, historyStamp = 0;
     const remember = (r) => {
-      const key = streamKey(r), h = state.histories.get(key) || [], timestamp = r.timestamp || Date.now() / 1e3;
+      const key2 = streamKey(r), h = state.histories.get(key2) || [], timestamp = r.timestamp || Date.now() / 1e3;
       if (!h.some((v) => v.timestamp === timestamp)) h.push({ ...r, timestamp });
       h.sort((a, b) => a.timestamp - b.timestamp);
-      state.histories.set(key, h.slice(-2e3));
+      state.histories.set(key2, h.slice(-2e3));
     };
     function plot() {
       const source = state.sources.find((s) => streamKey(s) === selected);
       if (!source) return;
       host.dataset.stream = selected;
       text(host.querySelector("[data-counter-identity]"), source.identity || "Não disponível");
-      for (const key of ["rx_mbps", "tx_mbps", "rx_bytes", "tx_bytes", "rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"]) text(host.querySelector(`[data-value="${key}"]`), key.endsWith("mbps") ? rate(source[key]) : key.endsWith("bytes") ? formatBytes(source.counters?.[key]) : String(source.counters?.[key] ?? "Não disponível"));
+      for (const key2 of ["rx_mbps", "tx_mbps", "rx_bytes", "tx_bytes", "rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"]) text(host.querySelector(`[data-value="${key2}"]`), key2.endsWith("mbps") ? rate(source[key2]) : key2.endsWith("bytes") ? formatBytes(source.counters?.[key2]) : String(source.counters?.[key2] ?? "Não disponível"));
       const h = (state.histories.get(selected) || []).filter((r) => r.timestamp >= Date.now() / 1e3 - seconds), max = Math.max(1, ...h.flatMap((r) => [r.rx_mbps, r.tx_mbps]).filter(Number.isFinite)), min = h[0]?.timestamp, last = h.at(-1)?.timestamp;
       host._chartHistory = h;
       text(host.querySelector("[data-axis-max]"), max.toFixed(1));
-      for (const [direction, key] of [["rx", "rx_mbps"], ["tx", "tx_mbps"]]) {
+      for (const [direction, key2] of [["rx", "rx_mbps"], ["tx", "tx_mbps"]]) {
         const segments = [];
         let current = [];
         for (const row of h) {
-          if (!Number.isFinite(row[key])) {
+          if (!Number.isFinite(row[key2])) {
             if (current.length) segments.push(current);
             current = [];
             continue;
           }
-          current.push([42 + (row.timestamp - min) / (last - min || 1) * 638, 230 - row[key] / max * 210]);
+          current.push([42 + (row.timestamp - min) / (last - min || 1) * 638, 230 - row[key2] / max * 210]);
         }
         if (current.length) segments.push(current);
         host.querySelector(`[data-${direction}]`).setAttribute("points", segments.flat().map((p) => p.join(",")).join(" "));
@@ -397,11 +438,11 @@
       sources.forEach(remember);
       const select = host.querySelector("[data-stream-select]");
       for (const source of sources) {
-        const key = streamKey(source);
-        let option = [...select.options].find((o) => o.value === key);
+        const key2 = streamKey(source);
+        let option = [...select.options].find((o) => o.value === key2);
         if (!option) {
           option = document.createElement("option");
-          option.value = key;
+          option.value = key2;
           select.append(option);
         }
         text(option, source.label || source.ssid || `${{ wan: "WAN", lan: "LAN", wifi: "Wi-Fi", client: "Cliente", wifi_client: "Cliente Wi-Fi" }[source.source] || "Interface"} ${sources.indexOf(source) + 1}`);
@@ -483,7 +524,7 @@
 
   // apps/access_manager/static/js/workspaces/views/overview.js
   var initial = null;
-  var metric2 = (title, value, key) => `<article class="am-metric"><span>${title}</span><strong class="${key === "status" ? ["Conectado", "Ativo"].includes(value) ? "value-success" : ["Desconectado", "Sem link"].includes(value) ? "value-danger" : "muted" : "tech-value"}" ${key ? `data-overview-${key}` : ""}>${esc(value ?? "Não disponível")}</strong></article>`;
+  var metric2 = (title, value, key2) => `<article class="am-metric"><span>${title}</span><strong class="${key2 === "status" ? ["Conectado", "Ativo"].includes(value) ? "value-success" : ["Desconectado", "Sem link"].includes(value) ? "value-danger" : "muted" : "tech-value"}" ${key2 ? `data-overview-${key2}` : ""}>${esc(value ?? "Não disponível")}</strong></article>`;
   async function render2() {
     const scope = currentScope(), paths = ["/api/device", "/api/device/wan", "/api/device/optical", "/api/device/clients", "/api/device/traffic", "/api/device/wifi/ssids", "/api/device/wifi/radios"];
     const results = await Promise.allSettled(paths.map((p) => request(p, { scope })));
@@ -639,6 +680,97 @@
     Promise.allSettled([load("ssids"), load("radios")]).then(() => timing("wifi.load.total", start));
   }
 
+  // apps/access_manager/static/js/shared/lan-ports.js
+  var first = (r, ...keys) => keys.map((k) => r[k]).find((v) => v !== void 0 && v !== null && v !== "");
+  function portState(r, index) {
+    const raw = first(r, "link_state", "status", "state", "estado"), name = first(r, "port", "porta", "name"), id = String(first(r, "id", "_InstID", "interface") ?? name ?? "unknown-" + index), state = /^(up|connected|1|online|true)$/i.test(String(raw)) ? "up" : /^(down|disconnected|0|offline|false|sem link|desconectado)$/i.test(String(raw)) ? "down" : "unknown", disabled = r.enabled === false, speed = first(r, "speed", "velocidade"), client = first(r, "client", "hostname", "mac"), tier = speed && /^\s*(?:1\s*gbps|1000\s*mbps)\s*$/i.test(String(speed)) ? "gigabit" : speed && /^\s*2[.,]5\s*gbps\s*$/i.test(String(speed)) ? "multigig" : speed && /^\s*100\s*mbps\s*$/i.test(String(speed)) ? "fast" : "other";
+    return { id, label: name == null ? "Interface sem identificação" : /^\d+$/.test(String(name)) ? "LAN " + name : String(name), state, disabled, speed: speed == null ? "Velocidade não informada" : String(speed), client: client == null ? "Dispositivo não identificado" : String(client), tier, rx: r.rx_bytes, tx: r.tx_bytes };
+  }
+  var jack = `<svg class="rj45" viewBox="0 0 100 80" aria-hidden="true"><path class="jack-body" d="M8 12h84v50H70v12H30V62H8Z"/><path class="jack-opening" d="M18 22h64v30H62v12H38V52H18Z"/>${Array.from({ length: 8 }, (_, i) => `<path class="jack-pin" d="M${25 + i * 7} 22v16"/>`).join("")}<circle class="port-led" cx="87" cy="7" r="4"/></svg>`;
+  var text2 = (el, v) => {
+    if (el.textContent !== v) el.textContent = v;
+  };
+  function card(p) {
+    return `<article class="lan-port" data-port-id="${esc(p.id)}" data-link="${p.state}" data-speed="${p.tier}"><div class="port-head"><strong>${esc(p.label)}</strong><span data-port-status>${p.state === "up" ? "LINK ATIVO" : p.state === "down" ? "DESCONECTADA" : "NÃO DETECTADO"}</span></div>${jack}<strong class="tech-value" data-port-speed>${esc(p.speed)}</strong><span data-port-client>${esc(p.client)}</span><small data-port-admin>${p.disabled ? "Administrativamente desativada" : ""}</small></article>`;
+  }
+  function portPanel(rows2) {
+    return `<section class="panel lan-hardware"><div class="panel-header"><div><h2>Portas LAN</h2><p class="muted">Link e velocidade reportados pelo equipamento.</p></div><button class="button" id="lan-refresh">Atualizar portas</button></div><p id="lan-feedback" role="status" class="muted">Leitura atual do equipamento.</p><div class="lan-port-grid">${rows2.map((r, i) => card(portState(r, i))).join("") || '<p class="muted">Nenhuma porta observada nesta sessão.</p>'}</div></section>`;
+  }
+  function mountPortPanel(initial2, renderTable) {
+    const scope = currentScope(), host = document.querySelector(".lan-port-grid");
+    let timer, busy = false, previous = new Map(initial2.map((r, i) => {
+      const p = portState(r, i);
+      return [p.id, p];
+    }));
+    const pulses = /* @__PURE__ */ new Map();
+    function update(rows2) {
+      const observed = /* @__PURE__ */ new Set();
+      for (const [i, r] of rows2.entries()) {
+        const p = portState(r, i);
+        if (observed.has(p.id)) continue;
+        observed.add(p.id);
+        let el = [...host.querySelectorAll("[data-port-id]")].find((e) => e.dataset.portId === p.id);
+        if (!el) {
+          host.insertAdjacentHTML("beforeend", card(p));
+          el = host.lastElementChild;
+        }
+        const old = previous.get(p.id);
+        el.dataset.link = p.state;
+        el.dataset.speed = p.tier;
+        text2(el.querySelector("[data-port-status]"), p.state === "up" ? "LINK ATIVO" : p.state === "down" ? "DESCONECTADA" : "NÃO DETECTADO");
+        text2(el.querySelector("[data-port-speed]"), p.speed);
+        text2(el.querySelector("[data-port-client]"), p.client);
+        text2(el.querySelector("[data-port-admin]"), p.disabled ? "Administrativamente desativada" : "");
+        const changed = old && old.state !== p.state;
+        el.classList.toggle("link-changed", Boolean(changed));
+        const delta = old && p.state === "up" && ["rx", "tx"].some((k) => old[k] != null && p[k] != null && Number.isFinite(Number(p[k])) && Number.isFinite(Number(old[k])) && Number(p[k]) > Number(old[k]));
+        if (p.state !== "up") el.classList.remove("port-activity");
+        if (delta) el.classList.add("port-activity");
+        if (delta || changed) {
+          clearTimeout(pulses.get(p.id));
+          pulses.set(p.id, setTimeout(() => {
+            el.classList.remove("port-activity");
+            el.classList.remove("link-changed");
+          }, 240));
+        }
+        previous.set(p.id, p);
+      }
+      for (const el of host.querySelectorAll("[data-port-id]")) if (!observed.has(el.dataset.portId)) {
+        el.dataset.link = "unknown";
+        text2(el.querySelector("[data-port-status]"), "NÃO OBSERVADA");
+        previous.delete(el.dataset.portId);
+      }
+      patchHTML(document.querySelector("#lan-table"), renderTable(rows2));
+    }
+    const poll = async () => {
+      if (busy || !scopeActive(scope)) return;
+      busy = true;
+      clearTimeout(timer);
+      const button = document.querySelector("#lan-refresh");
+      button.disabled = true;
+      try {
+        const data = await request("/api/device/lan", { scope, forceRefresh: true });
+        if (!scopeActive(scope)) return;
+        update(Array.isArray(data) ? data : data?.ports || []);
+        text2(document.querySelector("#lan-feedback"), "Atualizado em " + (/* @__PURE__ */ new Date()).toLocaleTimeString("pt-BR"));
+      } catch (e) {
+        if (scopeActive(scope) && !isCancelled(e)) text2(document.querySelector("#lan-feedback"), "Erro ao consultar: " + e.message + " Valores anteriores preservados.");
+      } finally {
+        busy = false;
+        if (scopeActive(scope)) {
+          button.disabled = false;
+          timer = setTimeout(poll, 5e3);
+        }
+      }
+    };
+    document.querySelector("#lan-refresh").onclick = poll;
+    timer = setTimeout(poll, 5e3);
+    scope.controller.signal.addEventListener("abort", () => {
+      clearTimeout(timer);
+      pulses.forEach(clearTimeout);
+    }, { once: true });
+  }
+
   // apps/access_manager/static/js/workspaces/views/network.js
   var dhcpData;
   var dnsData;
@@ -646,13 +778,21 @@
     const data = await request("/api/device/wan");
     return data.map((r) => `<section class="panel"><h2>${esc(r.name || "Conexão WAN")}</h2><div class="split"><article><h3>Status da conexão</h3>${fields([["Estado", r.status], ["Tipo", r.connection_type], ["IPv4", r.ipv4], ["IPv6", r.ipv6], ["Gateway", r.gateway], ["VLAN", r.vlan]])}</article><article><h3>Autenticação e rede</h3>${fields([["Usuário PPPoE", r.username], ["Serviço", r.service], ["DNS", r.dns], ["MTU", r.mtu], ["NAT", bool(r.nat)], ["Uptime", r.uptime], ["Prefixo IPv6", r.prefix]])}</article></div>${fields([["Recebido", formatBytes(r.rx_bytes)], ["Enviado", formatBytes(r.tx_bytes)]])}<details><summary>Detalhes técnicos</summary>${kv(r.advanced || {})}</details></section>`).join("");
   }
-  async function lan() {
-    const d = await request("/api/device/lan");
+  var lanRows = [];
+  function lanTable(d) {
     return table([{ label: "Porta", keys: ["port", "porta", "name"] }, { label: "Habilitada", render: (r) => esc(typeof r.enabled === "boolean" ? r.enabled ? "Sim" : "Não" : linkStatus(r.admin_state)) }, { label: "Link", render: (r) => {
       const raw = pick(r, "link_state", "status", "state", "estado");
       const label = linkStatus(raw);
       return badge(label, /^(up|1|connected)$/i.test(String(raw)) ? "ok" : "info");
     } }, { label: "Velocidade", keys: ["speed", "velocidade"] }, { label: "Duplex", render: (r) => esc({ full: "Full duplex", half: "Half duplex", auto: "Automático" }[String(r.duplex || "").toLowerCase()] || r.duplex || "Não disponível") }, { label: "Negociação", keys: ["autonegotiation", "negotiation"] }, { label: "Cliente / MAC", keys: ["client", "mac"] }, { label: "RX bytes", keys: ["rx_bytes"] }, { label: "TX bytes", keys: ["tx_bytes"] }, { label: "Erros RX/TX", render: (r) => `${esc(pick(r, "rx_errors"))}/${esc(pick(r, "tx_errors"))}` }], Array.isArray(d) ? d : d?.ports || []);
+  }
+  async function lan() {
+    const d = await request("/api/device/lan");
+    lanRows = Array.isArray(d) ? d : d?.ports || [];
+    return portPanel(lanRows) + `<section id="lan-table">${lanTable(lanRows)}</section>`;
+  }
+  function mountLan() {
+    mountPortPanel(lanRows, lanTable);
   }
   async function dhcpdns() {
     const scope = currentScope();
@@ -674,7 +814,7 @@
   function mountReservations() {
     const edit2 = (row = {}) => {
       const available = dhcpData.reservation_fields || [];
-      const d = dialog(row.id ? "Editar reserva" : "Adicionar reserva", `<form class="form-grid">${available.map((key) => `<div class="field"><label>${{ name: "Nome", ip: "IP", mac: "MAC" }[key]}</label><input name="${key}" value="${esc(row[key] || "")}" ${key === "name" ? "" : "required"}></div>`).join("")}<button class="button primary">Salvar</button></form>`);
+      const d = dialog(row.id ? "Editar reserva" : "Adicionar reserva", `<form class="form-grid">${available.map((key2) => `<div class="field"><label>${{ name: "Nome", ip: "IP", mac: "MAC" }[key2]}</label><input name="${key2}" value="${esc(row[key2] || "")}" ${key2 === "name" ? "" : "required"}></div>`).join("")}<button class="button primary">Salvar</button></form>`);
       const f = d.querySelector("form");
       f.onsubmit = async (e) => {
         e.preventDefault();
@@ -798,7 +938,7 @@
       radiosReady = true;
       patchHTML(host, ` ${radios2.map((r, i) => {
         const band2 = r.band ?? r.banda, stored = savedRadios.find((s) => s.band === band2);
-        return `<section class="profile-section"><h3>Rádio ${esc(band2)}</h3><label class="profile-include"><input type="checkbox" name="include-radio-${i}" ${stored ? "checked" : ""}> Incluir no perfil</label><div class="form-grid">${[["Canal", "channel", r.channel ?? r.canal], ["Largura", "bandwidth", r.bandwidth ?? r.largura], ["Padrão", "standard", r.standard ?? r.padrao], ["Potência", "tx_power", r.tx_power ?? r.potencia], ["País", "country", r.country ?? r.pais]].map(([label, key, current]) => choice(label, `${key}-${i}`, stored?.[key] ?? current, r.options?.[key] || [])).join("")}${choice("Canal automático", `auto_channel-${i}`, stored?.auto_channel ?? r.auto_channel ?? r.canal_automatico, [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}</div></section>`;
+        return `<section class="profile-section"><h3>Rádio ${esc(band2)}</h3><label class="profile-include"><input type="checkbox" name="include-radio-${i}" ${stored ? "checked" : ""}> Incluir no perfil</label><div class="form-grid">${[["Canal", "channel", r.channel ?? r.canal], ["Largura", "bandwidth", r.bandwidth ?? r.largura], ["Padrão", "standard", r.standard ?? r.padrao], ["Potência", "tx_power", r.tx_power ?? r.potencia], ["País", "country", r.country ?? r.pais]].map(([label, key2, current]) => choice(label, `${key2}-${i}`, stored?.[key2] ?? current, r.options?.[key2] || [])).join("")}${choice("Canal automático", `auto_channel-${i}`, stored?.auto_channel ?? r.auto_channel ?? r.canal_automatico, [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}</div></section>`;
       }).join("") || '<section class="profile-section"><p class="muted">Conecte um equipamento para carregar os rádios e suas opções.</p></section>'}`);
       timing("profiles.options.ready", opened);
     };
@@ -843,10 +983,10 @@
         });
         delete wifi.radio;
       }
-      if (dhcpWritable) for (const [input, key] of [["pool-start", "min_address"], ["pool-end", "max_address"], ["lease", "lease_time"], ["dhcp-dns1", "dns1"], ["dhcp-dns2", "dns2"]]) {
+      if (dhcpWritable) for (const [input, key2] of [["pool-start", "min_address"], ["pool-end", "max_address"], ["lease", "lease_time"], ["dhcp-dns1", "dns1"], ["dhcp-dns2", "dns2"]]) {
         const v = String(fd.get(input) || "").trim();
-        if (v) dhcp[key] = v;
-        else delete dhcp[key];
+        if (v) dhcp[key2] = v;
+        else delete dhcp[key2];
       }
       const names = fd.getAll("host-name"), ips = fd.getAll("host-ip");
       const nextHosts = names.map((name, i) => ({ name: String(name).trim(), ip: String(ips[i] || "").trim() })).filter((h) => h.name || h.ip);
@@ -946,13 +1086,13 @@
       try {
         const p = await request("/api/device/factory-reset/preview", { scope, method: "POST", body: "{}" });
         if (!scopeActive(scope)) return;
-        const d = dialog("Restaurar configuração de fábrica?", `<p class="notice danger">${esc(p.impact)}</p><div class="field"><label>Digite RESETAR</label><input id="reset-word" autocomplete="off"></div><p id="reset-result" aria-live="polite"></p>`, `<button class="button" data-cancel>Cancelar</button><button class="button danger" id="reset-apply" disabled>Restaurar fábrica</button>`), apply = d.querySelector("#reset-apply"), word = d.querySelector("#reset-word");
+        const d = dialog("Restaurar configuração de fábrica?", `<p class="notice danger">${esc(p.impact)}</p><div class="field"><label>Digite RESETAR</label><input id="reset-word" autocomplete="off"></div><p id="reset-result" aria-live="polite"></p>`, `<button class="button" data-cancel>Cancelar</button><button class="button danger" id="reset-apply" disabled>Restaurar fábrica</button>`), apply2 = d.querySelector("#reset-apply"), word = d.querySelector("#reset-word");
         d.querySelector("[data-cancel]").onclick = () => d.close();
         word.oninput = () => {
-          apply.disabled = word.value !== "RESETAR";
+          apply2.disabled = word.value !== "RESETAR";
         };
-        apply.onclick = async () => {
-          apply.disabled = true;
+        apply2.onclick = async () => {
+          apply2.disabled = true;
           word.disabled = true;
           try {
             const r = await request("/api/device/factory-reset/apply", { scope: d._requestScope, method: "POST", body: JSON.stringify({ nonce: p.nonce, confirmation: word.value }) });
@@ -993,7 +1133,7 @@
             if (!isCancelled(e)) toast(e.message);
           }
         });
-        host.querySelectorAll("[data-artifact-apply]").forEach((b) => b.onclick = () => apply(items.find((r) => r.id === b.dataset.artifactApply)));
+        host.querySelectorAll("[data-artifact-apply]").forEach((b) => b.onclick = () => apply2(items.find((r) => r.id === b.dataset.artifactApply)));
       } catch (e) {
         if (scopeActive(scope) && !isCancelled(e)) host.textContent = e.message;
       }
@@ -1031,7 +1171,7 @@
         reader.readAsDataURL(file);
       };
     };
-    function apply(item) {
+    function apply2(item) {
       const critical = item.kind === "firmware", word = critical ? "ATUALIZAR" : "RESTAURAR", d = dialog(critical ? "Atualizar firmware?" : "Restaurar configuração?", `<p class="notice danger">${critical ? "Não desligue o equipamento durante a atualização." : "As configurações atuais serão substituídas."} A sessão pode cair e o equipamento pode reiniciar.</p><p>Arquivo: ${esc(item.filename)} · Modelo: ${esc(item.device?.model)} · Firmware: ${esc(item.device?.firmware || "não comprovado")}</p><p>Origem dos metadados: ${item.metadata_provenance === "authenticated_device_export" ? "exportação autenticada" : "declaração do operador; cabeçalho não verificado"}</p><label><input id="artifact-ack" type="checkbox"> Confirmo compatibilidade e impacto</label><div class="field"><label>Digite ${word}</label><input id="artifact-confirm" autocomplete="off"></div><div id="artifact-result"></div>`, `<button class="button danger" id="artifact-submit">${critical ? "Atualizar" : "Restaurar"}</button>`);
       d.querySelector("#artifact-submit").onclick = async (e) => {
         e.currentTarget.disabled = true;
@@ -1138,7 +1278,7 @@
     mountArtifacts();
     document.querySelectorAll("[data-config]").forEach((b2) => b2.onclick = () => {
       const definition = definitions.find((d) => d.feature === b2.dataset.config), data = loaded[definition.feature];
-      editConfig("Editar " + definition.title, "/api/device/" + definition.feature, definition.fields.map(([key, label, type]) => ({ key, label, type, value: data[key] })));
+      editConfig("Editar " + definition.title, "/api/device/" + definition.feature, definition.fields.map(([key2, label, type]) => ({ key: key2, label, type, value: data[key2] })));
     });
     const b = document.querySelector("#reboot-button");
     if (!b || b.disabled) return;
@@ -1187,7 +1327,7 @@
     const technical = `<details><summary>Ver resposta técnica</summary><pre>${esc(JSON.stringify(d.advanced || d, null, 2))}</pre></details>`;
     const head = `<h3>${esc(d.target || "Destino não disponível")}</h3><p>${esc(d.status)} · ${esc(d.interface || "Interface não disponível")} · ${esc(d.protocol || "Protocolo não disponível")}</p>`;
     if (d.kind === "traceroute") return head + table([{ label: "Hop", keys: ["number"] }, { label: "IP / host", render: (r) => esc(r.host || "*") }, ...[0, 1, 2].map((i) => ({ label: `Latência ${i + 1}`, render: (r) => r.latencies_ms?.[i] != null ? `${esc(r.latencies_ms[i])} ms` : "*" })), { label: "Status", render: (r) => r.timeout ? "Timeout" : "Resposta recebida" }], d.hops || [], "Nenhum salto foi fornecido pelo equipamento.") + technical;
-    return head + `<div class="grid">${[["Enviados", "sent"], ["Recebidos", "received"], ["Perda (%)", "loss_percent"], ["Mínimo (ms)", "min_ms"], ["Médio (ms)", "avg_ms"], ["Máximo (ms)", "max_ms"]].map(([label, key]) => metric(label, d[key] ?? "Não disponível")).join("")}</div>` + technical;
+    return head + `<div class="grid">${[["Enviados", "sent"], ["Recebidos", "received"], ["Perda (%)", "loss_percent"], ["Mínimo (ms)", "min_ms"], ["Médio (ms)", "avg_ms"], ["Máximo (ms)", "max_ms"]].map(([label, key2]) => metric(label, d[key2] ?? "Não disponível")).join("")}</div>` + technical;
   }
 
   // apps/access_manager/static/js/workspaces/views/misc.js
@@ -1369,8 +1509,8 @@
         put("chart", '<p class="muted">Nenhuma amostra medida neste período.</p>');
         return;
       }
-      const w = 680, h = 210, left = 42, right = 660, top = 16, bottom = 170, min = points[0].time, max = points.at(-1).time, peak = Math.max(1, ...points.map((p) => p.value)), xy = points.map((p) => [left + (p.time - min) / (max - min || 1) * (right - left), bottom - p.value / peak * (bottom - top)]), coords = xy.map((p) => p.join(",")).join(" "), color = chartMode === "latency" ? "#9278c3" : "#48a77c";
-      put("chart", `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${chartMode === "latency" ? "Latência" : "Perda"}: ${points.length} amostras reais"><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="#e6e3ed"/><text x="2" y="24">${peak.toFixed(1)}</text><text x="2" y="174">0</text>${xy.length > 1 ? `<polygon points="${left},${bottom} ${coords} ${xy.at(-1)[0]},${bottom}" fill="${color}22"/><polyline points="${coords}" fill="none" stroke="${color}" stroke-width="2.5"/>` : ""}${xy.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${color}"><title>${esc(new Date(points[i].time).toLocaleString("pt-BR"))} · ${points[i].value}</title></circle>`).join("")}<text x="42" y="200">${esc(new Date(min).toLocaleTimeString("pt-BR"))}</text><text x="540" y="200">${esc(new Date(max).toLocaleTimeString("pt-BR"))}</text></svg><p class="muted">${points.length} amostras persistidas · ${chartMode === "latency" ? "ms" : "%"} · sem interpolação de amostras ausentes</p>`);
+      const w = 680, h = 210, left = 42, right = 660, top = 16, bottom = 170, min = points[0].time, max = points.at(-1).time, peak = Math.max(1, ...points.map((p) => p.value)), xy = points.map((p) => [left + (p.time - min) / (max - min || 1) * (right - left), bottom - p.value / peak * (bottom - top)]), coords = xy.map((p) => p.join(",")).join(" "), color = chartMode === "latency" ? "var(--accent-soft)" : "var(--chart-loss)";
+      put("chart", `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${chartMode === "latency" ? "Latência" : "Perda"}: ${points.length} amostras reais"><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="var(--border)"/><text x="2" y="24">${peak.toFixed(1)}</text><text x="2" y="174">0</text>${xy.length > 1 ? `<polygon points="${left},${bottom} ${coords} ${xy.at(-1)[0]},${bottom}" fill="color-mix(in srgb,${color} 14%,transparent)"/><polyline points="${coords}" fill="none" stroke="${color}" stroke-width="2.5"/>` : ""}${xy.map((p, i) => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${color}"><title>${esc(new Date(points[i].time).toLocaleString("pt-BR"))} · ${points[i].value}</title></circle>`).join("")}<text x="42" y="200">${esc(new Date(min).toLocaleTimeString("pt-BR"))}</text><text x="540" y="200">${esc(new Date(max).toLocaleTimeString("pt-BR"))}</text></svg><p class="muted">${points.length} amostras persistidas · ${chartMode === "latency" ? "ms" : "%"} · sem interpolação de amostras ausentes</p>`);
     }
     async function loadHistory() {
       const stamp = ++historyStamp;
@@ -1519,13 +1659,14 @@
     diagnostics: { render: diagnostics, mount: mountDiagnostics },
     deployment: { render: deployment },
     wan: { render: wan },
-    lan: { render: lan },
+    lan: { render: lan, mount: mountLan },
     dhcpdns: { render: dhcpdns, mount: mountDhcpDns }
   };
   function syncContext() {
     const s = store.session?.session;
     const connected = Boolean(store.session?.connected);
     document.querySelector("#login-page").hidden = connected;
+    document.querySelector(".login-theme").hidden = connected;
     document.querySelector(".app-shell").hidden = !connected;
     const disconnect = document.querySelector("#disconnect-button");
     const updated = document.querySelector("#ctx-updated");
@@ -1697,6 +1838,7 @@
   var root = document.querySelector(".app-shell");
   if (root && root.dataset.runtimeMounted !== "true") {
     root.dataset.runtimeMounted = "true";
+    mountTheme();
     mountApp().catch((error) => {
       console.error("[Access Manager]", error);
       root.dataset.runtimeMounted = "failed";
