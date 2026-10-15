@@ -134,13 +134,15 @@ def test_typed_command_injection_rejection(kind,value):
     with pytest.raises(ValueError):validate_request(OperationalRequest('show version; reboot','facts'))
 
 
-def test_api_real_vela_lookup_and_stale_device_guard(monkeypatch):
+def test_api_real_vela_lookup_and_stale_device_guard(monkeypatch,tmp_path):
     from tests.test_vela_http_parity import http
     from vela.core.api_router import ApiRouter
     from vela.core.api_server import ApiServer
     from apps.access_manager.application.session_manager import SessionManager
     from apps.access_manager.application.queries.device import DeviceQueryBus
     from apps.access_manager.presentation.api import session as session_api,infrastructure as infra_api
+    from apps.access_manager.infrastructure.juniper.settings import JuniperSettings
+    monkeypatch.setattr(session_api,'juniper_settings',JuniperSettings(tmp_path/'settings.json'))
     p=JuniperProvider(FakeTransport)
     class Router:
         def decide(self,*a,**kwargs):pytest.fail('Juniper must not use HTTP fingerprint')
@@ -168,10 +170,11 @@ def test_netconf_and_explicit_ssh_fallback_preserve_host_verification(monkeypatc
         def close_session(self):calls.append(('close',))
     def connect(**kwargs):calls.append(('connect',kwargs));return Manager()
     monkeypatch.setattr(manager,'connect',connect)
-    t=JuniperTransport();t.connect('example.invalid','u','not-real');assert t.execute(request('facts'))==fixture('facts');t.close()
+    t=JuniperTransport();t.connect('example.invalid','u','not-real');assert t.execute(request('facts')).raw==fixture('facts');t.close()
     assert calls[0][1]['hostkey_verify'] is True and calls[0][1]['allow_agent'] is False
     assert calls[1]==('command','show version','xml') and calls[-1]==('close',)
     class SSH:
+        def get_transport(self):return SimpleNamespace(is_active=lambda:True,is_authenticated=lambda:True,set_keepalive=lambda seconds:None)
         def load_system_host_keys(self):calls.append(('known-hosts',))
         def set_missing_host_key_policy(self,policy):assert isinstance(policy,paramiko.RejectPolicy)
         def connect(self,**kwargs):calls.append(('ssh',kwargs))
@@ -200,6 +203,7 @@ def test_ssh_exec_is_bounded_xml_and_no_local_shell(monkeypatch):
         def close(self):self.closed=True
     channel=Channel();calls=[]
     class SSH:
+        def get_transport(self):return SimpleNamespace(is_active=lambda:True,is_authenticated=lambda:True)
         def exec_command(self,command,**kwargs):calls.append(command);return None,SimpleNamespace(channel=channel),None
     t=JuniperTransport();t.client=SSH();t.kind='ssh'
     assert parsers.facts(t.execute(request('facts')))['model']=='mx204'

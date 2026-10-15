@@ -112,3 +112,14 @@ test('connection offers explicit Juniper and all three transports without HTTP r
  const original=x.w.fetch;x.w.fetch=async(url,options)=>new URL(url).pathname==='/api/session'&&options.method==='POST'?{ok:true,text:async()=>JSON.stringify({connected:true,session:{session_id:'j',vendor:'juniper',model:'mx204',protocol_family:'junos_netconf',capabilities:{}}})}:original(url,options);
  f.elements.host.value='example.invalid';f.elements.username.value='synthetic';f.elements.password.value='synthetic-only';f.elements.port.value='830';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.equal(d.querySelector('#login-page').hidden,true);assert.equal(f.elements.password.value,'');assert.equal(d.querySelector('[data-view=subscribers]').hidden,false);x.w.close();
 });
+
+test('Juniper login discards AD password on failure and keeps corporate layout',async()=>{
+ const x=await boot({'/api/session':{connected:false,session:null},'/api/infrastructure/settings':{last_successful_host:'bng.example.invalid',ssh_port:50022,netconf_port:830,preferred_transport:'ssh'}});
+ const f=x.w.document.querySelector('#connect-form');f.elements.vendor.value='juniper';f.elements.vendor.dispatchEvent(new x.w.Event('change'));
+ assert.equal(f.elements.host.value,'bng.example.invalid');assert.equal(f.elements.ssh_port.value,'50022');
+ assert.ok(x.w.document.querySelector('#login-page').classList.contains('infrastructure-login'));
+ const original=x.w.fetch;x.w.fetch=async(url,options)=>new URL(url).pathname==='/api/session'&&options?.method==='POST'?{ok:true,text:async()=>JSON.stringify({success:false,error:{message:'Autenticação recusada'}})}:original(url,options);
+ f.elements.username.value='corporate-user';f.elements.password.value='never-persist';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();
+ assert.equal(f.elements.password.value,'');assert.equal(f.elements.host.value,'bng.example.invalid');
+ assert.equal(x.w.localStorage.length,0);assert.equal(x.w.sessionStorage.length,0);x.dom.window.close();
+});
