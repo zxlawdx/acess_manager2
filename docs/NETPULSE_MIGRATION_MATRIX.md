@@ -309,3 +309,7 @@ Perfil próprio, menu context/cache/re-auth, clientes LAN/WLAN/DHCP normalizados
 | Windows e teste físico app | Não executados nesta rodada |
 
 Suíte: 464 Python +30 subtestes, 37 frontend. Relatório: JUNIPER_INTEGRATION_REPORT.md. Nome do produto: Access Manager. Migração integral continua pendente.
+
+## Juniper UI / Pajamas adaptado
+
+21 páginas navegáveis com estado e componentes reais, detalhe inline, CPE/interface drawers e modal de identidade SSH. 464 Python +30 subtestes, 44 frontend e QA Vela três resoluções passaram. Backend/protocolos/capabilities inalterados; Logs informa ausência de leitor e busca continua contrato/username/IP. A matriz completa rota/navegação/conteúdo/QA está em JUNIPER_PAJAMAS_REDESIGN_REPORT.md. Sem nova evidência física ou Windows; migração integral não concluída.

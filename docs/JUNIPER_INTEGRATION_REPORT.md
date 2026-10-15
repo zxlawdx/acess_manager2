@@ -49,3 +49,7 @@ Writes remain UNKNOWN/blocked: subscriber disconnect/reconnect, CoA, service/fir
 Fetch/select `feat/juniper-bng`; activate `.venv`; install requirements; run `python tools/sync_frontend.py`, `python manage.py collectstatic --no-tailwind`, `python manage.py runapp`. Select Juniper, enter the authorized server, select SSH/XML and configure the actual SSH port in Advanced (50022 in the supplied environment, not a product default). Verify/trust the fingerprint externally, then authenticate with AD credentials. Search a test contract, select its actual session, compare IP/state/pp0/IDs, open details and choose Access CPE. Use separate CPE credentials, verify Return to subscriber and independent disconnects. Full target checklist: `docs/juniper/PHYSICAL_VALIDATION.md`.
 
 Profiles SHA256 remains `0c04d0a57d4ba19f9fcbdd91534f11252cc4ce1a8a76a29db9ffcab3b820e3de`.
+
+## Atualização visual posterior — Pajamas adaptado
+
+O frontend desta integração recebeu novo shell Juniper, 21 rotas, detalhes laterais e tabs, com drawers para CPE/interfaces e modal SSH preservado. Backend e contratos acima permanecem intactos. Resultado atual: 464 Python +30 subtestes, 44 frontend e QA Vela/Qt três resoluções com transportes sintéticos. Relatório atual de UI/arquivos/matriz por rota/capturas e limites: [JUNIPER_PAJAMAS_REDESIGN_REPORT.md](JUNIPER_PAJAMAS_REDESIGN_REPORT.md). Sem nova validação física ou Windows.

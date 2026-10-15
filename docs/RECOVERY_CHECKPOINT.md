@@ -130,3 +130,9 @@ Continuada feat/juniper-bng a partir de 18c0e52, sem reset/reclone/merge main. D
 Parser agrega detail/extensive/service, vincula child DHCP, distingue três IDs, count0/No such subscriber, XML/CLI text, paginação e framing. RPC AAA corrigido; leitores lazy accounting/rota/FIB/filter/lockout, RADIUS/AAA/FPC/ambiente/LACP/optics acrescentados. Capability/evidência não confundem fixture com físico.
 
 Validação: 464 Python + 30 subtestes, 37 frontend; Vela/API/WebView Qt reais nas três resoluções com transportes remotos sintéticos, handoff ZTE e sessões independentes. QA em screenshots/juniper-mx204. Evidência manual MX204 recebida do usuário; nenhuma nova autenticação física do agente ou execução Windows. Perfis SHA256 preservado. Relatório atual: JUNIPER_INTEGRATION_REPORT.md. Pendentes: full XML alvo por leitor, advanced MAC/interface, topologia física automática comprovada, amostragem/delta, história de assinante, auto protocolo completo e Windows. Writes/CGNAT mapping não promovidos. Migração integral não concluída.
+
+## Juniper — linguagem Pajamas adaptada — 2026-10-15
+
+Continuação de feat/juniper-bng/09959b1. Redesign somente frontend: topbar 48px, sidebar clara com 6 grupos recolhíveis/21 rotas, tabela compacta e detalhe lateral persistente; tabs de sessão, atributos avançados, filtros retornados, interfaces/LACP/óptica em drawers; CPE drawer e host-key modal preservam APIs e sessões. CSS isolado em juniper.css; componentes em shared/juniper-ui.js. Backend/providers/capabilities não alterados.
+
+464 Python +30 subtestes e 44 frontend passaram. QA Vela/Bottle/Qt real, 21 rotas nas três resoluções, com Junos/ZTE e inspeção de host-key sintéticos. Capturas em screenshots/juniper-pajamas; matriz e pendências em JUNIPER_PAJAMAS_REDESIGN_REPORT.md. Logs sem leitor explícito, MAC/Session ID avançado não prometidos, raw não exposto, sem novo teste físico ou Windows. Perfis idênticos. Main sem merge; migração continua pendente.
