@@ -27,8 +27,11 @@ const meta = {juniperOverview:['JUNIPER','Visão geral'],subscribers:['JUNIPER',
   completeDiagnostics:['OPERAÇÕES','Diagnóstico completo'], profiles:['OPERAÇÕES','Perfis'], management:['OPERAÇÕES','Gerenciamento'],
   capabilities:['AVANÇADO','Capabilities'], deployment:['AVANÇADO','Implantação']
 };
-const views = {juniperOverview:{render:juniper.overview},subscribers:{render:juniper.subscribers,mount:juniper.mountSubscribers,unmount:juniper.unmountSubscribers},juniperInterfaces:{render:juniper.interfaces,mount:juniper.mountInterfaces},juniperSystem:{render:juniper.system,mount:juniper.mountSystem},juniperDiagnostics:{render:juniper.diagnostics,mount:juniper.mountDiagnostics},
-  overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
+Object.assign(meta,Object.fromEntries(Object.entries(juniper.titles).map(([key,[group,title]])=>[key,[`Infraestrutura / Juniper / ${group}`,title]])));
+meta.subscribers[1]='Assinantes PPPoE';
+const juniperRoutes=Object.fromEntries(Object.keys(juniper.titles).map(key=>[key,juniper.routeView(key)]));
+const views = {
+  ...juniperRoutes,overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
   traffic, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
   wan:{render:network.wan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
 };
@@ -37,7 +40,9 @@ function syncContext() {
   const s = store.session?.session;
   const connected=Boolean(store.session?.connected);
   const infrastructure=s?.vendor==='juniper';
-  document.querySelectorAll('#sidebar .nav,#sidebar .nav-group').forEach(element=>{element.hidden=infrastructure?!element.hasAttribute('data-juniper-nav'):element.hasAttribute('data-juniper-nav')});
+  document.querySelector('.app-shell').classList.toggle('juniper-shell',infrastructure);
+  document.querySelector('#action-dialog').classList.toggle('juniper-surface',infrastructure);
+  document.querySelectorAll('#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group').forEach(element=>{element.hidden=infrastructure?!element.hasAttribute('data-juniper-nav'):element.hasAttribute('data-juniper-nav')});
   document.querySelector('#login-page').hidden=connected;
   document.querySelector('.app-shell').hidden=!connected;
   let back=document.querySelector('#return-subscriber');
@@ -50,17 +55,17 @@ function syncContext() {
 }
 
 async function render(name = store.view,background=false) {
-  if(store.session?.session?.vendor==='juniper'&&!['juniperOverview','subscribers','juniperInterfaces','juniperSystem','juniperDiagnostics'].includes(name))name='juniperOverview';
-  else if(store.session?.session?.vendor!=='juniper'&&['juniperOverview','subscribers','juniperInterfaces','juniperSystem','juniperDiagnostics'].includes(name))name='overview';
+  if(store.session?.session?.vendor==='juniper'&&!Object.hasOwn(juniperRoutes,name))name='juniperOverview';
+  else if(store.session?.session?.vendor!=='juniper'&&Object.hasOwn(juniperRoutes,name))name='overview';
   const scope=background?currentScope():beginView(name);
   if(!background){views[store.view]?.unmount?.();const d=document.querySelector('#action-dialog');if(d?.open)d.close()}
   const state={generation:scope.generation,loading:true,error:null};viewStates.set(name,state);scope.controller.signal.addEventListener('abort',()=>{state.loading=false},{once:true});
   store.view = name;
-  document.querySelectorAll('.nav').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('.nav').forEach(b => {const active=b.dataset.view===name;b.classList.toggle('active',active);if(active){b.setAttribute('aria-current','page');const group=b.closest('details');if(group)group.open=true}else b.removeAttribute('aria-current')});
   const [kicker,title] = meta[name] || meta.overview;
   const kickerEl = document.querySelector('#page-kicker');
   const titleEl = document.querySelector('#page-title');
-  if (kickerEl) kickerEl.textContent = kicker;
+  if(kickerEl){if(Object.hasOwn(juniperRoutes,name))kickerEl.innerHTML=`<button class="j-crumb" data-juniper-route="juniperOverview">Infraestrutura</button> / <button class="j-crumb" data-juniper-route="juniperOverview">Juniper</button> / ${esc(juniper.titles[name][0])}`;else kickerEl.textContent=kicker}
   if (titleEl) titleEl.textContent = title;
   document.querySelector('.page-heading').hidden=['overview','traffic','completeDiagnostics'].includes(name);
 
@@ -164,6 +169,11 @@ export async function mountApp() {
   workspace = document.querySelector('#workspace');
   if (!workspace) throw new Error('Workspace do Access Manager não foi encontrado.');
 
+  const oldNav=document.querySelectorAll('[data-juniper-nav]');oldNav.forEach(n=>n.remove());
+  document.querySelector('#sidebar').insertAdjacentHTML('afterbegin',juniper.navigation.map(([group,items],index)=>`<details class="juniper-nav-group" data-juniper-nav hidden ${index<2?'open':''}><summary>${esc(group)}</summary>${items.map(([route,label])=>`<button class="nav" data-juniper-nav data-view="${route}" hidden><span>${esc(label)}</span></button>`).join('')}</details>`).join(''));
+  document.querySelector('#juniper-help').onclick=()=>dialog('Ajuda · Juniper / Junos BNG','<p>Busque o contrato, selecione uma sessão e consulte detalhes sem sair da lista. Leituras avançadas são feitas sob demanda.</p><p>O acesso ao CPE usa credenciais separadas. Voltar ao assinante mantém a sessão Juniper; portas inacessíveis não confirmam assinante offline.</p>');
+  document.addEventListener('juniper-navigate',event=>render(event.detail));
+  document.addEventListener('click',event=>{const b=event.target.closest('[data-juniper-route]');if(b)render(b.dataset.juniperRoute)});
   document.querySelectorAll('.nav').forEach(b => {
     b.onclick = () => {
       document.querySelector('#sidebar')?.classList.remove('open');
@@ -178,17 +188,17 @@ export async function mountApp() {
   if (!form) throw new Error('Formulário de conexão não foi encontrado.');
   form.addEventListener('submit', connectFromForm);
   try{infrastructureSettings=await request('/api/infrastructure/settings')}catch{}
-  const syncVendor=()=>{const juniper=form.elements.vendor.value==='juniper';document.querySelector('#juniper-connection').hidden=!juniper;form.querySelector('.https-toggle').hidden=juniper;
-   document.querySelector('#login-page').classList.toggle('infrastructure-login',juniper);
+  const syncVendor=event=>{const juniper=form.elements.vendor.value==='juniper';document.querySelector('#juniper-connection').hidden=!juniper;form.querySelector('.https-toggle').hidden=juniper;
+   document.querySelector('#login-page').classList.toggle('infrastructure-login',juniper);document.querySelector('#action-dialog').classList.toggle('juniper-surface',juniper);
    form.elements.password.autocomplete=juniper?'off':'current-password';form.elements.username.autocomplete=juniper?'off':'username';
    form.querySelector('[for=connection-host]').textContent=juniper?'Servidor':'IP ou IP:porta';
    form.querySelector('[for=connection-user]').textContent=juniper?'Usuário AD':'Usuário';form.querySelector('[for=connection-password]').textContent=juniper?'Senha AD':'Senha';
-   if(juniper){form.elements.host.value=infrastructureSettings.last_successful_host||infrastructureSettings.default_host||'';form.elements.ssh_port.value=infrastructureSettings.ssh_port||22;form.elements.netconf_port.value=infrastructureSettings.netconf_port||830;form.elements.transport.value=infrastructureSettings.preferred_transport||'ssh'}
+   if(juniper){if(event?.type==='change'||!form.elements.host.value)form.elements.host.value=infrastructureSettings.last_successful_host||infrastructureSettings.default_host||'';form.elements.ssh_port.value=infrastructureSettings.ssh_port||22;form.elements.netconf_port.value=infrastructureSettings.netconf_port||830;form.elements.transport.value=infrastructureSettings.preferred_transport||'ssh'}
    document.querySelector('.connection-security').textContent=juniper?'Use sua conta corporativa no Junos. A senha é descartada após cada tentativa.':'As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.'};
   form.elements.vendor.onchange=syncVendor;syncVendor();
   document.querySelector('#inspect-host-key').onclick=async()=>{
-   try{const info=await request('/api/infrastructure/host-key',{method:'POST',body:JSON.stringify({host:form.elements.host.value,port:form.elements.transport.value==='netconf'?form.elements.netconf_port.value:form.elements.ssh_port.value})});
-    const d=dialog('Identidade SSH do servidor',`<p>${esc(info.host)}:${esc(info.port)} · ${esc(info.status)}</p><p>Chave apresentada: <strong>${esc(info.fingerprint)}</strong></p>${info.previous_fingerprints.length?`<p>Chaves anteriores: ${info.previous_fingerprints.map(esc).join(', ')}</p>`:''}<p>Compare a impressão digital com uma fonte confiável antes de aceitar. Uma chave alterada bloqueia a conexão.</p>`,`<button class="button primary" data-trust-key>Confirmei a identidade — confiar nesta chave</button>`);
+   try{const info=await request('/api/infrastructure/host-key',{method:'POST',body:JSON.stringify({host:store.session?.connected&&store.session.session?.vendor==='juniper'?store.session.session.host:form.elements.host.value,port:form.elements.transport.value==='netconf'?form.elements.netconf_port.value:form.elements.ssh_port.value})});
+    const d=dialog('Identidade SSH do servidor',`<div class="j-trust-body"><div class="j-trust-alert ${info.status==='HOST_KEY_CHANGED'?'changed':''}" role="alert"><strong>${info.status==='HOST_KEY_CHANGED'?'A chave SSH apresentada pelo servidor mudou':info.status==='HOST_KEY_TRUSTED'?'Chave SSH reconhecida':'Primeiro acesso a este servidor'}</strong><p>Compare a impressão digital com uma fonte confiável antes de aceitar. Uma chave alterada bloqueia a conexão.</p></div><dl class="j-kv"><div><dt>Servidor</dt><dd>${esc(info.host)}:${esc(info.port)}</dd></div><div><dt>Algoritmo</dt><dd>${esc(info.algorithm||'—')}</dd></div><div><dt>Fingerprint apresentado</dt><dd>${esc(info.fingerprint)}</dd></div>${info.previous_fingerprints.length?`<div><dt>Fingerprints anteriores</dt><dd>${info.previous_fingerprints.map(esc).join(', ')}</dd></div>`:''}</dl></div>`,`<button class="button primary" data-trust-key>Confirmei a identidade — confiar nesta chave</button>`);
     d.querySelector('[data-trust-key]').onclick=async event=>{event.currentTarget.disabled=true;try{await request('/api/infrastructure/host-key/trust',{method:'POST',body:JSON.stringify({...info,confirm:true})});d.close();toast('Chave confiável para este servidor e porta.')}catch(e){toast(e.message);if(d.open)event.currentTarget.disabled=false}};
    }catch(e){toast(e.message)}
   };

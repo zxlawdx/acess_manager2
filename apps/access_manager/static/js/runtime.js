@@ -60,7 +60,7 @@
   var cacheSession = null;
   var revision = 0;
   var scopeId = 0;
-  var clone = (value) => JSON.parse(JSON.stringify(value));
+  var clone = (value2) => JSON.parse(JSON.stringify(value2));
   var snapshots = /* @__PURE__ */ new Map();
   var pending = /* @__PURE__ */ new Map();
   var cachedPaths = /* @__PURE__ */ new Set(["/api/device", "/api/device/wifi", "/api/device/wifi/ssids", "/api/device/wifi/radios", "/api/device/wan", "/api/device/lan", "/api/device/dhcp", "/api/device/dns", "/api/profiles", "/api/device/dmz", "/api/device/upnp", "/api/device/tr069", "/api/device/firewall"]);
@@ -100,10 +100,10 @@
     }
     return key;
   }
-  function clean(value) {
-    if (Array.isArray(value)) return value.map(clean);
-    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).filter(([k]) => !/(password|passwd|senha|secret|token|authorization)/i.test(k)).map(([k, v]) => [k, clean(v)]));
-    return value;
+  function clean(value2) {
+    if (Array.isArray(value2)) return value2.map(clean);
+    if (value2 && typeof value2 === "object") return Object.fromEntries(Object.entries(value2).filter(([k]) => !/(password|passwd|senha|secret|token|authorization)/i.test(k)).map(([k, v]) => [k, clean(v)]));
+    return value2;
   }
   function cached(path2) {
     sessionKey();
@@ -121,8 +121,8 @@
   function loadResource(path2, { scope = currentScope(), data, error, refresh = false } = {}) {
     const entry = cached(path2);
     if (entry !== null && scopeActive(scope)) data(entry);
-    return request(path2, { scope, forceRefresh: refresh || entry === null || Date.now() - (snapshots.get(path2)?.time || 0) > 3e3 }).then((value) => {
-      if (scopeActive(scope)) data(value);
+    return request(path2, { scope, forceRefresh: refresh || entry === null || Date.now() - (snapshots.get(path2)?.time || 0) > 3e3 }).then((value2) => {
+      if (scopeActive(scope)) data(value2);
     }).catch((e) => {
       if (scopeActive(scope) && !isCancelled(e)) error?.(e);
     });
@@ -143,13 +143,13 @@
     const scheme = s?.metadata?.scheme;
     document.querySelector("#ctx-host").textContent = s?.host ? scheme ? `${scheme}://${s.host}` : s.host : "—";
     const online = Boolean(store.session?.connected);
-    const status2 = document.querySelector("#ctx-status");
-    status2.textContent = online ? "● Online" : "○ Desconectado";
-    status2.style.color = online ? "var(--success)" : "";
+    const status3 = document.querySelector("#ctx-status");
+    status3.textContent = online ? "● Online" : "○ Desconectado";
+    status3.style.color = online ? "var(--success)" : "";
   }
 
   // apps/access_manager/static/js/shared/ui.js
-  var esc = (value) => String(value ?? "—").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  var esc = (value2) => String(value2 ?? "—").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   var pick = (obj, ...keys) => {
     for (const k of keys) {
       const v = obj?.[k];
@@ -157,31 +157,31 @@
     }
     return "—";
   };
-  function badge(value, kind = "info") {
-    return `<span class="badge ${kind}">${esc(value)}</span>`;
+  function badge(value2, kind = "info") {
+    return `<span class="badge ${kind}">${esc(value2)}</span>`;
   }
   var technicalLabel = (label) => /IP|MAC|DNS|VLAN|MTU|Mbps|latência|perda|enviados|recebidos|mínimo|médio|máximo|RX|TX|RSSI|SNR|banda|canal|largura|padrão|potência|país|velocidade|bytes|lease|uptime|tempo|memória|CPU|RAM|temperatura|máscara|pool|gateway|prefixo|firmware|hardware|serial|clientes|óptico/i.test(label);
-  function valueClass(value, technical = true) {
-    const text2 = String(value ?? "");
+  function valueClass(value2, technical = true) {
+    const text2 = String(value2 ?? "");
     if (!text2 || /^(—|Não disponível|Aguardando|Sem dados|Não configurado)/i.test(text2)) return "muted";
     if (/^(online|ativo|conectado|connected|up|associado|associated|habilitado|saudável|verificado)$/i.test(text2)) return "value-success";
     if (/^(offline|erro|falha|desconectado|disconnected|down|sem link)$/i.test(text2)) return "value-danger";
     return technical ? "tech-value" : "";
   }
-  function valueMarkup(value, label = "") {
-    const v = Array.isArray(value) ? value.join(", ") || "Não disponível" : value ?? "Não disponível";
+  function valueMarkup(value2, label = "") {
+    const v = Array.isArray(value2) ? value2.join(", ") || "Não disponível" : value2 ?? "Não disponível";
     return `<span class="${valueClass(v, technicalLabel(label))}">${esc(v)}</span>`;
   }
-  function metric(label, value, detail = "") {
-    return `<article class="metric"><label>${esc(label)}</label><strong class="${valueClass(value)}">${esc(value)}</strong>${detail ? `<small>${esc(detail)}</small>` : ""}</article>`;
+  function metric(label, value2, detail = "") {
+    return `<article class="metric"><label>${esc(label)}</label><strong class="${valueClass(value2)}">${esc(value2)}</strong>${detail ? `<small>${esc(detail)}</small>` : ""}</article>`;
   }
   function kv(data) {
     const items = Object.entries(data || {}).filter(([, v]) => v !== void 0 && v !== null && typeof v !== "object");
     return `<div class="kv-grid">${items.map(([k, v]) => `<div class="kv"><label>${esc(k.replaceAll("_", " "))}</label><span>${valueMarkup(typeof v === "boolean" ? v ? "Ativo" : "Inativo" : v, k)}</span></div>`).join("")}</div>`;
   }
-  function table(columns2, rows2, empty = "Nenhum registro encontrado") {
-    if (!Array.isArray(rows2) || !rows2.length) return `<div class="empty-state"><span>${esc(empty)}</span></div>`;
-    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows2.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  function table(columns2, rows3, empty2 = "Nenhum registro encontrado") {
+    if (!Array.isArray(rows3) || !rows3.length) return `<div class="empty-state"><span>${esc(empty2)}</span></div>`;
+    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows3.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
   function cap(feature) {
     return window.__amStore?.capabilities?.[feature] || { read: "UNKNOWN", write: "UNKNOWN", enabled: { read: false, write: false }, evidence: "UNKNOWN" };
@@ -203,7 +203,7 @@
     const d = document.querySelector("#action-dialog");
     d._requestScope?.controller.abort();
     if (d.open) d.close();
-    d.classList.remove("drawer", "profile-dialog", "juniper-dialog");
+    d.classList.remove("drawer", "profile-dialog", "juniper-dialog", "j-drawer");
     const scope = childScope();
     d._requestScope = scope;
     document.querySelector("#dialog-body").innerHTML = `<div class="dialog-inner"><div class="dialog-header"><h2 id="dialog-title">${esc(title)}</h2><button class="icon-button" data-close-dialog aria-label="Fechar">×</button></div>${content}${actions ? `<div class="dialog-footer">${actions}</div>` : ""}</div>`;
@@ -237,7 +237,7 @@
     return `${x.toFixed(i ? 2 : 0)} ${units[i]}`;
   }
   function fields(items) {
-    return `<div class="human-fields">${items.map(([label, value]) => `<div class="human-field"><span class="muted">${esc(label)}</span><strong>${valueMarkup(value, label)}</strong></div>`).join("")}</div>`;
+    return `<div class="human-fields">${items.map(([label, value2]) => `<div class="human-field"><span class="muted">${esc(label)}</span><strong>${valueMarkup(value2, label)}</strong></div>`).join("")}</div>`;
   }
   function uptime(v) {
     if (v == null || v === "") return "—";
@@ -248,140 +248,307 @@
   }
   var linkStatus = (v) => ({ connected: "Conectado", disconnected: "Desconectado", up: "Ativo", down: "Sem link", unknown: "Desconhecido", associated: "Associado", enabled: "Habilitado", disabled: "Desabilitado", "1": "Ativo", "0": "Inativo" })[String(v ?? "").toLowerCase()] || v || "Não disponível";
 
+  // apps/access_manager/static/js/shared/juniper-ui.js
+  var button = (label, route) => `<button class="button" data-juniper-route="${esc(route)}">${esc(label)}</button>`;
+  var empty = (title, description = "") => `<div class="j-empty"><strong>${esc(title)}</strong><p>${esc(description)}</p></div>`;
+  var status = (value2) => `<span class="j-status ${/^(active|ativo|up|online|session up)$/i.test(value2 || "") ? "ok" : ""}"><i></i>${esc({ Active: "Ativo", Online: "Online" }[value2] || value2 || "Não disponível")}</span>`;
+  var kv2 = (items) => `<dl class="j-kv">${items.map(([label, value2]) => `<div><dt>${esc(label)}</dt><dd>${esc(Array.isArray(value2) ? value2.join(", ") || "—" : value2 ?? "—")}</dd></div>`).join("")}</dl>`;
+  function drawer(title, content, actions = "") {
+    const d = dialog(title, `<div class="j-drawer-content">${content}</div>`, actions);
+    d.classList.add("j-drawer");
+    return d;
+  }
+  function tabs(items, active2, attribute = "data-j-tab") {
+    return `<div class="j-tabs" role="tablist">${items.map(([id, label]) => `<button type="button" role="tab" aria-selected="${id === active2}" ${attribute}="${esc(id)}" class="${id === active2 ? "active" : ""}">${esc(label)}</button>`).join("")}</div>`;
+  }
+  function dataTable(columns2, rows3, selectAttribute = "") {
+    if (!rows3?.length) return empty("Nenhum registro retornado", "A ausência de dados não confirma falha no equipamento.");
+    return `<div class="j-table-scroll"><table class="data-table"><thead><tr>${columns2.map(([label]) => `<th scope="col">${esc(label)}</th>`).join("")}</tr></thead><tbody>${rows3.map((row, index) => `<tr ${selectAttribute ? `${selectAttribute}="${index}"` : ""}>${columns2.map(([, render10]) => `<td>${render10(row, index)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+
   // apps/access_manager/static/js/workspaces/views/juniper.js
   var session = () => store.session?.session;
   var read = (path2, data = {}, scope = currentScope()) => request("/api/infrastructure/" + path2, { scope, method: "POST", body: JSON.stringify({ ...data, app_session_id: session()?.session_id }) });
-  var copy = (value) => value == null ? "—" : `<span class="juniper-value" title="${esc(value)}">${esc(value)}</span><button class="icon-button" type="button" data-copy-juniper="${esc(value)}" aria-label="Copiar valor"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor"><rect x="5" y="5" width="9" height="9" rx="1"/><path d="M3 11H2V2h9v1"/></svg></button>`;
+  var go = (route) => document.dispatchEvent(new CustomEvent("juniper-navigate", { detail: route }));
+  var copy = (value2) => value2 == null ? "—" : `<code>${esc(value2)}</code><button class="icon-button" data-copy-juniper="${esc(value2)}" aria-label="Copiar ${esc(value2)}" title="Copiar valor"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1"/><path d="M3 11H2V2h9v1"/></svg></button>`;
   function wireCopy(root2 = document) {
-    root2.querySelectorAll("[data-copy-juniper]").forEach((button) => button.onclick = async () => {
+    root2.querySelectorAll("[data-copy-juniper]").forEach((b) => b.onclick = async () => {
       try {
-        await navigator.clipboard.writeText(button.dataset.copyJuniper);
+        await navigator.clipboard.writeText(b.dataset.copyJuniper);
         toast("Copiado.");
       } catch {
-        toast("Não foi possível copiar. Selecione o valor exibido.");
+        toast("Não foi possível copiar.");
       }
     });
   }
+  var sourceId = null;
+  var query = "";
+  var selected = null;
+  var rows = [];
+  var candidates = [];
+  var controller = null;
+  var generation2 = 0;
+  var selectionGeneration = 0;
+  var tabGeneration = 0;
+  var tab = "summary";
+  var lastSubscriberRoute = null;
+  function ensureContext() {
+    if (sourceId !== session()?.session_id) {
+      sourceId = session()?.session_id;
+      query = "";
+      selected = null;
+      rows = [];
+      candidates = [];
+      tab = "summary";
+      lastSubscriberRoute = null;
+    }
+  }
+  var navigation = [
+    ["Visão geral", [["juniperOverview", "Visão geral"]]],
+    ["Assinantes", [["subscribers", "Buscar assinante"], ["juniperSubscriber", "Sessão PPPoE"], ["juniperAccounting", "Accounting"], ["juniperServices", "Serviços"]]],
+    ["Infraestrutura", [["juniperInterfaces", "Interfaces"], ["juniperLacp", "LACP"], ["juniperOptics", "Óptica"], ["juniperRouting", "Roteamento"]]],
+    ["AAA", [["juniperRadius", "RADIUS"], ["juniperAuth", "Autenticação"], ["juniperAaaAccounting", "Accounting AAA"], ["juniperDynamic", "Dynamic Requests"]]],
+    ["Diagnóstico", [["juniperPppoe", "PPPoE"], ["juniperLockout", "Lockout"], ["juniperDiagnostics", "Ping / Traceroute"], ["juniperLogs", "Logs"]]],
+    ["Sistema", [["juniperSystem", "Routing Engine"], ["juniperFpc", "FPC / Chassis"], ["juniperEnvironment", "Ambiente"], ["juniperHardware", "Hardware"]]]
+  ];
+  var titles = Object.fromEntries(navigation.flatMap(([group, items]) => items.map(([id, label]) => [id, [group, label]])));
+  var labels = { username: "Usuário PPPoE", contract: "Contrato", state: "Estado", interface: "Interface", underlying_interface: "Underlying", session_id: "Subscriber Session ID", subscriber_session_id: "Subscriber Session ID", pppoe_session_id: "PPPoE Session ID", id: "Service Session ID", mac_address: "MAC", ipv4_address: "IPv4", ipv6_addresses: "IPv6", ipv6_prefixes: "Prefixos IPv6", routing_instance: "Routing instance", dynamic_profile_name: "Perfil dinâmico", bandwidth_in: "Shaping IN", bandwidth_out: "Shaping OUT", input_bytes: "Input bytes", output_bytes: "Output bytes", input_packets: "Input packets", output_packets: "Output packets", radius_accounting_id: "RADIUS Accounting ID", profile: "Profile", address: "Servidor", authentication_port: "Auth port", accounting_port: "Accounting port", preauthentication_port: "Preauth port", cumulative: "Contadores acumulados", current_incident: "Incidente atual", subscriber_offline: "Assinante offline", subscriber_match: "MAC do assinante localizado", total_clients_in_lockout: "Clientes em lockout neste segmento", semantics: "Semântica", bitrate_mbps: "Mbps (requer amostras)", temperature: "Temperatura", voltage: "Tensão", lanes: "Lanes", lane: "Lane", tx_power: "TX", rx_power: "RX", bias_current: "Bias", slot: "Slot", cpu_idle_percent: "CPU idle (%)", memory_used_percent: "Memória (%)", status: "Estado", mux_state: "MUX", synchronization: "Sync", name: "Nome" };
+  function value(v) {
+    return v === true ? "Sim" : v === false ? "Não" : v ?? "—";
+  }
+  function detailData(data) {
+    if (Array.isArray(data)) {
+      if (!data.length) return empty("Nenhum registro retornado");
+      if (data.every((x) => x && typeof x === "object" && !Array.isArray(x))) {
+        const keys = [...new Set(data.flatMap(Object.keys))].filter((k) => data.some((x) => x[k] != null && typeof x[k] !== "object"));
+        return dataTable(keys.map((k) => [labels[k] || k.replaceAll("_", " "), (row) => esc(value(row[k]))]), data) + data.filter((x) => Object.values(x).some((v) => v && typeof v === "object")).map((x) => detailData(Object.fromEntries(Object.entries(x).filter(([, v]) => v && typeof v === "object")))).join("");
+      }
+      return `<p>${esc(data.join(", "))}</p>`;
+    }
+    if (data && typeof data === "object") {
+      const entries = Object.entries(data).filter(([k]) => !["raw_capability_metadata", "underlying_interface_equality_required", "semantics"].includes(k));
+      return kv2(entries.filter(([, v]) => v == null || typeof v !== "object").map(([k, v]) => [labels[k] || k.replaceAll("_", " "), value(v)])) + entries.filter(([, v]) => v && typeof v === "object").map(([k, v]) => `<section class="j-section"><h3>${esc(labels[k] || k.replaceAll("_", " "))}</h3>${detailData(v)}</section>`).join("");
+    }
+    return `<p>${esc(value(data))}</p>`;
+  }
+  var panel = (title, content, actions = "") => `<section class="panel j-panel"><div class="j-panel-header"><h2>${esc(title)}</h2>${actions}</div>${content}</section>`;
+  function selectedRequired() {
+    return empty("Selecione um assinante", "Busque o contrato, usuário PPPoE ou IP e escolha a sessão correta.") + button("Buscar assinante", "subscribers");
+  }
   async function overview() {
-    const data = await read("system");
-    return `<section class="panel"><h2>${esc(data.model)} · Juniper</h2><p class="muted">Equipamento de infraestrutura · ${esc(data.os)}</p>${fields([["Hostname", data.hostname], ["Junos", data.firmware], ["Família", data.family], ["Tempo ligado", uptime(data.uptime_seconds)], ["Transporte", session()?.protocol_family]])}</section><section class="panel"><h2>Atendimento PPPoE</h2><p>Abra Assinantes PPPoE para consultar contrato, usuário ou IP. As buscas são filtradas no concentrador e não carregam o inventário global.</p><p class="muted">Subscriber management será confirmado por resposta do equipamento. Falhas dessa leitura não impedem consultar facts e interfaces.</p></section>`;
+    ensureContext();
+    const results = await Promise.allSettled([read("system"), read("resources"), read("interfaces")]);
+    const data = results[0].status === "fulfilled" ? results[0].value : null;
+    if (!data) throw results[0].reason;
+    const resources = results[1].status === "fulfilled" ? results[1].value : [], interfaces2 = results[2].status === "fulfilled" ? results[2].value : [];
+    const re = resources[0], idle = Number(re?.cpu_idle_percent), cpu = re?.cpu_idle_percent != null && Number.isFinite(idle) ? `${100 - idle}%` : "—";
+    return `<div class="j-intro"><div><h2>Juniper ${esc(data.model)}</h2><p>${esc(data.hostname || "—")} · ${esc(session()?.host)} · Junos ${esc(data.firmware || "—")}</p></div><div>${button("Buscar assinante", "subscribers")}<button class="button" data-j-refresh>Atualizar</button><button class="button" data-j-identity>Identidade SSH</button></div></div><div class="j-metrics">${[["Conexão", store.session?.connected ? "Online" : "Desconectado"], ["Routing Engine", re?.state || "—"], ["CPU", cpu], ["Memória", re?.memory_used_percent != null ? `${re.memory_used_percent}%` : "—"], ["Tempo ligado", uptime(data.uptime_seconds)]].map(([k, v]) => `<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("")}</div><div class="j-overview-grid">${panel("Infraestrutura", dataTable([["Interface", (r) => copy(r.name)], ["Admin", (r) => esc(r.admin_state)], ["Link", (r) => status(r.oper_state)]], interfaces2), button("Ver interfaces", "juniperInterfaces"))}${panel("AAA / RADIUS", `<p>Estado dos servidores e contadores sob demanda.</p><div class="j-link-list">${button("Servidores RADIUS", "juniperRadius")}${button("Autenticação", "juniperAuth")}${button("Accounting", "juniperAaaAccounting")}${button("Dynamic Requests", "juniperDynamic")}</div>`)}${panel("Identidade do equipamento", kv2([["Modelo", data.model], ["Junos", data.firmware], ["Família", data.family], ["Transporte", session()?.protocol_family]]))}</div>`;
   }
   function subscribers() {
-    if (lastInfraId !== session()?.session_id) {
-      lastQuery = "";
-      lastInfraId = session()?.session_id;
-    }
-    return `<section class="panel"><h2>Assinantes PPPoE</h2><form id="subscriber-search" class="inline-actions"><div class="field"><label for="subscriber-query">Contrato / usuário PPPoE / IP</label><input id="subscriber-query" name="query" required maxlength="80" autocomplete="off" placeholder="000123 ou brd_000123"></div><button class="button primary" type="submit">Buscar</button><button class="button" type="button" id="subscriber-cancel" disabled>Cancelar busca</button></form><p class="muted">Prefixos conhecidos: brd_, cdy_ e 364_. Zeros à esquerda são preservados.</p><p id="subscriber-status" role="status">Informe o contrato para consultar sessões ativas.</p></section><div id="subscriber-results"></div>`;
+    ensureContext();
+    return `<div class="j-subscriber-grid"><section class="panel j-panel"><div class="j-panel-header"><h2>Assinantes</h2><span id="subscriber-count">${rows.length} resultados</span></div><form id="subscriber-search" class="j-toolbar"><label class="sr-only" for="subscriber-query">Contrato / usuário PPPoE / IP</label><input id="subscriber-query" name="query" required maxlength="80" value="${esc(query)}" placeholder="Buscar contrato, usuário PPPoE ou IP"><button class="button primary" type="submit">Buscar</button><button class="button" type="button" id="subscriber-cancel" disabled>Cancelar</button><button class="button" type="button" data-toggle-filters aria-expanded="false">Filtros</button></form><div id="subscriber-filters" class="j-toolbar" hidden><label>Estado <select id="subscriber-state"><option value="">Todos</option>${[...new Set(rows.map((r) => r.state).filter(Boolean))].map((s) => `<option>${esc(s)}</option>`).join("")}</select></label><button class="button" data-clear-filter>Limpar filtro</button></div><p id="subscriber-status" class="j-inline-status" role="status">${query ? "Atualizando a consulta…" : "Informe um contrato. Prefixos brd_, cdy_ e 364_; zeros preservados."}</p><div id="subscriber-candidates"></div><div id="subscriber-results"></div></section><aside id="subscriber-detail" class="panel j-detail" aria-label="Detalhes do assinante">${empty("Nenhuma sessão selecionada", "Escolha uma linha para consultar detalhes sem sair da lista.")}</aside></div>`;
   }
-  var controller = null;
-  var searchGeneration = 0;
-  var lastQuery = "";
-  var lastInfraId = null;
   function unmountSubscribers() {
     controller?.abort();
     controller = null;
-    searchGeneration++;
+    generation2++;
+    selectionGeneration++;
+    tabGeneration++;
+  }
+  function drawResults() {
+    const host = document.querySelector("#subscriber-results");
+    if (!host) return;
+    const filter = document.querySelector("#subscriber-state")?.value;
+    const visible = rows.filter((r) => !filter || r.state === filter);
+    document.querySelector("#subscriber-count").textContent = `${visible.length} resultados`;
+    document.querySelector("#subscriber-candidates").innerHTML = candidates.length ? `<details class="j-candidates" open><summary>Candidatos consultados</summary>${dataTable([["Candidato", (r) => `<code>${esc(r.candidate)}</code>`], ["Resultado", (r) => esc({ FOUND: "Encontrado", NOT_FOUND: "Não encontrado", TIMEOUT: "Tempo esgotado", ERROR: "Erro" }[r.status] || r.status)], ["Detalhe", (r) => esc(r.message || "—")]], candidates)}</details>` : "";
+    host.innerHTML = dataTable([["Usuário", (r) => `<button class="j-text-button" data-subscriber="${esc(r.session_id)}">${esc(r.username)}</button>`], ["Estado", (r) => status(r.state)], ["IPv4", (r) => copy(r.ipv4_address)], ["MAC", (r) => `<code>${esc(r.mac_address || "—")}</code>`], ["Interface", (r) => `<code>${esc(r.interface || "—")}</code>`], ["Session ID", (r) => `<code>${esc(r.session_id)}</code>`], ["Uptime", (r) => esc(r.session_uptime || r.login_time || "—")]], visible);
+    host.querySelectorAll("[data-subscriber]").forEach((b) => {
+      b.closest("tr").classList.toggle("is-selected", b.dataset.subscriber === selected?.session_id);
+      b.onclick = () => selectSubscriber(b.dataset.subscriber);
+    });
+    wireCopy(host);
   }
   function mountSubscribers() {
-    const scope = currentScope(), form = document.querySelector("#subscriber-search"), status2 = document.querySelector("#subscriber-status"), host = document.querySelector("#subscriber-results"), cancel = document.querySelector("#subscriber-cancel");
-    form.elements.query.value = lastQuery;
-    if (lastQuery) queueMicrotask(() => form.requestSubmit());
+    const form = document.querySelector("#subscriber-search"), scope = currentScope(), cancel = document.querySelector("#subscriber-cancel"), message = document.querySelector("#subscriber-status");
+    drawResults();
+    document.querySelector("[data-toggle-filters]").onclick = (e) => {
+      const f = document.querySelector("#subscriber-filters");
+      f.hidden = !f.hidden;
+      e.currentTarget.setAttribute("aria-expanded", String(!f.hidden));
+    };
+    document.querySelector("#subscriber-state").onchange = drawResults;
+    document.querySelector("[data-clear-filter]").onclick = () => {
+      document.querySelector("#subscriber-state").value = "";
+      drawResults();
+    };
     cancel.onclick = () => {
       controller?.abort();
-      searchGeneration++;
-      status2.textContent = "Busca cancelada. Nenhum resultado anterior foi aplicado.";
+      generation2++;
+      message.textContent = "Busca cancelada.";
       cancel.disabled = true;
       form.querySelector("[type=submit]").disabled = false;
     };
-    form.onsubmit = async (event) => {
-      event.preventDefault();
-      lastQuery = form.elements.query.value;
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      query = form.elements.query.value;
       controller?.abort();
       controller = new AbortController();
-      const generation2 = ++searchGeneration, b = form.querySelector("[type=submit]");
+      const run = ++generation2, b = form.querySelector("[type=submit]");
       b.disabled = true;
       cancel.disabled = false;
-      status2.textContent = "Consultando os candidatos no concentrador…";
-      host.replaceChildren();
+      message.textContent = "Consultando BNG…";
       try {
-        const result = await request("/api/infrastructure/subscribers/lookup", { scope, signal: controller.signal, method: "POST", body: JSON.stringify({ query: new FormData(form).get("query"), app_session_id: session()?.session_id }) });
-        if (!scopeActive(scope) || generation2 !== searchGeneration) return;
-        status2.textContent = (result.complete ? "" : "Busca incompleta. ") + (result.sessions.length ? `${result.sessions.length} sessão(ões) encontrada(s).` : result.complete ? "Nenhuma sessão ativa encontrada nesta consulta." : "Não foi possível confirmar ausência de sessão.");
-        host.innerHTML = `<section class="panel"><h3>Candidatos consultados</h3>${table([{ label: "Candidato", keys: ["candidate"] }, { label: "Resultado", render: (r) => esc({ FOUND: "Sessão encontrada", NOT_FOUND: "Sem sessão ativa", ERROR: "Erro", TIMEOUT: "Tempo esgotado", UNSUPPORTED: "Não suportado" }[r.status] || r.status) }, { label: "Detalhe", keys: ["message"] }], result.candidates)}</section>` + table([{ label: "Contrato / usuário", render: (r) => `${copy(r.username)}<small>${esc(r.contract || "")}</small>` }, { label: "Estado", keys: ["state"] }, { label: "IPv4", render: (r) => copy(r.ipv4_address) }, { label: "IPv6", render: (r) => esc(r.ipv6_addresses.join(", ") || "—") }, { label: "Interface", render: (r) => copy(r.interface) }, { label: "Sessão", render: (r) => copy(r.session_id) }, { label: "Ações", render: (r) => `<button class="button" data-subscriber="${esc(r.session_id)}" ${r.session_id ? "" : "disabled"}>Detalhes</button>` }], result.sessions);
-        wireCopy(host);
-        host.querySelectorAll("[data-subscriber]").forEach((button) => button.onclick = () => openSubscriber(button.dataset.subscriber));
+        const result = await request("/api/infrastructure/subscribers/lookup", { scope, signal: controller.signal, method: "POST", body: JSON.stringify({ query, app_session_id: session()?.session_id }) });
+        if (!scopeActive(scope) || run !== generation2) return;
+        rows = result.sessions;
+        candidates = result.candidates;
+        message.textContent = (result.complete ? "" : "Busca incompleta. Não foi possível confirmar ausência em todos os prefixos. ") + (rows.length ? `${rows.length} sessão(ões) encontrada(s).` : result.complete ? "Nenhuma sessão ativa encontrada nesta consulta." : "Não foi possível confirmar ausência de sessão.");
+        const select = document.querySelector("#subscriber-state"), old = select.value;
+        select.innerHTML = '<option value="">Todos</option>' + [...new Set(rows.map((r) => r.state).filter(Boolean))].map((s) => `<option>${esc(s)}</option>`).join("");
+        select.value = old;
+        drawResults();
+        if (selected) {
+          const match = rows.find((r) => r.session_id === selected.session_id && r.username === selected.username);
+          if (match) await selectSubscriber(match.session_id);
+          else {
+            selected = null;
+            document.querySelector("#subscriber-detail").innerHTML = empty("A sessão anterior não está nesta consulta", "Selecione uma sessão atual.");
+          }
+        }
       } catch (error) {
-        if (scopeActive(scope) && generation2 === searchGeneration && !isCancelled(error)) status2.textContent = error.message;
+        if (scopeActive(scope) && run === generation2 && !isCancelled(error)) message.textContent = error.message;
       } finally {
-        if (scopeActive(scope) && generation2 === searchGeneration) {
+        if (scopeActive(scope) && run === generation2) {
           b.disabled = false;
           cancel.disabled = true;
         }
       }
     };
+    if (query) queueMicrotask(() => form.requestSubmit());
   }
-  var groups = [["Identificação", ["contract", "username", "prefix", "type", "state"]], ["Endereçamento", ["ipv4_address", "ipv4_netmask", "ipv6_addresses", "ipv6_prefixes", "ipv6_user_prefix", "delegated_prefix", "primary_dns", "secondary_dns", "ipv6_primary_dns", "ipv6_secondary_dns"]], ["PPPoE e rede", ["interface", "underlying_interface", "pppoe_session_id", "mac_address", "routing_instance", "logical_system", "vlan_id", "stacked_vlan_id", "agent_circuit_id", "agent_remote_id", "dynamic_profile_name"]], ["AAA", ["session_id", "radius_accounting_id", "login_time", "session_uptime", "session_timeout", "idle_timeout", "accounting"]], ["Política", ["effective_shaping_rate", "actual_upstream_rate", "actual_downstream_rate", "input_filter", "output_filter", "ipv6_input_filter", "ipv6_output_filter"]], ["CGNAT", ["nat_pool", "nat_public_ip", "nat_port_block", "nat_allocation_time"]]];
-  var labels = { contract: "Contrato", username: "Usuário", prefix: "Prefixo", type: "Tipo", state: "Estado", ipv4_address: "IPv4", ipv4_netmask: "Máscara IPv4", ipv6_addresses: "Endereços IPv6", ipv6_prefixes: "Prefixos IPv6", delegated_prefix: "Prefixo delegado", interface: "Interface", underlying_interface: "Interface subjacente", mac_address: "MAC", session_id: "Subscriber Session ID", pppoe_session_id: "PPPoE Session ID", routing_instance: "Routing instance", logical_system: "Logical system", vlan_id: "VLAN", stacked_vlan_id: "S-VLAN", login_time: "Login", session_uptime: "Tempo da sessão", effective_shaping_rate: "Shaping efetivo (kbps)", nat_public_ip: "IP público NAT", nat_port_block: "Port block", radius_accounting_id: "RADIUS Accounting ID" };
-  function detailData(data) {
-    if (Array.isArray(data)) return data.length ? data.map((item, index) => `<section class="profile-section"><h4>Registro ${index + 1}</h4>${detailData(item)}</section>`).join("") : '<p class="muted">Nenhum registro retornado.</p>';
-    if (data && typeof data === "object") {
-      const entries = Object.entries(data), simple = entries.filter(([, v]) => v == null || typeof v !== "object"), nested = entries.filter(([, v]) => v && typeof v === "object");
-      return fields(simple.map(([k, v]) => [labels[k] || k.replaceAll("_", " "), v])) + nested.map(([k, v]) => `<section class="profile-section"><h4>${esc(labels[k] || k.replaceAll("_", " "))}</h4>${detailData(v)}</section>`).join("");
-    }
-    return `<p>${esc(data ?? "—")}</p>`;
-  }
-  async function openSubscriber(id) {
-    const scope = currentScope();
+  async function selectSubscriber(id) {
+    const run = ++selectionGeneration;
+    const scope = currentScope(), host = document.querySelector("#subscriber-detail");
+    host.innerHTML = '<p class="j-inline-status">Consultando sessão…</p>';
     try {
       const row = await read("subscribers/detail", { session_id: id }, scope);
-      if (!scopeActive(scope)) return;
-      const d = dialog("Sessão " + (row.username || row.session_id), groups.map(([title, keys]) => {
-        const present = keys.filter((k) => row[k] != null && row[k] !== "" && (!Array.isArray(row[k]) || row[k].length));
-        return present.length ? `<section class="profile-section"><h3>${esc(title)}</h3>${present.map((k) => `<div class="human-field"><span>${esc(labels[k] || k.replaceAll("_", " "))}</span><strong>${copy(Array.isArray(row[k]) ? row[k].join(", ") : row[k])}</strong></div>`).join("")}</section>` : "";
-      }).join("") + (row.service_sessions?.length ? `<section class="profile-section"><h3>Serviços e shaping aplicado</h3>${detailData(row.service_sessions)}<p class="muted">Configuração técnica aplicada; não confirma plano comercial.</p></section>` : "") + `<div class="inline-actions"><button class="button" data-context="pppoe">Consultar PPPoE</button><button class="button" data-context="aaa">Consultar AAA</button><button class="button" data-context="accounting">Accounting acumulado</button><button class="button" data-context="route">Rota</button><button class="button" data-context="fib">Forwarding</button><button class="button" data-context="lockout">Lockout por MAC</button></div>${[...new Set([row.input_filter, row.output_filter, row.ipv6_input_filter, row.ipv6_output_filter, ...(row.service_sessions || []).flatMap((s) => [s.input_filter, s.output_filter, s.ipv6_input_filter, s.ipv6_output_filter])].filter(Boolean))].map((name) => `<button class="button" data-context="filter" data-filter="${esc(name)}">Contadores: ${esc(name)}</button>`).join("")}<div id="subscriber-context" role="status"></div><p class="muted">Derrubar/reconectar sessão: operação ainda não validada neste equipamento.</p>`, `<button class="button" data-refresh-subscriber>Atualizar sessão</button><button class="button primary" data-access-cpe ${row.ipv4_address ? "" : "disabled"}>Acessar CPE</button>`);
-      d.classList.add("juniper-dialog");
-      wireCopy(d);
-      d.querySelector("[data-access-cpe]").onclick = () => accessCpe(row);
-      d.querySelector("[data-refresh-subscriber]").onclick = () => {
-        d.close();
-        openSubscriber(id);
-      };
-      d.querySelectorAll("[data-context]").forEach((button) => button.onclick = async () => {
-        button.disabled = true;
-        try {
-          const result = await read("subscribers/context", { session_id: row.session_id, username: row.username, kind: button.dataset.context, ...button.dataset.filter ? { filter: button.dataset.filter } : {} }, d._requestScope);
-          if (d.open) {
-            d.querySelector("#subscriber-context").innerHTML = detailData(result.data);
-          }
-        } catch (e) {
-          if (d.open) d.querySelector("#subscriber-context").textContent = e.message;
-        } finally {
-          button.disabled = false;
-        }
-      });
+      if (!scopeActive(scope) || run !== selectionGeneration) return;
+      selected = row;
+      drawResults();
+      renderSideDetail();
     } catch (e) {
-      if (!isCancelled(e)) toast(e.message);
+      if (scopeActive(scope) && run === tabGeneration) host.innerHTML = `<p role="alert">${esc(e.message)}</p>`;
     }
   }
-  async function interfaces() {
-    const rows2 = await read("interfaces");
-    return `<section class="panel"><h2>Interfaces Junos</h2><p class="muted">Inventário leve. Contadores detalhados são consultados ao abrir uma interface.</p></section>` + table([{ label: "Interface", render: (r) => copy(r.name) }, { label: "Admin", keys: ["admin_state"] }, { label: "Link", keys: ["oper_state"] }, { label: "Endereços", render: (r) => esc(r.addresses.join(", ")) }, { label: "Ações", render: (r) => `<button class="button" data-junos-interface="${esc(r.name)}">Detalhes</button>` }], rows2);
+  function renderSideDetail(active2 = "details") {
+    const host = document.querySelector("#subscriber-detail");
+    if (!host || !selected) return;
+    const row = selected;
+    host.innerHTML = `<div class="j-panel-header"><div><h2>${esc(row.username)}</h2>${status(row.state)}</div><button class="icon-button" data-close-detail aria-label="Recolher detalhes" title="Recolher detalhes">×</button></div>${tabs([["details", "Detalhes"], ["service", "Serviço"], ["network", "Rede"]], active2, "data-side-tab")}<div class="j-detail-body">${active2 === "service" ? detailData(row.service_sessions || []) : active2 === "network" ? kv2([["IPv6", row.ipv6_addresses], ["Underlying", row.underlying_interface], ["VLAN / S-VLAN", [row.vlan_id, row.stacked_vlan_id].filter(Boolean).join(" / ")], ["Routing instance", row.routing_instance]]) : kv2([["IPv4", row.ipv4_address], ["MAC", row.mac_address], ["Interface", row.interface], ["Subscriber Session ID", row.session_id], ["PPPoE Session ID", row.pppoe_session_id]])}</div><div class="j-detail-actions"><button class="button primary" data-access-cpe ${row.ipv4_address ? "" : "disabled"}>Acessar CPE</button>${button("Abrir sessão", "juniperSubscriber")}${button("Diagnóstico", "juniperPppoe")}</div>`;
+    host.querySelectorAll("[data-side-tab]").forEach((b) => b.onclick = () => renderSideDetail(b.dataset.sideTab));
+    host.querySelector("[data-close-detail]").onclick = () => {
+      host.innerHTML = empty("Detalhes recolhidos", "Selecione uma linha para abrir novamente.");
+    };
+    host.querySelector("[data-access-cpe]").onclick = () => accessCpe(row);
   }
-  function mountInterfaces() {
-    wireCopy();
-    document.querySelectorAll("[data-junos-interface]").forEach((button) => button.onclick = async () => {
-      try {
-        const rows2 = await read("interfaces/detail", { name: button.dataset.junosInterface });
-        const d = dialog("Interface " + button.dataset.junosInterface, detailData(rows2) + `<div class="inline-actions"><button class="button" data-link-kind="lacp">Consultar LACP</button><button class="button" data-link-kind="optics">Consultar óptica por lane</button></div><div id="link-read-result"></div>`);
-        d.querySelectorAll("[data-link-kind]").forEach((b) => b.onclick = async () => {
+  var subscriberTabs = [["summary", "Resumo"], ["pppoe", "PPPoE"], ["aaa", "AAA"], ["accounting", "Accounting"], ["services", "Serviços"], ["routing", "Roteamento"], ["diagnostic", "Diagnóstico"]];
+  function subscriberPage(initial2) {
+    ensureContext();
+    if (initial2 && lastSubscriberRoute !== store.view) tab = initial2;
+    lastSubscriberRoute = store.view;
+    if (!selected) return selectedRequired();
+    return panel(selected.username, `<p>${status(selected.state)} · <code>${esc(selected.interface || "—")}</code></p>${tabs(subscriberTabs, tab)}<div id="subscriber-full-content"></div>`, `<div><button class="button" data-refresh-selected>Atualizar</button><button class="button primary" data-access-cpe>Acessar CPE</button></div>`);
+  }
+  async function context(kind, extra = {}) {
+    return read("subscribers/context", { session_id: selected.session_id, username: selected.username, kind, ...extra });
+  }
+  async function renderSubscriberTab() {
+    const run = ++tabGeneration;
+    const host = document.querySelector("#subscriber-full-content"), scope = currentScope();
+    if (!host) return;
+    host.innerHTML = '<p class="j-inline-status">Consultando sessão…</p>';
+    try {
+      let html = "";
+      if (tab === "summary") html = kv2(Object.entries(selected).filter(([k, v]) => ["contract", "username", "state", "ipv4_address", "mac_address", "interface", "underlying_interface", "session_id", "pppoe_session_id", "radius_accounting_id", "login_time"].includes(k)).map(([k, v]) => [labels[k] || k, v]));
+      else if (tab === "services") {
+        const filters = [...new Set([selected.input_filter, selected.output_filter, selected.ipv6_input_filter, selected.ipv6_output_filter, ...(selected.service_sessions || []).flatMap((s) => [s.input_filter, s.output_filter, s.ipv6_input_filter, s.ipv6_output_filter])].filter(Boolean))];
+        html = '<p class="muted">Shaping aplicado; não confirma plano comercial.</p>' + detailData(selected.service_sessions || []) + filters.map((name) => `<button class="button" data-service-filter="${esc(name)}">Contadores: ${esc(name)}</button>`).join("") + '<div id="service-filter-result"></div>';
+      } else if (tab === "routing") {
+        const [route, fib] = await Promise.allSettled([context("route"), context("fib")]);
+        html = [["Rota", route], ["Forwarding", fib]].map(([title, result]) => `<h3>${title}</h3>${result.status === "fulfilled" ? detailData(result.value.data) : `<p role="alert">${esc(result.reason.message)}</p>`}`).join("");
+      } else {
+        const kind = tab === "diagnostic" ? "lockout" : tab;
+        const result = await context(kind);
+        html = (kind === "accounting" ? '<p class="muted">Contadores acumulados IPv4 / IPv6; sem taxa instantânea inferida.</p>' : "") + detailData(kind === "pppoe" && result.data?.pppoe_session_id ? Object.fromEntries(Object.entries(result.data).filter(([k]) => k !== "session_id")) : result.data);
+      }
+      if (tab === "summary") {
+        const primary = /* @__PURE__ */ new Set(["contract", "username", "state", "ipv4_address", "mac_address", "interface", "underlying_interface", "session_id", "pppoe_session_id", "radius_accounting_id", "login_time"]);
+        html += `<details class="j-advanced"><summary>Endereçamento e atributos avançados</summary>${detailData(Object.fromEntries(Object.entries(selected).filter(([k]) => !primary.has(k) && k !== "service_sessions")))}</details>`;
+      }
+      if (scopeActive(scope) && run === tabGeneration) {
+        host.innerHTML = html;
+        host.querySelectorAll("[data-service-filter]").forEach((b) => b.onclick = async () => {
           b.disabled = true;
           try {
-            const result = await read("interfaces/link", { name: button.dataset.junosInterface, kind: b.dataset.linkKind }, d._requestScope);
-            if (d.open) d.querySelector("#link-read-result").innerHTML = detailData(result.data);
+            const result = await context("filter", { filter: b.dataset.serviceFilter });
+            if (scopeActive(scope) && run === tabGeneration) document.querySelector("#service-filter-result").innerHTML = detailData(result.data);
           } catch (e) {
-            if (d.open) d.querySelector("#link-read-result").textContent = e.message;
+            if (scopeActive(scope) && run === tabGeneration) document.querySelector("#service-filter-result").textContent = e.message;
           } finally {
-            if (d.open) b.disabled = false;
+            if (scopeActive(scope) && run === tabGeneration) b.disabled = false;
+          }
+        });
+      }
+    } catch (e) {
+      if (scopeActive(scope) && run === tabGeneration) host.innerHTML = `<p role="alert">${esc(e.message)}</p>`;
+    }
+  }
+  function mountSubscriberPage() {
+    if (!selected) return;
+    document.querySelectorAll("[data-j-tab]").forEach((b) => b.onclick = () => {
+      tab = b.dataset.jTab;
+      document.querySelectorAll("[data-j-tab]").forEach((x) => {
+        x.classList.toggle("active", x === b);
+        x.setAttribute("aria-selected", String(x === b));
+      });
+      renderSubscriberTab();
+    });
+    document.querySelector("[data-access-cpe]").onclick = () => accessCpe(selected);
+    document.querySelector("[data-refresh-selected]").onclick = async () => {
+      try {
+        const row = await read("subscribers/detail", { session_id: selected.session_id });
+        selected = row;
+        go(store.view);
+      } catch (e) {
+        toast(e.message);
+      }
+    };
+    renderSubscriberTab();
+  }
+  async function interfaces(kind = null) {
+    ensureContext();
+    const result = await read("interfaces");
+    return panel(kind === "lacp" ? "LACP" : kind === "optics" ? "Óptica" : "Interfaces Junos", `<p class="j-inline-status">Selecione uma interface para consultar ${kind === "lacp" ? "LACP" : kind === "optics" ? "valores por lane" : "estado e contadores"}. Leituras sob demanda.</p>${dataTable([["Interface", (r, i) => `<button class="j-text-button" data-junos-interface="${esc(r.name)}" data-link-page="${kind || ""}">${esc(r.name)}</button>`], ["Admin", (r) => esc(r.admin_state || "—")], ["Link", (r) => status(r.oper_state)], ["Speed", (r) => esc(r.speed || "—")], ["MTU", (r) => esc(r.mtu || "—")], ["Endereços", (r) => esc((r.addresses || []).join(", ") || "—")]], result)}`);
+  }
+  function mountInterfaces() {
+    document.querySelectorAll("[data-junos-interface]").forEach((b) => b.onclick = async () => {
+      const scope = currentScope();
+      try {
+        const name = b.dataset.junosInterface, kind = b.dataset.linkPage;
+        const result = await read(kind ? "interfaces/link" : "interfaces/detail", kind ? { name, kind } : { name }, scope);
+        if (!scopeActive(scope)) return;
+        const d = drawer(name, detailData(kind ? result.data : result) + `<div class="inline-actions"><button class="button" data-link-kind="lacp">LACP</button><button class="button" data-link-kind="optics">Óptica por lane</button></div><div id="link-read-result"></div>`);
+        d.querySelectorAll("[data-link-kind]").forEach((x) => x.onclick = async () => {
+          const drawerScope = d._requestScope;
+          x.disabled = true;
+          try {
+            const r = await read("interfaces/link", { name, kind: x.dataset.linkKind }, d._requestScope);
+            if (d.open && d._requestScope === drawerScope) d.querySelector("#link-read-result").innerHTML = detailData(r.data);
+          } catch (e) {
+            if (d.open && d._requestScope === drawerScope) d.querySelector("#link-read-result").textContent = e.message;
+          } finally {
+            if (d.open) x.disabled = false;
           }
         });
       } catch (e) {
@@ -389,35 +556,23 @@
       }
     });
   }
-  async function system() {
-    const result = await read("chassis");
-    return `<section class="panel"><h2>Routing Engines</h2><button class="button" id="juniper-resources">Consultar CPU e memória</button><div id="juniper-resources-result"></div></section><section class="panel"><h2>AAA / RADIUS e saúde do BNG</h2><p class="muted">Leituras sob demanda. Contadores globais são acumulados e não confirmam incidente pela magnitude.</p><div class="inline-actions"><button class="button" data-bng-health="radius">Servidores RADIUS</button><button class="button" data-bng-health="aaa_authentication">Autenticação</button><button class="button" data-bng-health="aaa_accounting">Accounting</button><button class="button" data-bng-health="aaa_dynamic">Dynamic requests</button><button class="button" data-bng-health="fpc">FPC</button><button class="button" data-bng-health="environment">Ambiente</button></div><div id="bng-health-result"></div></section><section class="panel"><h2>Hardware / chassis</h2></section>` + table([{ label: "Componente", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Serial", keys: ["serial"] }, { label: "Part number", keys: ["part_number"] }], result);
+  async function health(kind) {
+    const result = await read("health", { kind });
+    return panel(titles[store.view]?.[1] || "Saúde", `${kind.startsWith("aaa_") ? '<p class="j-inline-status">Contadores acumulados. O total histórico não confirma incidente atual.</p>' : ""}${detailData(result.data)}`);
   }
-  function mountSystem() {
-    document.querySelectorAll("[data-bng-health]").forEach((button) => button.onclick = async () => {
-      const scope = currentScope();
-      button.disabled = true;
-      try {
-        const result = await read("health", { kind: button.dataset.bngHealth }, scope);
-        if (scopeActive(scope)) document.querySelector("#bng-health-result").innerHTML = detailData(result.data);
-      } catch (e) {
-        if (scopeActive(scope)) document.querySelector("#bng-health-result").textContent = e.message;
-      } finally {
-        if (scopeActive(scope)) button.disabled = false;
-      }
-    });
-    document.querySelector("#juniper-resources").onclick = async (event) => {
-      event.currentTarget.disabled = true;
-      const scope = currentScope();
-      try {
-        const rows2 = await read("resources", {}, scope);
-        if (scopeActive(scope)) document.querySelector("#juniper-resources-result").innerHTML = table([{ label: "RE", keys: ["slot"] }, { label: "Estado", keys: ["state"] }, { label: "CPU idle (%)", keys: ["cpu_idle_percent"] }, { label: "Memória utilizada (%)", keys: ["memory_used_percent"] }, { label: "Temperatura", keys: ["temperature"] }, { label: "Load 1 min", keys: ["load_average_1"] }], rows2);
-      } catch (e) {
-        if (scopeActive(scope)) document.querySelector("#juniper-resources-result").textContent = e.message;
-      } finally {
-        if (scopeActive(scope)) document.querySelector("#juniper-resources").disabled = false;
-      }
-    };
+  async function system(kind = "resources") {
+    const data = await read(kind);
+    return panel(kind === "resources" ? "Routing Engine" : "Hardware / chassis", detailData(data));
+  }
+  function mountCommon() {
+    document.querySelectorAll("[data-j-identity]").forEach((b) => b.onclick = () => document.querySelector("#inspect-host-key").click());
+    document.querySelectorAll("[data-j-refresh]").forEach((b) => b.onclick = () => go(store.view));
+    wireCopy();
+  }
+  function routeView(route) {
+    const map = { juniperOverview: [overview, mountCommon], subscribers: [subscribers, mountSubscribers, unmountSubscribers], juniperSubscriber: [() => subscriberPage("summary"), mountSubscriberPage], juniperAccounting: [() => subscriberPage("accounting"), mountSubscriberPage], juniperServices: [() => subscriberPage("services"), mountSubscriberPage], juniperRouting: [() => subscriberPage("routing"), mountSubscriberPage], juniperPppoe: [() => subscriberPage("pppoe"), mountSubscriberPage], juniperLockout: [() => subscriberPage("diagnostic"), mountSubscriberPage], juniperInterfaces: [() => interfaces(), mountInterfaces], juniperLacp: [() => interfaces("lacp"), mountInterfaces], juniperOptics: [() => interfaces("optics"), mountInterfaces], juniperRadius: [() => health("radius")], juniperAuth: [() => health("aaa_authentication")], juniperAaaAccounting: [() => health("aaa_accounting")], juniperDynamic: [() => health("aaa_dynamic")], juniperSystem: [() => system()], juniperFpc: [() => health("fpc")], juniperEnvironment: [() => health("environment")], juniperHardware: [() => system("chassis")], juniperDiagnostics: [diagnostics, mountDiagnostics], juniperLogs: [() => panel("Logs", empty("Leitor de logs indisponível", "A API atual não fornece logs Juniper. Nenhuma saída foi simulada."))] };
+    const [render10, mount8, unmount] = map[route];
+    return { render: render10, mount: mount8, unmount };
   }
   function diagnostics() {
     return `<section class="panel"><h2>Diagnóstico a partir do Juniper</h2><p class="muted">Origem: Juniper da sessão conectada. Selecione a routing instance explicitamente quando necessário.</p><form id="juniper-diagnostic-form" class="form-grid"><div class="field"><label>Destino IPv4 / IPv6</label><input name="target" required placeholder="192.0.2.10"></div><div class="field"><label>Routing instance (opcional)</label><input name="routing_instance" maxlength="127"></div><div class="field"><label>Teste</label><select name="kind"><option value="ping">Ping — 4 pacotes</option><option value="traceroute">Traceroute — até 8 saltos</option></select></div><button class="button primary" type="submit">Executar no Juniper</button></form><div id="juniper-diagnostic-result" role="status"></div></section>`;
@@ -426,46 +581,47 @@
     const form = document.querySelector("#juniper-diagnostic-form"), scope = currentScope();
     form.onsubmit = async (event) => {
       event.preventDefault();
-      const button = form.querySelector("button");
-      button.disabled = true;
+      const button2 = form.querySelector("button");
+      button2.disabled = true;
       try {
         const result = await read("diagnostics", Object.fromEntries(new FormData(form)), scope);
         if (scopeActive(scope)) document.querySelector("#juniper-diagnostic-result").innerHTML = fields([["Origem", "Juniper " + (result.hostname || "")], ["Destino", result.target], ["Routing instance", result.routing_instance], ["Enviados", result.packets_sent], ["Recebidos", result.packets_received], ["Perda reportada", result.packet_loss_reported], ["RTT médio (formato do firmware)", result.rtt_average_reported]]) + table([{ label: "Salto", keys: ["hop"] }, { label: "Endereços", render: (r) => esc(r.addresses.join(", ")) }, { label: "RTT reportado", render: (r) => esc(r.rtt_reported.join(", ")) }], result.hops || []);
       } catch (e) {
         if (scopeActive(scope)) document.querySelector("#juniper-diagnostic-result").textContent = e.message;
       } finally {
-        button.disabled = false;
+        button2.disabled = false;
       }
     };
   }
   async function accessCpe(row) {
     try {
       const draft = await read("subscribers/cpe-draft", { session_id: row.session_id, username: row.username, ipv4_address: row.ipv4_address });
-      const d = dialog("Acessar CPE", `<p>${esc(draft.contract || "")} · ${esc(draft.subscriber_username)} · via Juniper</p><p class="muted">Atualizado ${esc(new Date(draft.refreshed_at * 1e3).toLocaleTimeString())}</p><p class="muted">IP localizado no BNG. O acesso de gerenciamento parte deste computador e pode depender de rota, ACL ou porta habilitada.</p><form id="cpe-handoff" class="form-grid"><div class="field"><label>IPv4</label><input name="host" value="${esc(draft.host)}" readonly required><label><input type="checkbox" name="edit_host"> Editar endereço explicitamente</label></div><div class="field"><label>Porta</label><input name="port" type="number" min="1" max="65535" value="80" required></div><div class="field"><label>Protocolo</label><select name="protocol"><option value="auto">Automático (HTTP; HTTPS na porta 443)</option><option value="http">HTTP</option><option value="https">HTTPS</option></select></div><div class="field"><label>Fabricante</label><select name="vendor"><option value="auto">Automático</option><option value="huawei">Huawei</option><option value="zte">ZTE</option></select></div><div class="field"><label>Usuário do CPE</label><input name="username" autocomplete="off" required></div><div class="field"><label>Senha do CPE</label><input name="password" type="password" autocomplete="off" required></div><p id="cpe-feedback" role="status"></p></form>`, `<button class="button" type="button" data-probe-cpe>Verificar porta</button><button class="button primary" type="submit" form="cpe-handoff">Conectar ao CPE</button>`);
+      const d = drawer("Acessar CPE", `<p><strong>${esc(draft.subscriber_username)}</strong> · via Juniper</p><p>Contrato ${esc(draft.contract || "—")} · MAC <code>${esc(row.mac_address || "—")}</code></p><p class="muted">Atualizado ${esc(new Date(draft.refreshed_at * 1e3).toLocaleTimeString())}</p><p class="muted">IP localizado no BNG. O acesso de gerenciamento parte deste computador e pode depender de rota, ACL ou porta habilitada.</p><form id="cpe-handoff" class="form-grid"><div class="field"><label>IPv4</label><input name="host" value="${esc(draft.host)}" readonly required><label><input type="checkbox" name="edit_host"> Editar endereço explicitamente</label></div><div class="field"><label>Porta</label><input name="port" type="number" min="1" max="65535" value="80" required></div><div class="field"><label>Protocolo</label><select name="protocol"><option value="auto">Automático (HTTP; HTTPS na porta 443)</option><option value="http">HTTP</option><option value="https">HTTPS</option></select></div><div class="field"><label>Fabricante</label><select name="vendor"><option value="auto">Automático</option><option value="huawei">Huawei</option><option value="zte">ZTE</option></select></div><div class="field"><label>Usuário do CPE</label><input name="username" autocomplete="off" required></div><div class="field"><label>Senha do CPE</label><input name="password" type="password" autocomplete="off" required></div><p id="cpe-feedback" role="status"></p></form>`, `<button class="button" type="button" data-probe-cpe>Verificar porta</button><button class="button primary" type="submit" form="cpe-handoff">Conectar ao CPE</button>`);
       d.classList.add("juniper-dialog");
+      const drawerScope = d._requestScope;
       const form = d.querySelector("form");
       form.elements.edit_host.onchange = () => {
         form.elements.host.readOnly = !form.elements.edit_host.checked;
       };
       d.querySelector("[data-probe-cpe]").onclick = async (event) => {
-        const button = event.currentTarget;
-        button.disabled = true;
+        const button2 = event.currentTarget;
+        button2.disabled = true;
         try {
           const values = Object.fromEntries(new FormData(form));
           delete values.password;
           delete values.username;
           const result = await request("/api/infrastructure/subscribers/cpe-port", { method: "POST", body: JSON.stringify({ ...draft, ...values, source_host: draft.host, edit_host: form.elements.edit_host.checked }) });
-          if (d.open) d.querySelector("#cpe-feedback").textContent = result.status === "CPE_PORT_REACHABLE" ? "Porta TCP acessível a partir deste computador. Autenticação ainda não testada." : "Porta inacessível a partir deste computador. Isso não confirma que o assinante esteja offline.";
+          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = result.status === "CPE_PORT_REACHABLE" ? "Porta TCP acessível a partir deste computador. Autenticação ainda não testada." : "Porta inacessível a partir deste computador. Isso não confirma que o assinante esteja offline.";
         } catch (e) {
-          if (d.open) d.querySelector("#cpe-feedback").textContent = e.message;
+          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = e.message;
         } finally {
-          if (d.open) button.disabled = false;
+          if (d.open) button2.disabled = false;
         }
       };
       form.onsubmit = async (event) => {
         event.preventDefault();
-        const button = d.querySelector("[type=submit]");
-        button.disabled = true;
+        const button2 = d.querySelector("[type=submit]");
+        button2.disabled = true;
         const payload = { ...draft, ...Object.fromEntries(new FormData(form)), source_host: draft.host, edit_host: form.elements.edit_host.checked };
         form.elements.password.value = "";
         try {
@@ -473,10 +629,10 @@
           d.close();
           document.dispatchEvent(new CustomEvent("session-selected", { detail: result }));
         } catch (error) {
-          if (d.open) d.querySelector("#cpe-feedback").textContent = `Acesso de gerenciamento não confirmado: ${error.message} Isso não confirma que o assinante esteja offline.`;
+          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = `Acesso de gerenciamento não confirmado: ${error.message} Isso não confirma que o assinante esteja offline.`;
         } finally {
           payload.password = "";
-          if (d.open) button.disabled = false;
+          if (d.open) button2.disabled = false;
         }
       };
     } catch (error) {
@@ -499,8 +655,8 @@
     render: () => render,
     topology: () => topology
   });
-  var rows = [];
-  var status = (r) => {
+  var rows2 = [];
+  var status2 = (r) => {
     const v = pick(r, "status", "estado", "online");
     if (v === "—") return badge("Não disponível");
     if (v === false || /^(offline|disconnected|false|0)$/i.test(String(v))) return badge("Offline", "bad");
@@ -509,25 +665,25 @@
   };
   var connection = (r) => pick(r, "connection_type", "tipo", "interface");
   var band = (r) => pick(r, "band", "banda");
-  var columns = [{ label: "Status", render: status }, { label: "Hostname", render: (r) => `<button class="icon-button" data-client="${rows.indexOf(r)}">${esc(pick(r, "hostname", "nome"))}</button>` }, { label: "IPv4", keys: ["ip", "ipv4"] }, { label: "IPv6", keys: ["ipv6"] }, { label: "MAC", keys: ["mac"] }, { label: "Conexão", render: connection }, { label: "SSID / porta", keys: ["ssid", "port", "interface"] }, { label: "Banda", render: band }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }, { label: "RX / TX", render: (r) => `${esc(pick(r, "rx_rate"))} / ${esc(pick(r, "tx_rate"))}` }];
+  var columns = [{ label: "Status", render: status2 }, { label: "Hostname", render: (r) => `<button class="icon-button" data-client="${rows2.indexOf(r)}">${esc(pick(r, "hostname", "nome"))}</button>` }, { label: "IPv4", keys: ["ip", "ipv4"] }, { label: "IPv6", keys: ["ipv6"] }, { label: "MAC", keys: ["mac"] }, { label: "Conexão", render: connection }, { label: "SSID / porta", keys: ["ssid", "port", "interface"] }, { label: "Banda", render: band }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }, { label: "RX / TX", render: (r) => `${esc(pick(r, "rx_rate"))} / ${esc(pick(r, "tx_rate"))}` }];
   function cards(data) {
-    return `<div class="client-cards">${data.map((r) => `<button class="client-card" data-client="${rows.indexOf(r)}"><strong>${esc(pick(r, "hostname", "nome"))}</strong><span class="mono tech-address">${esc(pick(r, "ip"))}</span><small>${esc(connection(r))} · ${esc(band(r))}</small>${status(r)}</button>`).join("")}</div>`;
+    return `<div class="client-cards">${data.map((r) => `<button class="client-card" data-client="${rows2.indexOf(r)}"><strong>${esc(pick(r, "hostname", "nome"))}</strong><span class="mono tech-address">${esc(pick(r, "ip"))}</span><small>${esc(connection(r))} · ${esc(band(r))}</small>${status2(r)}</button>`).join("")}</div>`;
   }
   function topology(data, device = "Equipamento", register = true) {
-    if (register) rows = data;
-    const groups2 = /* @__PURE__ */ new Map();
+    if (register) rows2 = data;
+    const groups = /* @__PURE__ */ new Map();
     for (const r of data) {
       const c = String(connection(r)).toLowerCase();
       const b = String(band(r));
       let key = /mesh/.test(c) ? "Mesh" : /wi.fi|wlan|wifi/.test(c) ? /2[.,]4/.test(b) ? "Wi-Fi 2.4 GHz" : /5/.test(b) ? "Wi-Fi 5 GHz" : "Wi-Fi — banda não disponível" : /ethernet|lan|eth/.test(c) ? "Ethernet" : "Conexão não disponível";
-      if (!groups2.has(key)) groups2.set(key, []);
-      groups2.get(key).push(r);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
     }
-    return `<section class="panel"><h2>Topologia da rede</h2><div class="topology-root">${esc(device)}</div><div class="topology-branches">${[...groups2].map(([k, v]) => `<div class="topology-branch"><h3>${esc(k)} · ${v.length}</h3>${cards(v)}</div>`).join("")}</div>${data.length ? "" : '<p class="muted">Nenhum cliente observado nesta sessão.</p>'}</section>`;
+    return `<section class="panel"><h2>Topologia da rede</h2><div class="topology-root">${esc(device)}</div><div class="topology-branches">${[...groups].map(([k, v]) => `<div class="topology-branch"><h3>${esc(k)} · ${v.length}</h3>${cards(v)}</div>`).join("")}</div>${data.length ? "" : '<p class="muted">Nenhum cliente observado nesta sessão.</p>'}</section>`;
   }
   function mountDetails() {
     document.querySelectorAll("[data-client]").forEach((btn) => btn.onclick = () => {
-      const r = rows[Number(btn.dataset.client)];
+      const r = rows2[Number(btn.dataset.client)];
       if (!r) return;
       const data = { Hostname: pick(r, "hostname", "nome"), IPv4: pick(r, "ip", "ipv4"), IPv6: pick(r, "ipv6_addresses", "ipv6"), MAC: pick(r, "mac"), Conexão: connection(r), Interface: pick(r, "interface", "port"), SSID: pick(r, "ssid"), Banda: band(r), RSSI: pick(r, "rssi"), SNR: pick(r, "snr"), "RX bytes": pick(r, "rx_bytes"), "TX bytes": pick(r, "tx_bytes"), "Taxa RX": pick(r, "rx_rate"), "Taxa TX": pick(r, "tx_rate"), Fabricante: pick(r, "manufacturer"), Estado: linkStatus(pick(r, "status", "online")), Lease: pick(r, "lease") };
       const d = dialog("Detalhes do cliente", kv(data));
@@ -538,19 +694,19 @@
     });
   }
   async function render() {
-    rows = await request("/api/device/clients");
-    if (!Array.isArray(rows)) rows = [];
-    const ssids = [...new Set(rows.map((r) => r.ssid).filter(Boolean))];
-    const warnings = [...new Set(rows.flatMap((r) => r.collection_warnings || []))];
+    rows2 = await request("/api/device/clients");
+    if (!Array.isArray(rows2)) rows2 = [];
+    const ssids = [...new Set(rows2.map((r) => r.ssid).filter(Boolean))];
+    const warnings = [...new Set(rows2.flatMap((r) => r.collection_warnings || []))];
     return `${warnings.map((w) => `<p class="notice warning">${esc(w)}</p>`).join("")}<section class="panel"><div class="toolbar"><input id="client-search" placeholder="Buscar hostname, IP ou MAC" aria-label="Buscar clientes"><select id="client-filter" aria-label="Conexão"><option value="">Todas as conexões</option><option>Wi-Fi</option><option>Ethernet</option><option>Mesh</option></select><select id="client-band" aria-label="Banda"><option value="">Todas as bandas</option><option value="2.4">2.4 GHz</option><option value="5">5 GHz</option></select><select id="client-ssid" aria-label="SSID"><option value="">Todos os SSIDs</option>${ssids.map((s) => `<option>${esc(s)}</option>`).join("")}</select><select id="client-view" aria-label="Visualização"><option value="table">Tabela</option><option value="cards">Cards</option><option value="topology">Topologia</option></select></div><div id="client-results"></div></section>`;
   }
   function mount() {
     const paint = () => {
       const q = document.querySelector("#client-search").value.toLowerCase(), type = document.querySelector("#client-filter").value, b = document.querySelector("#client-band").value, ssid = document.querySelector("#client-ssid").value, view = document.querySelector("#client-view").value;
-      const filtered = rows.filter((r) => (!q || [r.hostname, r.ip, r.ipv6, r.mac].some((v) => String(v || "").toLowerCase().includes(q))) && (!type || String(connection(r)).includes(type)) && (!b || String(band(r)).replace(",", ".").includes(b)) && (!ssid || r.ssid === ssid));
-      const all = rows;
+      const filtered = rows2.filter((r) => (!q || [r.hostname, r.ip, r.ipv6, r.mac].some((v) => String(v || "").toLowerCase().includes(q))) && (!type || String(connection(r)).includes(type)) && (!b || String(band(r)).replace(",", ".").includes(b)) && (!ssid || r.ssid === ssid));
+      const all = rows2;
       document.querySelector("#client-results").innerHTML = view === "table" ? table(columns, filtered) : view === "cards" ? cards(filtered) : topology(filtered, "Equipamento", false);
-      rows = all;
+      rows2 = all;
       mountDetails();
     };
     document.querySelectorAll("#client-search,#client-filter,#client-band,#client-ssid,#client-view").forEach((e) => e.addEventListener("input", paint));
@@ -564,8 +720,8 @@
   function trafficChart(title) {
     return `<section class="am-panel traffic-main" data-stream=""><div class="am-section-head"><h2>${title}</h2><select data-stream-select aria-label="Interface do gráfico"><option value="">Aguardando fonte</option></select></div><div class="traffic-current"><span>RX <strong class="tech-value" data-value="rx_mbps">—</strong></span><span>TX <strong class="tech-value" data-value="tx_mbps">—</strong></span></div><div class="traffic-chart-wrap"><svg viewBox="0 0 700 260" role="img" aria-label="RX azul e TX violeta"><g class="chart-grid">${[20, 80, 140, 200, 230].map((y) => `<line x1="42" x2="680" y1="${y}" y2="${y}"/>`).join("")}</g><text x="2" y="20" data-axis-max>—</text><text x="2" y="234">0</text><path data-area-rx class="chart-area-rx"/><path data-area-tx class="chart-area-tx"/><path data-line-rx class="chart-line-rx"/><path data-line-tx class="chart-line-tx"/><polyline data-rx opacity="0"/><polyline data-tx opacity="0"/></svg><div class="chart-tooltip" hidden></div></div><div class="chart-legend"><span class="legend-rx">● RX / recebido</span><span class="legend-tx">● TX / enviado</span><small data-chart-label>Aguardando amostras</small></div><p class="muted" data-sample-status></p><div class="traffic-totals"><span>Recebido <strong class="tech-value" data-value="rx_bytes">—</strong></span><span>Enviado <strong class="tech-value" data-value="tx_bytes">—</strong></span></div><details class="traffic-counter-details"><summary>Contadores da interface</summary><p class="mono" data-counter-identity></p><div class="human-fields">${[["rx_packets", "Pacotes RX"], ["tx_packets", "Pacotes TX"], ["rx_errors", "Erros RX"], ["tx_errors", "Erros TX"], ["rx_discard", "Descartes RX"], ["tx_discard", "Descartes TX"]].map(([key, label]) => `<div class="human-field"><span>${label}</span><strong class="tech-value" data-value="${key}">Não disponível</strong></div>`).join("")}</div></details></section>`;
   }
-  function text(el, value) {
-    if (el && el.textContent !== value) el.textContent = value;
+  function text(el, value2) {
+    if (el && el.textContent !== value2) el.textContent = value2;
   }
   function path(points) {
     if (!points.length) return "";
@@ -587,7 +743,7 @@
       state = { histories: /* @__PURE__ */ new Map(), sources: [] };
       sessions.set(id, state);
     }
-    let selected = "", seconds = 300, timer, busy = false, historyStamp = 0;
+    let selected2 = "", seconds = 300, timer, busy = false, historyStamp = 0;
     const remember = (r) => {
       const key = streamKey(r), h = state.histories.get(key) || [], timestamp = r.timestamp || Date.now() / 1e3;
       if (!h.some((v) => v.timestamp === timestamp)) h.push({ ...r, timestamp });
@@ -595,12 +751,12 @@
       state.histories.set(key, h.slice(-2e3));
     };
     function plot() {
-      const source = state.sources.find((s) => streamKey(s) === selected);
+      const source = state.sources.find((s) => streamKey(s) === selected2);
       if (!source) return;
-      host.dataset.stream = selected;
+      host.dataset.stream = selected2;
       text(host.querySelector("[data-counter-identity]"), source.identity || "Não disponível");
       for (const key of ["rx_mbps", "tx_mbps", "rx_bytes", "tx_bytes", "rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"]) text(host.querySelector(`[data-value="${key}"]`), key.endsWith("mbps") ? rate(source[key]) : key.endsWith("bytes") ? formatBytes(source.counters?.[key]) : String(source.counters?.[key] ?? "Não disponível"));
-      const h = (state.histories.get(selected) || []).filter((r) => r.timestamp >= Date.now() / 1e3 - seconds), max = Math.max(1, ...h.flatMap((r) => [r.rx_mbps, r.tx_mbps]).filter(Number.isFinite)), min = h[0]?.timestamp, last = h.at(-1)?.timestamp;
+      const h = (state.histories.get(selected2) || []).filter((r) => r.timestamp >= Date.now() / 1e3 - seconds), max = Math.max(1, ...h.flatMap((r) => [r.rx_mbps, r.tx_mbps]).filter(Number.isFinite)), min = h[0]?.timestamp, last = h.at(-1)?.timestamp;
       host._chartHistory = h;
       text(host.querySelector("[data-axis-max]"), max.toFixed(1));
       for (const [direction, key] of [["rx", "rx_mbps"], ["tx", "tx_mbps"]]) {
@@ -643,8 +799,8 @@
         }
         text(option, source.label || source.ssid || `${{ wan: "WAN", lan: "LAN", wifi: "Wi-Fi", client: "Cliente", wifi_client: "Cliente Wi-Fi" }[source.source] || "Interface"} ${sources.indexOf(source) + 1}`);
       }
-      if (!sources.some((s) => streamKey(s) === selected)) selected = streamKey(sources.find((s) => s.source === "wan") || sources[0]);
-      select.value = selected;
+      if (!sources.some((s) => streamKey(s) === selected2)) selected2 = streamKey(sources.find((s) => s.source === "wan") || sources[0]);
+      select.value = selected2;
       plot();
       onSample(data);
       if (ranking) paintRanking(ranking, sources);
@@ -663,7 +819,7 @@
     };
     scope.controller.signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
     host.querySelector("[data-stream-select]").onchange = (e) => {
-      selected = e.target.value;
+      selected2 = e.target.value;
       plot();
     };
     const refresh = document.querySelector("#traffic-refresh");
@@ -671,9 +827,9 @@
     async function history() {
       const stamp = ++historyStamp;
       try {
-        const active2 = window.__amStore?.session?.session, across = document.querySelector("#traffic-all-sessions")?.checked, rows2 = await request(across ? "/api/device/traffic/device-history" : "/api/device/traffic/history", { scope, method: "POST", signal: scope.controller.signal, body: JSON.stringify(across ? { host: active2.host, identifier: active2.metadata?.device_identity, since: Date.now() / 1e3 - seconds } : { seconds }) });
+        const active2 = window.__amStore?.session?.session, across = document.querySelector("#traffic-all-sessions")?.checked, rows3 = await request(across ? "/api/device/traffic/device-history" : "/api/device/traffic/history", { scope, method: "POST", signal: scope.controller.signal, body: JSON.stringify(across ? { host: active2.host, identifier: active2.metadata?.device_identity, since: Date.now() / 1e3 - seconds } : { seconds }) });
         if (!scopeActive(scope) || stamp !== historyStamp) return;
-        rows2.forEach(remember);
+        rows3.forEach(remember);
         plot();
       } catch (e) {
         if (scopeActive(scope) && !isCancelled(e)) text(host.querySelector("[data-sample-status]"), e.message);
@@ -720,7 +876,7 @@
 
   // apps/access_manager/static/js/workspaces/views/overview.js
   var initial = null;
-  var metric2 = (title, value, key) => `<article class="am-metric"><span>${title}</span><strong class="${key === "status" ? ["Conectado", "Ativo"].includes(value) ? "value-success" : ["Desconectado", "Sem link"].includes(value) ? "value-danger" : "muted" : "tech-value"}" ${key ? `data-overview-${key}` : ""}>${esc(value ?? "Não disponível")}</strong></article>`;
+  var metric2 = (title, value2, key) => `<article class="am-metric"><span>${title}</span><strong class="${key === "status" ? ["Conectado", "Ativo"].includes(value2) ? "value-success" : ["Desconectado", "Sem link"].includes(value2) ? "value-danger" : "muted" : "tech-value"}" ${key ? `data-overview-${key}` : ""}>${esc(value2 ?? "Não disponível")}</strong></article>`;
   async function render2() {
     const opticalApplicable = cap("optical").read !== "UNSUPPORTED", scope = currentScope(), paths = ["/api/device", "/api/device/wan", "/api/device/optical", "/api/device/clients", "/api/device/traffic", "/api/device/wifi/ssids", "/api/device/wifi/radios"];
     const results = await Promise.allSettled(paths.map((p) => p === "/api/device/optical" && !opticalApplicable ? Promise.resolve(null) : request(p, { scope })));
@@ -772,13 +928,13 @@
           continue;
         }
         if (a.nodeType !== 1) continue;
-        const input = a.matches("input,select,textarea"), dirty = input && (a.dataset.dirty === "true" || a === document.activeElement), value = a.value, checked = a.checked;
+        const input = a.matches("input,select,textarea"), dirty = input && (a.dataset.dirty === "true" || a === document.activeElement), value2 = a.value, checked = a.checked;
         if (a.matches("form") && a.dataset.dirty === "true") continue;
         for (const attr of [...a.attributes]) if (!b.hasAttribute(attr.name) && attr.name !== "data-dirty") a.removeAttribute(attr.name);
         for (const attr of b.attributes) if (a.getAttribute(attr.name) !== attr.value) a.setAttribute(attr.name, attr.value);
         patch(a, b);
         if (dirty) {
-          a.value = value;
+          a.value = value2;
           a.checked = checked;
         }
       }
@@ -858,9 +1014,9 @@
   function mount3() {
     const scope = currentScope(), start = performance.now();
     const boundary = '<section class="panel"><h2>Rádios</h2>';
-    const paint = (part, value) => {
-      if (part === "ssids") networks = Array.isArray(value) ? value : value?.networks || [];
-      else radios = Array.isArray(value) ? value : value?.radios || [];
+    const paint = (part, value2) => {
+      if (part === "ssids") networks = Array.isArray(value2) ? value2 : value2?.networks || [];
+      else radios = Array.isArray(value2) ? value2 : value2?.radios || [];
       const html = contents(), split = html.indexOf(boundary), host = document.querySelector("#wifi-" + part);
       if (!host) return;
       patchHTML(host, part === "ssids" ? html.slice(html.indexOf("</section>") + 10, split) : html.slice(split + boundary.length, -10));
@@ -1005,9 +1161,9 @@
   function contents2() {
     return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section>${table([{ label: "Nome", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Rádios", render: (r) => esc((r.wifi?.radios || (r.wifi?.radio ? [r.wifi.radio] : [])).map((r2) => `${r2.band}: ${r2.auto_channel === true ? "Auto" : r2.channel ?? "—"} · ${r2.bandwidth ?? "—"} · ${r2.standard ?? "—"} · ${r2.tx_power ?? "—"}`).join(" / ") || "—") }, { label: "DNS", render: (r) => Object.keys(r.dns || {}).length ? "Configurado" : "—" }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-edit-profile="${esc(r.name)}">Editar</button><button class="button" data-preview-profile="${esc(r.name)}">Preview / aplicar</button><button class="button danger" data-delete-profile="${esc(r.name)}">Excluir</button></div>` }], profiles, "Nenhum perfil salvo.")}`;
   }
-  var field = (label, name, value = "") => `<div class="field"><label>${label}</label><input name="${name}" value="${esc(value ?? "")}"></div>`;
-  function choice(label, name, value, options) {
-    return `<div class="field"><label>${label}</label><select name="${name}" ${options?.length ? "" : "disabled"}><option value="${esc(value ?? "")}">${esc((options || []).find((o) => String(o.value) === String(value))?.label ?? value ?? "Não disponível")}</option>${(options || []).filter((o) => String(o.value) !== String(value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select></div>`;
+  var field = (label, name, value2 = "") => `<div class="field"><label>${label}</label><input name="${name}" value="${esc(value2 ?? "")}"></div>`;
+  function choice(label, name, value2, options) {
+    return `<div class="field"><label>${label}</label><select name="${name}" ${options?.length ? "" : "disabled"}><option value="${esc(value2 ?? "")}">${esc((options || []).find((o) => String(o.value) === String(value2))?.label ?? value2 ?? "Não disponível")}</option>${(options || []).filter((o) => String(o.value) !== String(value2)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select></div>`;
   }
   async function edit(profile = {}) {
     const opened = performance.now();
@@ -1026,11 +1182,11 @@
     const form = d.querySelector("form");
     if (profile.name) form.querySelector('[name="name"]').readOnly = true;
     timing("profiles.modal.open", opened);
-    const paintRadios = (value) => {
+    const paintRadios = (value2) => {
       if (!d.open) return;
       const host = d.querySelector("#profile-radios");
       if (host.querySelector('[data-dirty="true"]')) return;
-      radios2 = Array.isArray(value) ? [...value] : value?.radios || [];
+      radios2 = Array.isArray(value2) ? [...value2] : value2?.radios || [];
       for (const saved2 of savedRadios) if (!radios2.some((r) => (r.band ?? r.banda) === saved2.band)) radios2.push({ ...saved2, options: {} });
       radiosReady = true;
       patchHTML(host, ` ${radios2.map((r, i) => {
@@ -1151,8 +1307,8 @@
   }
   function mount4() {
     wire2();
-    loadResource("/api/profiles", { data: (value) => {
-      profiles = Array.isArray(value) ? value : [];
+    loadResource("/api/profiles", { data: (value2) => {
+      profiles = Array.isArray(value2) ? value2 : [];
       const host = document.querySelector("#profile-list");
       if (!host) return;
       const html = contents2();
@@ -1175,11 +1331,11 @@
   // apps/access_manager/static/js/shared/factory-reset.js
   var resetHost = () => cap("factory_reset").enabled?.write ? `<div class="capability-row"><strong>Restaurar configuração de fábrica</strong><button class="button danger" id="factory-reset-button">Restaurar fábrica</button></div>` : "";
   function mountReset() {
-    const button = document.querySelector("#factory-reset-button");
-    if (!button) return;
+    const button2 = document.querySelector("#factory-reset-button");
+    if (!button2) return;
     const scope = currentScope();
-    button.onclick = async () => {
-      button.disabled = true;
+    button2.onclick = async () => {
+      button2.disabled = true;
       try {
         const p = await request("/api/device/factory-reset/preview", { scope, method: "POST", body: "{}" });
         if (!scopeActive(scope)) return;
@@ -1201,7 +1357,7 @@
       } catch (e) {
         if (!isCancelled(e)) toast(e.message);
       } finally {
-        if (scopeActive(scope)) button.disabled = false;
+        if (scopeActive(scope)) button2.disabled = false;
       }
     };
   }
@@ -1349,8 +1505,8 @@
   var definitions = [{ feature: "dmz", title: "DMZ", fields: [["enabled", "Habilitado", "bool"], ["internal_client", "IP do cliente"]] }, { feature: "upnp", title: "UPnP", fields: [["enabled", "Habilitado", "bool"]] }, { feature: "tr069", title: "TR-069", fields: [["url", "URL ACS"]] }, { feature: "firewall", title: "Firewall", fields: [["enabled", "Habilitado", "bool"], ["level", "Nível"]] }];
   var loaded = {};
   function presentation(feature, data) {
-    const rows2 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
-    return fields(rows2[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
+    const rows3 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
+    return fields(rows3[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
   }
   var featureCap = (f) => f === "firewall" && (cap("firewall_level").enabled?.read || cap("firewall_level").enabled?.write) ? cap("firewall_level") : cap(f);
   async function render5() {
@@ -1364,9 +1520,9 @@
     if (!scopeActive(scope)) throw cancelled();
     return `<section class="panel"><h2>Telemetria do equipamento</h2>${device ? fields([["Tempo ligado", uptime(device.uptime_seconds)], ["CPU", device.cpu_percent == null ? null : device.cpu_percent + " %"], ["Memória", device.memory_percent == null ? null : device.memory_percent + " %"], ["Temperatura", device.temperature_c == null ? null : device.temperature_c + " °C"]]) : '<p class="muted">Telemetria não disponível.</p>'}</section><section class="panel"><h2>Manutenção</h2><div class="capability-row"><strong>Reiniciar equipamento</strong>${capBadge(reboot.read)}${capBadge(reboot.write)}<button id="reboot-button" class="button danger" ${reboot.enabled?.write ? "" : "disabled"}>Reiniciar</button></div>${resetHost()}</section><div class="split">${definitions.map((d, i) => {
       const result = results[i];
-      const value = result.status === "fulfilled" ? result.value : null;
-      if (value) loaded[d.feature] = value;
-      return `<section class="panel"><div class="panel-header"><h2>${d.title}</h2>${capBadge(featureCap(d.feature).write)}</div>${value ? presentation(d.feature, value) : `<p class="muted">${result.status === "rejected" ? esc(result.reason.message) : "Leitura não comprovada nesta sessão."}</p>`}<button class="button" data-config="${d.feature}" ${value && value.available !== false && featureCap(d.feature).enabled?.write ? "" : "disabled"}>Editar</button></section>`;
+      const value2 = result.status === "fulfilled" ? result.value : null;
+      if (value2) loaded[d.feature] = value2;
+      return `<section class="panel"><div class="panel-header"><h2>${d.title}</h2>${capBadge(featureCap(d.feature).write)}</div>${value2 ? presentation(d.feature, value2) : `<p class="muted">${result.status === "rejected" ? esc(result.reason.message) : "Leitura não comprovada nesta sessão."}</p>`}<button class="button" data-config="${d.feature}" ${value2 && value2.available !== false && featureCap(d.feature).enabled?.write ? "" : "disabled"}>Editar</button></section>`;
     }).join("")}</div>${cap("configuration_surfaces").enabled?.read ? surfaceHost() : ""}${artifactsHost()}<section class="panel"><h2>Histórico de operações</h2>${history ? table([{ label: "Data", keys: ["created_at"] }, { label: "Operação", keys: ["operation"] }, { label: "Alvo", keys: ["target"] }, { label: "Resultado", keys: ["outcome"] }], (history.changes || []).map((row) => ({ ...row, created_at: row.created_at ? new Date(row.created_at).toLocaleString("pt-BR") : null, outcome: { attempted: "Solicitado", accepted: "Aceito", verified: "Verificado", uncertain: "Sem confirmação", failed: "Falhou" }[row.outcome] || row.outcome }))) : '<p class="muted">Histórico não disponível.</p>'}</section>`;
   }
   function mount5() {
@@ -1402,8 +1558,8 @@
   });
   async function render6() {
     const caps = window.__amStore?.capabilities || {};
-    const rows2 = Object.entries(caps);
-    return `<section class="panel"><div class="panel-header"><div><h2>Capabilities</h2><span class="muted">Suporte e evidência são estados separados.</span></div></div>${rows2.length ? rows2.map(([name, c]) => `<div class="capability-row"><strong>${esc(name)}</strong>${capBadge(c.read)}${capBadge(c.write)}<span class="muted">${esc(c.evidence)}${c.source ? ` · ${esc(c.source)}` : ""}</span></div>`).join("") : '<div class="empty-state"><span>Sem capabilities na sessão.</span></div>'}</section>`;
+    const rows3 = Object.entries(caps);
+    return `<section class="panel"><div class="panel-header"><div><h2>Capabilities</h2><span class="muted">Suporte e evidência são estados separados.</span></div></div>${rows3.length ? rows3.map(([name, c]) => `<div class="capability-row"><strong>${esc(name)}</strong>${capBadge(c.read)}${capBadge(c.write)}<span class="muted">${esc(c.evidence)}${c.source ? ` · ${esc(c.source)}` : ""}</span></div>`).join("") : '<div class="empty-state"><span>Sem capabilities na sessão.</span></div>'}</section>`;
   }
 
   // apps/access_manager/static/js/workspaces/views/traffic.js
@@ -1548,13 +1704,13 @@
   var tests = [["ping", "Ping"], ["dns", "DNS"], ["http", "HTTP/HTTPS"], ["gateway", "Gateway"], ["internet", "Internet"]];
   var fmt = (v, unit = "") => v == null ? "Não disponível" : `${Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}${unit}`;
   var badge2 = (s) => `<span class="diagnostic-status status-${["success", "warning", "failure"].includes(s) ? s : "unknown"}">${esc(statusLabels[s] || "Não disponível")}</span>`;
-  var panel = (id, title, subtitle = "", wide = false) => `<section class="diagnostic-panel am-panel ${wide ? "diagnostic-wide" : ""}"><div class="diagnostic-panel-heading"><div><h2>${title}</h2>${subtitle ? `<p class="muted">${subtitle}</p>` : ""}</div></div><div id="complete-${id}"><p class="muted">Aguardando execução.</p></div></section>`;
+  var panel2 = (id, title, subtitle = "", wide = false) => `<section class="diagnostic-panel am-panel ${wide ? "diagnostic-wide" : ""}"><div class="diagnostic-panel-heading"><div><h2>${title}</h2>${subtitle ? `<p class="muted">${subtitle}</p>` : ""}</div></div><div id="complete-${id}"><p class="muted">Aguardando execução.</p></div></section>`;
   function render8() {
     const device = window.__amStore?.session?.session || {};
-    return `<div class="diagnostic-dashboard"><header class="diagnostic-page-header am-page-header"><div><p class="diagnostic-breadcrumb">Access Manager / Diagnóstico completo</p><h2>Diagnóstico da rede</h2><p class="muted">Verifique a saúde da conexão, desempenho e qualidade do sinal em um só lugar.</p><p class="diagnostic-device"><span class="connection-dot"></span> ${esc(device.model || "Equipamento")} · ${esc(device.vendor || "")} · ${window.__amStore?.session?.connected ? "Online" : "Não conectado"}</p></div><div class="diagnostic-page-actions"><span id="complete-verified" class="muted">Ainda não verificado</span><div class="inline-actions"><button class="button primary" id="complete-run">Executar diagnóstico</button><button class="button" id="complete-export" disabled>Exportar relatório</button><select id="complete-export-format" aria-label="Formato do relatório"><option value="json">JSON técnico</option><option value="csv">CSV resumido</option></select></div></div></header><details class="diagnostic-settings"><summary>Alvos e opções</summary><form id="complete-form" class="inline-actions"><div class="field"><label>Destino Ping / Internet</label><input name="host" required></div><div class="field"><label>Nome para resolver</label><input name="hostname" required></div><label><input name="trace" type="checkbox" checked> Incluir traceroute</label><button class="button" type="submit">Executar com estes alvos</button></form><p class="muted">Ping, DNS, gateway e traceroute são testes da ONT quando suportados. HTTPS usa o computador do técnico, em paralelo às consultas da ONT.</p></details><p id="complete-progress" role="status">Pronto para executar.</p><div class="diagnostic-metrics">${[["latency", "Latência média"], ["loss", "Perda de pacotes"], ["availability", "Disponibilidade"], ["rate", "Tráfego atual"], ["signal", "Qualidade do sinal"]].map(([id, title]) => `<article class="diagnostic-metric"><span>${title}</span><div class="diagnostic-metric-value tech-value" id="metric-${id}">—</div><small id="metric-${id}-detail">Aguardando dados reais</small></article>`).join("")}</div><div class="diagnostic-dashboard-grid"><section class="diagnostic-panel"><h2>Saúde da conexão</h2><p class="muted">Latência e perda ao longo do tempo · amostras medidas</p><div class="diagnostic-chart-controls"><div><button class="button active" data-chart="latency">Latência</button><button class="button" data-chart="loss">Perda de pacotes</button></div><select id="chart-period" aria-label="Período do gráfico"><option value="168">Amostras disponíveis</option><option value="1" disabled>1h</option><option value="6" disabled>6h</option><option value="24" disabled>24h</option><option value="168" disabled>7d</option></select></div><div id="complete-chart" class="diagnostic-chart"><p class="muted">Nenhuma amostra persistida.</p></div><p id="complete-health" class="muted">Informação insuficiente para classificar a saúde global.</p></section><section class="diagnostic-panel"><h2>Teste de conectividade</h2><div id="complete-connectivity">${tests.map(([id, title]) => `<div class="connectivity-row" id="connectivity-${id}"><strong>${title}</strong><span data-status>${badge2("unknown")}</span><span class="tech-value" data-time>—</span><button class="button" data-retest="${id}">Testar novamente</button><small data-origin>ONT${id === "http" ? " / computador do técnico" : ""}</small></div>`).join("")}</div></section>${panel("trace", "Traceroute", "Saltos intermediários sem resposta não comprovam uma rota quebrada.", true)}${panel("wifi", "Qualidade do Wi-Fi", "RSSI/SNR das associações observadas; interferência não é inferida.", true)}${panel("channels", "Canais Wi-Fi", "Tabela do firmware e varredura de redes vizinhas, quando disponíveis.", true)}${panel("resources", "Recursos do equipamento")}${panel("alerts", "Alertas e recomendações", "Regras explícitas aplicadas à execução atual.")}<section class="diagnostic-panel diagnostic-wide"><div class="diagnostic-panel-heading"><div><h2>Histórico de diagnósticos</h2><p class="muted">Execuções persistidas deste equipamento · últimos 7 dias</p></div><div class="inline-actions"><select id="diagnostic-history-period" aria-label="Período do histórico"><option value="24">24h</option><option value="1">1h</option><option value="6">6h</option><option value="168">7d</option></select><select id="diagnostic-history-status" aria-label="Resultado do histórico"><option value="">Todos os resultados</option><option value="success">Passou</option><option value="warning">Atenção</option><option value="failure">Falhou</option><option value="partial">Parcial</option></select></div></div><div id="complete-history"><p class="muted">Carregando histórico local…</p></div></section>${panel("evidence", "Detalhes técnicos da coleta", "Leituras normalizadas; sem credenciais, cookies ou tokens.", true)}</div><details class="diagnostic-extras"><summary>Ferramentas adicionais</summary><section class="panel"><h3>Teste de velocidade nativo</h3><p class="muted">Speedtest é uma medição separada do tráfego atual.</p><button class="button" id="complete-speedtest" ${cap("speedtest_discovery").enabled?.write ? "" : "disabled"}>Consultar servidores</button><select id="complete-speed-server" disabled aria-label="Servidor de velocidade"></select><button class="button" id="complete-speed-start" disabled>Iniciar medição</button><div id="complete-speedtest-result"></div></section><button class="button" id="complete-workstation">Comparar caminho do PC</button><div id="complete-workstation-result"></div><button class="button" id="complete-runtime">Consultar probes conhecidos</button><div id="complete-runtime-result"></div></details></div>`;
+    return `<div class="diagnostic-dashboard"><header class="diagnostic-page-header am-page-header"><div><p class="diagnostic-breadcrumb">Access Manager / Diagnóstico completo</p><h2>Diagnóstico da rede</h2><p class="muted">Verifique a saúde da conexão, desempenho e qualidade do sinal em um só lugar.</p><p class="diagnostic-device"><span class="connection-dot"></span> ${esc(device.model || "Equipamento")} · ${esc(device.vendor || "")} · ${window.__amStore?.session?.connected ? "Online" : "Não conectado"}</p></div><div class="diagnostic-page-actions"><span id="complete-verified" class="muted">Ainda não verificado</span><div class="inline-actions"><button class="button primary" id="complete-run">Executar diagnóstico</button><button class="button" id="complete-export" disabled>Exportar relatório</button><select id="complete-export-format" aria-label="Formato do relatório"><option value="json">JSON técnico</option><option value="csv">CSV resumido</option></select></div></div></header><details class="diagnostic-settings"><summary>Alvos e opções</summary><form id="complete-form" class="inline-actions"><div class="field"><label>Destino Ping / Internet</label><input name="host" required></div><div class="field"><label>Nome para resolver</label><input name="hostname" required></div><label><input name="trace" type="checkbox" checked> Incluir traceroute</label><button class="button" type="submit">Executar com estes alvos</button></form><p class="muted">Ping, DNS, gateway e traceroute são testes da ONT quando suportados. HTTPS usa o computador do técnico, em paralelo às consultas da ONT.</p></details><p id="complete-progress" role="status">Pronto para executar.</p><div class="diagnostic-metrics">${[["latency", "Latência média"], ["loss", "Perda de pacotes"], ["availability", "Disponibilidade"], ["rate", "Tráfego atual"], ["signal", "Qualidade do sinal"]].map(([id, title]) => `<article class="diagnostic-metric"><span>${title}</span><div class="diagnostic-metric-value tech-value" id="metric-${id}">—</div><small id="metric-${id}-detail">Aguardando dados reais</small></article>`).join("")}</div><div class="diagnostic-dashboard-grid"><section class="diagnostic-panel"><h2>Saúde da conexão</h2><p class="muted">Latência e perda ao longo do tempo · amostras medidas</p><div class="diagnostic-chart-controls"><div><button class="button active" data-chart="latency">Latência</button><button class="button" data-chart="loss">Perda de pacotes</button></div><select id="chart-period" aria-label="Período do gráfico"><option value="168">Amostras disponíveis</option><option value="1" disabled>1h</option><option value="6" disabled>6h</option><option value="24" disabled>24h</option><option value="168" disabled>7d</option></select></div><div id="complete-chart" class="diagnostic-chart"><p class="muted">Nenhuma amostra persistida.</p></div><p id="complete-health" class="muted">Informação insuficiente para classificar a saúde global.</p></section><section class="diagnostic-panel"><h2>Teste de conectividade</h2><div id="complete-connectivity">${tests.map(([id, title]) => `<div class="connectivity-row" id="connectivity-${id}"><strong>${title}</strong><span data-status>${badge2("unknown")}</span><span class="tech-value" data-time>—</span><button class="button" data-retest="${id}">Testar novamente</button><small data-origin>ONT${id === "http" ? " / computador do técnico" : ""}</small></div>`).join("")}</div></section>${panel2("trace", "Traceroute", "Saltos intermediários sem resposta não comprovam uma rota quebrada.", true)}${panel2("wifi", "Qualidade do Wi-Fi", "RSSI/SNR das associações observadas; interferência não é inferida.", true)}${panel2("channels", "Canais Wi-Fi", "Tabela do firmware e varredura de redes vizinhas, quando disponíveis.", true)}${panel2("resources", "Recursos do equipamento")}${panel2("alerts", "Alertas e recomendações", "Regras explícitas aplicadas à execução atual.")}<section class="diagnostic-panel diagnostic-wide"><div class="diagnostic-panel-heading"><div><h2>Histórico de diagnósticos</h2><p class="muted">Execuções persistidas deste equipamento · últimos 7 dias</p></div><div class="inline-actions"><select id="diagnostic-history-period" aria-label="Período do histórico"><option value="24">24h</option><option value="1">1h</option><option value="6">6h</option><option value="168">7d</option></select><select id="diagnostic-history-status" aria-label="Resultado do histórico"><option value="">Todos os resultados</option><option value="success">Passou</option><option value="warning">Atenção</option><option value="failure">Falhou</option><option value="partial">Parcial</option></select></div></div><div id="complete-history"><p class="muted">Carregando histórico local…</p></div></section>${panel2("evidence", "Detalhes técnicos da coleta", "Leituras normalizadas; sem credenciais, cookies ou tokens.", true)}</div><details class="diagnostic-extras"><summary>Ferramentas adicionais</summary><section class="panel"><h3>Teste de velocidade nativo</h3><p class="muted">Speedtest é uma medição separada do tráfego atual.</p><button class="button" id="complete-speedtest" ${cap("speedtest_discovery").enabled?.write ? "" : "disabled"}>Consultar servidores</button><select id="complete-speed-server" disabled aria-label="Servidor de velocidade"></select><button class="button" id="complete-speed-start" disabled>Iniciar medição</button><div id="complete-speedtest-result"></div></section><button class="button" id="complete-workstation">Comparar caminho do PC</button><div id="complete-workstation-result"></div><button class="button" id="complete-runtime">Consultar probes conhecidos</button><div id="complete-runtime-result"></div></details></div>`;
   }
-  function hopsView(rows2) {
-    return `<div class="diagnostic-route">${rows2.map((h, i) => `${i ? '<span class="route-line"></span>' : ""}<span class="route-node ${h.status === "timeout" ? "route-timeout" : ""}" title="${esc(h.address || "Sem resposta")}">${esc(h.hop)}</span>`).join("")}</div>` + table([{ label: "Salto", keys: ["hop"] }, { label: "Host", keys: ["host"] }, { label: "Endereço", render: (h) => `<span class="mono tech-value">${esc(h.address || "—")}</span>` }, { label: "Latência", render: (h) => fmt(h.latency_ms, " ms") }, { label: "Perda", render: (h) => fmt(h.loss_percent, " %") }, { label: "Status", render: (h) => badge2(h.status) }], rows2, "Traceroute não disponível ou não solicitado.");
+  function hopsView(rows3) {
+    return `<div class="diagnostic-route">${rows3.map((h, i) => `${i ? '<span class="route-line"></span>' : ""}<span class="route-node ${h.status === "timeout" ? "route-timeout" : ""}" title="${esc(h.address || "Sem resposta")}">${esc(h.hop)}</span>`).join("")}</div>` + table([{ label: "Salto", keys: ["hop"] }, { label: "Host", keys: ["host"] }, { label: "Endereço", render: (h) => `<span class="mono tech-value">${esc(h.address || "—")}</span>` }, { label: "Latência", render: (h) => fmt(h.latency_ms, " ms") }, { label: "Perda", render: (h) => fmt(h.loss_percent, " %") }, { label: "Status", render: (h) => badge2(h.status) }], rows3, "Traceroute não disponível ou não solicitado.");
   }
   function resourcesView(r) {
     return `<div class="resource-grid">${[["cpu_percent", "CPU", "violet"], ["memory_percent", "Memória", "blue"], ["storage_percent", "Armazenamento", "green"]].map(([k, label, color]) => `<div><span>${label}</span><strong class="tech-value">${fmt(r[k], " %")}</strong>${r[k] != null && r[k] >= 0 && r[k] <= 100 ? `<div class="resource-track"><div class="resource-fill ${color}" style="width:${r[k]}%"></div></div>` : ""}</div>`).join("")}</div>` + fields([["Temperatura", r.temperature_c == null ? null : fmt(r.temperature_c, " °C")], ["Uptime", uptime(r.uptime_seconds)], ["Sessões ativas", r.active_sessions], ["Firmware", r.firmware]]);
@@ -1592,8 +1748,8 @@
     };
     function paint() {
       if (!current || !scopeActive(scope)) return;
-      const metric3 = (id, value, detail) => {
-        document.querySelector("#metric-" + id).textContent = value;
+      const metric3 = (id, value2, detail) => {
+        document.querySelector("#metric-" + id).textContent = value2;
         document.querySelector("#metric-" + id + "-detail").textContent = detail;
       };
       metric3("latency", fmt(current.latency_ms, " ms"), "Ping da ONT");
@@ -1628,7 +1784,7 @@
         const data = await request("/api/device/diagnostics/full/history", { scope, method: "POST", body: JSON.stringify({ hours: 168 }) });
         if (!scopeActive(scope) || stamp !== historyStamp) return;
         history = data;
-        const hours = Number(document.querySelector("#diagnostic-history-period").value), status2 = document.querySelector("#diagnostic-history-status").value, since = Date.now() - hours * 36e5, filtered = history.filter((r) => new Date(r.finished_at).getTime() >= since && (!status2 || r.status === status2));
+        const hours = Number(document.querySelector("#diagnostic-history-period").value), status3 = document.querySelector("#diagnostic-history-status").value, since = Date.now() - hours * 36e5, filtered = history.filter((r) => new Date(r.finished_at).getTime() >= since && (!status3 || r.status === status3));
         put("history", table([{ label: "Data", render: (r) => esc(new Date(r.finished_at).toLocaleString("pt-BR")) }, { label: "Teste", render: (r) => esc(r.test_type === "complete" ? "Completo" : tests.find((t) => t[0] === r.test_type)?.[1]) }, { label: "Resultado", render: (r) => badge2(r.status) }, { label: "Latência", render: (r) => fmt(r.latency_ms, " ms") }, { label: "Perda", render: (r) => fmt(r.packet_loss_percent, " %") }, { label: "Ações", render: (r) => `<button class="button" data-diagnostic-load="${r.history_id}">Ver / exportar</button>` }], filtered, "Nenhuma execução neste filtro."));
         document.querySelectorAll("[data-diagnostic-load]").forEach((b) => b.onclick = () => {
           current = history.find((r) => r.history_id === Number(b.dataset.diagnosticLoad));
@@ -1646,9 +1802,9 @@
     async function run(test = null) {
       if (running) return;
       running = true;
-      const button = document.querySelector("#complete-run");
-      button.disabled = true;
-      button.textContent = "Executando…";
+      const button2 = document.querySelector("#complete-run");
+      button2.disabled = true;
+      button2.textContent = "Executando…";
       document.querySelector("#complete-progress").textContent = "Executando testes reais; consultas nativas respeitam o contexto da sessão…";
       document.querySelectorAll("[data-retest]").forEach((b) => b.disabled = true);
       try {
@@ -1682,8 +1838,8 @@
       } finally {
         running = false;
         if (scopeActive(scope)) {
-          button.disabled = false;
-          button.textContent = "Executar diagnóstico";
+          button2.disabled = false;
+          button2.textContent = "Executar diagnóstico";
           document.querySelectorAll("[data-retest]").forEach((b) => b.disabled = false);
         }
       }
@@ -1771,12 +1927,11 @@
     capabilities: ["AVANÇADO", "Capabilities"],
     deployment: ["AVANÇADO", "Implantação"]
   };
+  Object.assign(meta, Object.fromEntries(Object.entries(titles).map(([key, [group, title]]) => [key, [`Infraestrutura / Juniper / ${group}`, title]])));
+  meta.subscribers[1] = "Assinantes PPPoE";
+  var juniperRoutes = Object.fromEntries(Object.keys(titles).map((key) => [key, routeView(key)]));
   var views = {
-    juniperOverview: { render: overview },
-    subscribers: { render: subscribers, mount: mountSubscribers, unmount: unmountSubscribers },
-    juniperInterfaces: { render: interfaces, mount: mountInterfaces },
-    juniperSystem: { render: system, mount: mountSystem },
-    juniperDiagnostics: { render: diagnostics, mount: mountDiagnostics },
+    ...juniperRoutes,
     overview: overview_exports,
     clients: clients_exports,
     wifi: wifi_exports,
@@ -1795,7 +1950,9 @@
     const s = store.session?.session;
     const connected = Boolean(store.session?.connected);
     const infrastructure = s?.vendor === "juniper";
-    document.querySelectorAll("#sidebar .nav,#sidebar .nav-group").forEach((element) => {
+    document.querySelector(".app-shell").classList.toggle("juniper-shell", infrastructure);
+    document.querySelector("#action-dialog").classList.toggle("juniper-surface", infrastructure);
+    document.querySelectorAll("#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group").forEach((element) => {
       element.hidden = infrastructure ? !element.hasAttribute("data-juniper-nav") : element.hasAttribute("data-juniper-nav");
     });
     document.querySelector("#login-page").hidden = connected;
@@ -1826,8 +1983,8 @@
     if (updated) updated.textContent = s?.updated_at ? `Atualizado ${new Date(s.updated_at).toLocaleTimeString()}` : "—";
   }
   async function render9(name = store.view, background = false) {
-    if (store.session?.session?.vendor === "juniper" && !["juniperOverview", "subscribers", "juniperInterfaces", "juniperSystem", "juniperDiagnostics"].includes(name)) name = "juniperOverview";
-    else if (store.session?.session?.vendor !== "juniper" && ["juniperOverview", "subscribers", "juniperInterfaces", "juniperSystem", "juniperDiagnostics"].includes(name)) name = "overview";
+    if (store.session?.session?.vendor === "juniper" && !Object.hasOwn(juniperRoutes, name)) name = "juniperOverview";
+    else if (store.session?.session?.vendor !== "juniper" && Object.hasOwn(juniperRoutes, name)) name = "overview";
     const scope = background ? currentScope() : beginView(name);
     if (!background) {
       views[store.view]?.unmount?.();
@@ -1840,11 +1997,22 @@
       state.loading = false;
     }, { once: true });
     store.view = name;
-    document.querySelectorAll(".nav").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
+    document.querySelectorAll(".nav").forEach((b) => {
+      const active2 = b.dataset.view === name;
+      b.classList.toggle("active", active2);
+      if (active2) {
+        b.setAttribute("aria-current", "page");
+        const group = b.closest("details");
+        if (group) group.open = true;
+      } else b.removeAttribute("aria-current");
+    });
     const [kicker, title] = meta[name] || meta.overview;
     const kickerEl = document.querySelector("#page-kicker");
     const titleEl = document.querySelector("#page-title");
-    if (kickerEl) kickerEl.textContent = kicker;
+    if (kickerEl) {
+      if (Object.hasOwn(juniperRoutes, name)) kickerEl.innerHTML = `<button class="j-crumb" data-juniper-route="juniperOverview">Infraestrutura</button> / <button class="j-crumb" data-juniper-route="juniperOverview">Juniper</button> / ${esc(titles[name][0])}`;
+      else kickerEl.textContent = kicker;
+    }
     if (titleEl) titleEl.textContent = title;
     document.querySelector(".page-heading").hidden = ["overview", "traffic", "completeDiagnostics"].includes(name);
     if (!store.session?.connected && name !== "profiles") {
@@ -1892,12 +2060,12 @@
     connectionBusy = true;
     document.querySelector("#connection-feedback").textContent = "";
     document.querySelector("#connection-status").textContent = "Conectando…";
-    const button = document.querySelector("#connect-button");
-    const originalLabel = button?.textContent || "Conectar";
+    const button2 = document.querySelector("#connect-button");
+    const originalLabel = button2?.textContent || "Conectar";
     const payload = normalizeConnectionPayload(form);
-    if (button) {
-      button.disabled = true;
-      button.textContent = "Conectando…";
+    if (button2) {
+      button2.disabled = true;
+      button2.textContent = "Conectando…";
     }
     try {
       const s = await request("/api/session", { method: "POST", body: JSON.stringify(payload) });
@@ -1923,9 +2091,9 @@
       connectionBusy = false;
       if (payload.vendor === "juniper") form.elements.password.value = "";
       payload.password = "";
-      if (button) {
-        button.disabled = false;
-        button.textContent = originalLabel;
+      if (button2) {
+        button2.disabled = false;
+        button2.textContent = originalLabel;
       }
     }
   }
@@ -1937,6 +2105,15 @@
     window.__amStore = store;
     workspace = document.querySelector("#workspace");
     if (!workspace) throw new Error("Workspace do Access Manager não foi encontrado.");
+    const oldNav = document.querySelectorAll("[data-juniper-nav]");
+    oldNav.forEach((n) => n.remove());
+    document.querySelector("#sidebar").insertAdjacentHTML("afterbegin", navigation.map(([group, items], index) => `<details class="juniper-nav-group" data-juniper-nav hidden ${index < 2 ? "open" : ""}><summary>${esc(group)}</summary>${items.map(([route, label]) => `<button class="nav" data-juniper-nav data-view="${route}" hidden><span>${esc(label)}</span></button>`).join("")}</details>`).join(""));
+    document.querySelector("#juniper-help").onclick = () => dialog("Ajuda · Juniper / Junos BNG", "<p>Busque o contrato, selecione uma sessão e consulte detalhes sem sair da lista. Leituras avançadas são feitas sob demanda.</p><p>O acesso ao CPE usa credenciais separadas. Voltar ao assinante mantém a sessão Juniper; portas inacessíveis não confirmam assinante offline.</p>");
+    document.addEventListener("juniper-navigate", (event) => render9(event.detail));
+    document.addEventListener("click", (event) => {
+      const b = event.target.closest("[data-juniper-route]");
+      if (b) render9(b.dataset.juniperRoute);
+    });
     document.querySelectorAll(".nav").forEach((b) => {
       b.onclick = () => {
         document.querySelector("#sidebar")?.classList.remove("open");
@@ -1952,18 +2129,19 @@
       infrastructureSettings = await request("/api/infrastructure/settings");
     } catch {
     }
-    const syncVendor = () => {
+    const syncVendor = (event) => {
       const juniper = form.elements.vendor.value === "juniper";
       document.querySelector("#juniper-connection").hidden = !juniper;
       form.querySelector(".https-toggle").hidden = juniper;
       document.querySelector("#login-page").classList.toggle("infrastructure-login", juniper);
+      document.querySelector("#action-dialog").classList.toggle("juniper-surface", juniper);
       form.elements.password.autocomplete = juniper ? "off" : "current-password";
       form.elements.username.autocomplete = juniper ? "off" : "username";
       form.querySelector("[for=connection-host]").textContent = juniper ? "Servidor" : "IP ou IP:porta";
       form.querySelector("[for=connection-user]").textContent = juniper ? "Usuário AD" : "Usuário";
       form.querySelector("[for=connection-password]").textContent = juniper ? "Senha AD" : "Senha";
       if (juniper) {
-        form.elements.host.value = infrastructureSettings.last_successful_host || infrastructureSettings.default_host || "";
+        if (event?.type === "change" || !form.elements.host.value) form.elements.host.value = infrastructureSettings.last_successful_host || infrastructureSettings.default_host || "";
         form.elements.ssh_port.value = infrastructureSettings.ssh_port || 22;
         form.elements.netconf_port.value = infrastructureSettings.netconf_port || 830;
         form.elements.transport.value = infrastructureSettings.preferred_transport || "ssh";
@@ -1974,8 +2152,8 @@
     syncVendor();
     document.querySelector("#inspect-host-key").onclick = async () => {
       try {
-        const info = await request("/api/infrastructure/host-key", { method: "POST", body: JSON.stringify({ host: form.elements.host.value, port: form.elements.transport.value === "netconf" ? form.elements.netconf_port.value : form.elements.ssh_port.value }) });
-        const d = dialog("Identidade SSH do servidor", `<p>${esc(info.host)}:${esc(info.port)} · ${esc(info.status)}</p><p>Chave apresentada: <strong>${esc(info.fingerprint)}</strong></p>${info.previous_fingerprints.length ? `<p>Chaves anteriores: ${info.previous_fingerprints.map(esc).join(", ")}</p>` : ""}<p>Compare a impressão digital com uma fonte confiável antes de aceitar. Uma chave alterada bloqueia a conexão.</p>`, `<button class="button primary" data-trust-key>Confirmei a identidade — confiar nesta chave</button>`);
+        const info = await request("/api/infrastructure/host-key", { method: "POST", body: JSON.stringify({ host: store.session?.connected && store.session.session?.vendor === "juniper" ? store.session.session.host : form.elements.host.value, port: form.elements.transport.value === "netconf" ? form.elements.netconf_port.value : form.elements.ssh_port.value }) });
+        const d = dialog("Identidade SSH do servidor", `<div class="j-trust-body"><div class="j-trust-alert ${info.status === "HOST_KEY_CHANGED" ? "changed" : ""}" role="alert"><strong>${info.status === "HOST_KEY_CHANGED" ? "A chave SSH apresentada pelo servidor mudou" : info.status === "HOST_KEY_TRUSTED" ? "Chave SSH reconhecida" : "Primeiro acesso a este servidor"}</strong><p>Compare a impressão digital com uma fonte confiável antes de aceitar. Uma chave alterada bloqueia a conexão.</p></div><dl class="j-kv"><div><dt>Servidor</dt><dd>${esc(info.host)}:${esc(info.port)}</dd></div><div><dt>Algoritmo</dt><dd>${esc(info.algorithm || "—")}</dd></div><div><dt>Fingerprint apresentado</dt><dd>${esc(info.fingerprint)}</dd></div>${info.previous_fingerprints.length ? `<div><dt>Fingerprints anteriores</dt><dd>${info.previous_fingerprints.map(esc).join(", ")}</dd></div>` : ""}</dl></div>`, `<button class="button primary" data-trust-key>Confirmei a identidade — confiar nesta chave</button>`);
         d.querySelector("[data-trust-key]").onclick = async (event) => {
           event.currentTarget.disabled = true;
           try {
