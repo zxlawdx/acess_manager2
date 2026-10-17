@@ -4,11 +4,10 @@ const exitPolicyKey='accessManager.serviceLog.exitPolicy';
 const readExitPolicy=()=>{try{const value=localStorage.getItem(exitPolicyKey);return ['ask','keep','clear'].includes(value)?value:'ask'}catch{return 'ask'}};
 const writeExitPolicy=value=>{try{localStorage.setItem(exitPolicyKey,value)}catch{}};
 
-// Qt WebEngine / pywebview builds must not depend on the asynchronous Web
-// Clipboard API here. In the frozen Windows app navigator.clipboard can cross a
-// native permission/renderer boundary and has been observed to terminate the
-// WebView instead of delivering a catchable JavaScript rejection. Keep copying
-// synchronous and inside the user's click gesture.
+// Qt WebEngine / pywebview builds must not depend on the asynchronous browser
+// clipboard path here. In the frozen Windows app that API can cross a native
+// permission/renderer boundary instead of delivering a catchable JavaScript
+// rejection. Keep copying synchronous and inside the user's click gesture.
 function safeCopyText(value){
  const text=String(value??'');
  const active=document.activeElement;
