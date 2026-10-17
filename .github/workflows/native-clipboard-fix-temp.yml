@@ -26,6 +26,7 @@ jobs:
           cache: npm
       - run: python tools/apply_clipboard_fix_temp.py
       - run: npm ci
+      - run: ./node_modules/.bin/esbuild apps/access_manager/static/js/entry.js --bundle --format=iife --target=es2020 --charset=utf8 --outfile=/tmp/runtime.js
       - run: python tools/sync_frontend.py
       - run: pip install -r requirements.txt pytest pytest-subtests
       - run: python -m pytest -q
