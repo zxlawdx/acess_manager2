@@ -507,7 +507,7 @@
     if (!selector) return { afterConnect: async () => {
     } };
     const input = document.querySelector("#login-experience");
-    let selected2 = ["world3d", "voxel"].includes(readPreference("experience", "interface")) ? readPreference("experience", "interface") : readPreference("theme", readPreference("am-theme", "terminal")) === "aero" ? "aero" : "terminal";
+    let selected2 = ["world3d", "voxel", "wasteland"].includes(readPreference("experience", "interface")) ? readPreference("experience", "interface") : readPreference("theme", readPreference("am-theme", "terminal")) === "aero" ? "aero" : "terminal";
     let probed = false, supported = true;
     function select(value2, persist = true) {
       selected2 = value2;
@@ -518,14 +518,14 @@
         b.classList.toggle("selected", checked);
         b.tabIndex = checked ? 0 : -1;
       });
-      theme.apply(value2 === "terminal" ? "terminal" : "aero", { persist });
-      if (persist) savePreference("experience", ["world3d", "voxel"].includes(value2) ? value2 : "interface");
-      if (["world3d", "voxel"].includes(value2)) {
+      theme.apply(["terminal", "wasteland"].includes(value2) ? "terminal" : "aero", { persist });
+      if (persist) savePreference("experience", ["world3d", "voxel", "wasteland"].includes(value2) ? value2 : "interface");
+      if (["world3d", "voxel", "wasteland"].includes(value2)) {
         if (!probed) {
           supported = supportsWebGL();
           probed = true;
         }
-        document.querySelector("#login-3d-status").textContent = supported ? "O mundo será aberto após autenticar." : "3D indisponível neste dispositivo. Você entrará na interface Aero.";
+        document.querySelector("#login-3d-status").textContent = supported ? "O mundo será aberto após autenticar." : "3D indisponível neste dispositivo. Você entrará na interface convencional.";
       }
     }
     selector.addEventListener("click", (e) => {
@@ -546,15 +546,15 @@
     return { get selected() {
       return selected2;
     }, async afterConnect(world) {
-      theme.apply(selected2 === "terminal" ? "terminal" : "aero");
-      savePreference("experience", ["world3d", "voxel"].includes(selected2) ? selected2 : "interface");
-      if (["world3d", "voxel"].includes(selected2)) {
+      theme.apply(["terminal", "wasteland"].includes(selected2) ? "terminal" : "aero");
+      savePreference("experience", ["world3d", "voxel", "wasteland"].includes(selected2) ? selected2 : "interface");
+      if (["world3d", "voxel", "wasteland"].includes(selected2)) {
         if (!probed) {
           supported = supportsWebGL();
           probed = true;
         }
         if (supported) await world.enter(selected2);
-        else world.unavailable("3D indisponível neste dispositivo. A interface Aero está disponível.");
+        else world.unavailable("3D indisponível neste dispositivo. A interface convencional está disponível.");
       }
     } };
   }
@@ -580,12 +580,78 @@
     return registry.filter((r) => r.family === family && (!r.capabilities.length || r.capabilities.some((c) => capabilityAllows(capabilities?.[c]))));
   }
 
+  // apps/access_manager/static/js/wasteland/metadata.js
+  var names = { overview: "Control Shelter", wan: "WAN Tower", wifi: "Wi-Fi Relay Field", clients: "Client Outpost", lan: "LAN Workshop", dhcpdns: "DHCP / DNS Supply Depot", diagnostics: "Diagnostics Lab", completeDiagnostics: "Diagnostics Command Lab", profiles: "Configuration Archive", management: "Operations Workshop", traffic: "Telemetry Station", juniperOverview: "BNG Command Bunker", subscribers: "Subscriber Outpost", juniperSubscriber: "Session Relay", juniperInterfaces: "Interface Yard", juniperDiagnostics: "Diagnostics Tower", "access-cpe": "CPE Gate" };
+  var fieldName = (region) => names[region.id] || names[region.routeId] || region.label;
+  function withFieldRegions(regions, mode) {
+    if (mode !== "wasteland") return regions;
+    const [x, z] = [[0, 34], [0, 42], [-43, 30], [43, 30], [0, -34]].find(([x2, z2]) => regions.every((r) => Math.hypot(r.x - x2, r.z - z2) > 8)) || [-43, -35];
+    return [...regions.map((r) => ({ ...r, worldLabel: fieldName(r), interactionType: r.actionId ? "action" : "route", status: "Disponível na sessão" })), { id: "service-log", routeId: null, kind: "service", label: "Atendimento atual", worldLabel: "Service Log Terminal", interactionType: "service", status: "Registro local em memória", available: true, x, z, color: 3407718, layout: regions[0]?.layout || "router" }];
+  }
+
+  // apps/access_manager/static/js/wasteland/audio.js
+  var FieldAudio = class {
+    constructor({ volume = 0.35, onChange = () => {
+    } } = {}) {
+      this.volume = Number(volume) || 0;
+      this.active = false;
+      this.onChange = onChange;
+      this.context = null;
+      this.revision = 0;
+    }
+    async play() {
+      const token = ++this.revision;
+      if (!this.context) {
+        const Context = window.AudioContext || window.webkitAudioContext;
+        if (!Context) throw new Error("Áudio indisponível nesta WebView.");
+        this.context = new Context();
+        this.gain = this.context.createGain();
+        this.gain.gain.value = 0;
+        this.gain.connect(this.context.destination);
+        this.oscillator = this.context.createOscillator();
+        this.oscillator.type = "triangle";
+        this.oscillator.frequency.value = 55;
+        this.oscillator.connect(this.gain);
+        this.oscillator.start();
+      }
+      await this.context.resume();
+      if (token !== this.revision) return;
+      this.active = true;
+      this.setVolume(this.volume);
+      this.onChange(this.active);
+    }
+    setVolume(value2) {
+      this.volume = Math.max(0, Math.min(1, Number(value2) || 0));
+      if (this.gain) this.gain.gain.setTargetAtTime(this.active ? this.volume * 0.035 : 0, this.context.currentTime, 0.08);
+    }
+    pause() {
+      this.revision++;
+      this.active = false;
+      this.setVolume(this.volume);
+      this.context?.suspend()?.catch(() => {
+      });
+      this.onChange(false);
+    }
+    async toggle() {
+      if (this.active) this.pause();
+      else await this.play();
+    }
+    dispose() {
+      this.pause();
+      this.oscillator?.stop();
+      this.oscillator?.disconnect();
+      this.gain?.disconnect();
+      this.context?.close();
+      this.context = null;
+    }
+  };
+
   // apps/access_manager/static/js/world/regions.js
   var palette = [1288654, 5485633, 236475, 7826651, 15115581, 2920919];
   function deriveWorldRegions(registry, session2, capabilities) {
     const layout = session2?.vendor === "juniper" ? "juniper" : "router";
     const routes = applicableRoutes(registry, session2, capabilities);
-    const items = routes.flatMap((route) => [{ routeId: route.id, id: route.id, label: route.label, kind: route.kind, available: true }, ...(route.actions || []).filter((a) => a.available() && (!a.capability || capabilityAllows(capabilities?.[a.capability]))).map((a) => ({ routeId: route.id, id: a.id, actionId: a.id, label: a.label, kind: a.kind, available: true }))]);
+    const items = routes.flatMap((route) => [{ routeId: route.id, id: route.id, label: route.label, kind: route.kind, capabilities: route.capabilities, available: true }, ...(route.actions || []).filter((a) => a.available() && (!a.capability || capabilityAllows(capabilities?.[a.capability]))).map((a) => ({ routeId: route.id, id: a.id, actionId: a.id, label: a.label, kind: a.kind, available: true }))]);
     return items.map((r, i) => {
       const col = i % 5, row = Math.floor(i / 5);
       return { ...r, layout, x: layout === "juniper" ? (col - 2) * 15 : (col - 2) * 17, z: layout === "juniper" ? -16 + row * 15 : -12 + row * 18, color: palette[i % palette.length] };
@@ -763,10 +829,20 @@
       notice.textContent = message;
       notice.hidden = !message;
     };
+    let musicActive = false;
+    const updateSound = () => {
+      document.querySelector("#world-music").setAttribute("aria-pressed", String(musicActive || ambient.active));
+      document.querySelector("#world-ambient").setAttribute("aria-pressed", String(ambient.active));
+      document.querySelector("#world-music").textContent = musicActive || ambient.active ? "♪ Silenciar tudo" : "♪ Reproduzir";
+      document.querySelector("#world-ambient").textContent = ambient.active ? "Ambiente: ligado" : "Ambiente: desligado";
+    };
+    const ambient = new FieldAudio({ volume: readPreference("volume", ".35"), onChange: updateSound });
     const audio = new AudioManager({ volume: readPreference("volume", ".35"), enabled: readPreference("enabled", "false") === "true", onChange: (state2) => {
+      musicActive = state2.active;
       document.querySelector("#world-track").textContent = state2.title;
       document.querySelector("#world-music").textContent = state2.active ? "♪ Silenciar" : "♪ Reproduzir";
-      document.querySelector("#world-music").setAttribute("aria-pressed", String(state2.active));
+      document.querySelector("#world-music").setAttribute("aria-pressed", String(state2.active || ambient.active));
+      updateSound();
     } });
     function closePanel() {
       if (!active2 || !panel3) return;
@@ -780,6 +856,10 @@
     }
     async function openPanel(region) {
       if (!active2 || !currentRegions.some((r) => r.id === region.id)) return;
+      if (region.interactionType === "service") {
+        document.dispatchEvent(new CustomEvent("open-service"));
+        return;
+      }
       panel3 = true;
       shell.classList.add("world-panel-open");
       close.hidden = false;
@@ -798,12 +878,12 @@
       close.focus();
     }
     function load() {
-      const name = mode === "voxel" ? "AccessManagerVoxel" : "AccessManagerWorld";
+      const name = mode === "wasteland" ? "AccessManagerWasteland" : mode === "voxel" ? "AccessManagerVoxel" : "AccessManagerWorld";
       if (window[name]) return Promise.resolve(window[name]);
       if (loading) return loading;
       loading = new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = mode === "voxel" ? host.dataset.voxelBundle : host.dataset.bundle;
+        script.src = mode === "wasteland" ? host.dataset.wastelandBundle : mode === "voxel" ? host.dataset.voxelBundle : host.dataset.bundle;
         script.onload = () => window[name] ? resolve(window[name]) : reject(new Error("Renderer indisponível"));
         script.onerror = () => {
           script.remove();
@@ -818,12 +898,12 @@
     }
     function refreshContext() {
       if (!store2.session?.connected) return;
-      const regions = deriveWorldRegions(registry, getContext(), store2.capabilities), next = key(), nextSignature = JSON.stringify(regions);
+      const regions = withFieldRegions(deriveWorldRegions(registry, getContext(), store2.capabilities), mode), next = key(), nextSignature = JSON.stringify(regions);
       if (next === contextKey && nextSignature === signature) return;
       currentRegions = regions;
       host.dataset.layout = getContext()?.vendor === "juniper" ? "juniper" : "router";
       host.dataset.regionCount = String(regions.length);
-      document.querySelector("#world-context-label").textContent = host.dataset.layout === "juniper" ? "Backbone, BNG e assinantes" : "Natureza, internet e telecom";
+      document.querySelector("#world-context-label").textContent = host.dataset.layout === "juniper" ? "Backbone, BNG e assinantes" : mode === "wasteland" ? "Postos, enlaces e operações" : "Natureza, internet e telecom";
       if (world && next !== contextKey) {
         remember();
         world.dispose();
@@ -840,7 +920,7 @@
         world?.dispose();
         world = null;
         unavailable2(message);
-      }, modelURL: host.dataset.model });
+      }, modelURL: mode === "wasteland" ? host.dataset.wastelandModel : host.dataset.model });
       world.restoreState(cache.get(contextKey));
       world.applyQuality(readPreference("quality", readPreference("am-world-quality", "medium")));
       document.querySelector("#world-quality").value = world.quality;
@@ -856,9 +936,10 @@
       remember();
       world?.stop();
       audio.pauseMusic();
+      ambient.pause();
       host.hidden = true;
       close.hidden = true;
-      shell.classList.remove("world-mode", "world-panel-open");
+      shell.classList.remove("world-mode", "world-panel-open", "wasteland-mode");
       button2.textContent = "Mundo 3D";
       button2.setAttribute("aria-pressed", "false");
       if (persist) {
@@ -869,7 +950,8 @@
       button2.focus();
     }
     async function enter(nextMode = "world3d") {
-      if (!["world3d", "voxel"].includes(nextMode)) nextMode = "world3d";
+      if (entering) return;
+      if (!["world3d", "voxel", "wasteland"].includes(nextMode)) nextMode = "world3d";
       if (active2 && mode !== nextMode) exit({ persist: false });
       if (mode !== nextMode) {
         remember();
@@ -881,10 +963,17 @@
       }
       if (experience) experience.value = mode;
       host.dataset.experience = mode;
+      shell.classList.toggle("wasteland-mode", mode === "wasteland");
+      host.setAttribute("aria-label", mode === "wasteland" ? "Wasteland Ops 3D" : "Exploração Access World");
+      document.querySelector("#world-title").textContent = mode === "wasteland" ? "FIELD OPS 3D" : "Access World";
+      document.querySelector("#world-ambient").hidden = mode !== "wasteland";
+      document.querySelector("#field-telemetry").hidden = mode !== "wasteland";
+      document.querySelector("#world-map").hidden = false;
       if (entering || active2 || !store2.session?.connected) return;
       entering = true;
       const token = ++generation3;
       button2.disabled = true;
+      if (experience) experience.disabled = true;
       button2.textContent = "Carregando Access World…";
       unavailable2("");
       try {
@@ -893,7 +982,7 @@
         refreshContext();
         host.hidden = false;
         if (!world) createWorld();
-        theme.apply("aero");
+        theme.apply(mode === "wasteland" ? "terminal" : "aero");
         active2 = true;
         shell.classList.add("world-mode");
         suspend();
@@ -909,22 +998,23 @@
         world = null;
         active2 = false;
         shell.classList.remove("world-mode");
-        theme.apply("aero");
+        theme.apply(mode === "wasteland" ? "terminal" : "aero");
         savePreference("experience", "interface");
-        unavailable2(`${error.message} A interface Aero continua disponível.`);
+        unavailable2(`${error.message} A interface convencional continua disponível.`);
         button2.textContent = "Mundo 3D";
         host.hidden = true;
       } finally {
         entering = false;
         button2.disabled = false;
+        if (experience) experience.disabled = false;
       }
     }
-    button2.onclick = () => active2 ? exit() : enter(experience?.value === "voxel" ? "voxel" : "world3d");
+    button2.onclick = () => active2 ? exit() : enter(["voxel", "wasteland"].includes(experience?.value) ? experience.value : "world3d");
     if (experience) experience.onchange = () => experience.value === "interface" ? exit() : enter(experience.value);
     close.onclick = closePanel;
     document.querySelector("#world-theme").onclick = () => theme.apply(theme.theme === "aero" ? "terminal" : "aero");
     document.addEventListener("theme-changed", (e) => {
-      if (e.detail === "terminal" && active2) exit();
+      if (active2 && (e.detail === "terminal" && mode !== "wasteland" || e.detail === "aero" && mode === "wasteland")) exit();
     });
     document.querySelector("#world-quality").onchange = (e) => {
       world?.applyQuality(e.target.value);
@@ -933,7 +1023,10 @@
     };
     document.querySelector("#world-music").onclick = async () => {
       try {
-        await audio.toggle();
+        if (ambient.active || audio.active) {
+          ambient.pause();
+          audio.setEnabled(false);
+        } else await audio.toggle();
         savePreference("enabled", audio.enabled);
       } catch (error) {
         unavailable2(error.message);
@@ -942,7 +1035,15 @@
     document.querySelector("#world-volume").value = audio.volume;
     document.querySelector("#world-volume").oninput = (e) => {
       audio.setMasterVolume(e.target.value);
+      ambient.setVolume(e.target.value);
       savePreference("volume", audio.volume);
+    };
+    document.querySelector("#world-ambient").onclick = async () => {
+      try {
+        await ambient.toggle();
+      } catch (error) {
+        unavailable2(error.message);
+      }
     };
     document.querySelector("#world-audio-settings").onclick = () => document.querySelector("#world-audio-file").click();
     document.querySelector("#world-audio-file").onchange = async (e) => {
@@ -973,6 +1074,7 @@
     host.addEventListener("world-scan", (e) => {
       const scan = document.querySelector("#world-scanner");
       scan.hidden = !scan.hidden;
+      if (mode === "wasteland") world?.setPaused(!scan.hidden);
       scan.replaceChildren();
       for (const region of e.detail) {
         const b = document.createElement("button");
@@ -984,6 +1086,7 @@
         };
         scan.append(b);
       }
+      if (mode === "wasteland" && !scan.hidden) scan.querySelector("button")?.focus();
     });
     document.addEventListener("locate-world-route", async (e) => {
       await enter("voxel");
@@ -995,6 +1098,19 @@
         world.restoreState(state2);
       } else unavailable2("Região não disponível nesta sessão.");
     });
+    host.addEventListener("world-service", () => document.dispatchEvent(new CustomEvent("open-service")));
+    host.addEventListener("world-map-toggle", () => {
+      const map2 = document.querySelector("#world-map");
+      map2.hidden = !map2.hidden;
+    });
+    const modal = document.querySelector("#service-dialog");
+    modal?.addEventListener("close", () => {
+      if (active2 && !panel3) world?.setPaused(false);
+    });
+    const modalObserver = new MutationObserver(() => {
+      if (active2 && modal?.open) world?.setPaused(true);
+    });
+    if (modal) modalObserver.observe(modal, { attributes: true, attributeFilter: ["open"] });
     const map = document.querySelector("#world-map");
     let ctx;
     host.addEventListener("focusin", () => {
@@ -1002,12 +1118,13 @@
     });
     host.addEventListener("world-frame", (e) => {
       const { player, hotspot, fps, visited, total } = e.detail;
-      document.querySelector("#world-prompt").textContent = hotspot ? `E · Inspecionar ${hotspot.label}` : mode === "voxel" ? "WASD · Shift · Espaço · E interagir · F scanner · V câmera" : "WASD · Shift correr · Espaço pular · Arraste para olhar";
+      document.querySelector("#world-prompt").textContent = hotspot ? `E · ${mode === "wasteland" ? "Acessar " + (hotspot.worldLabel || hotspot.label) : "Inspecionar " + hotspot.label}` : mode === "wasteland" ? "WASD · Shift · Espaço · E acessar · T terminal · V câmera · M mapa · L atendimento" : mode === "voxel" ? "WASD · Shift · Espaço · E interagir · F scanner · V câmera" : "WASD · Shift correr · Espaço pular · Arraste para olhar";
       document.querySelector("#world-debug").textContent = `${fps} FPS · ${world.quality} · ${world.modelStatus || "Mascote procedural"}`;
       document.querySelector("#world-inventory").textContent = `Exploração: ${visited}/${total} regiões visitadas`;
+      document.querySelector("#field-sector").textContent = hotspot?.worldLabel || hotspot?.label || "Área de operações";
       if (ctx) {
         ctx.clearRect(0, 0, 180, 180);
-        ctx.fillStyle = host.dataset.layout === "juniper" ? "#e0f2fa" : "#e2f4d1";
+        ctx.fillStyle = mode === "wasteland" ? "#0b120d" : host.dataset.layout === "juniper" ? "#e0f2fa" : "#e2f4d1";
         ctx.fillRect(0, 0, 180, 180);
         ctx.font = "13px sans-serif";
         ctx.textAlign = "center";
@@ -1015,7 +1132,7 @@
           ctx.fillStyle = "#" + h.color.toString(16).padStart(6, "0");
           ctx.fillText(minimapGlyph[h.kind] || "●", 90 + h.x * 1.5, 93 + h.z * 1.5);
         }
-        ctx.fillStyle = "#123c60";
+        ctx.fillStyle = mode === "wasteland" ? "#7dff9c" : "#123c60";
         ctx.beginPath();
         ctx.arc(90 + player.x * 1.5, 90 + player.z * 1.5, 4, 0, Math.PI * 2);
         ctx.fill();
@@ -1023,10 +1140,11 @@
     });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && active2) {
-        if (document.querySelector("#action-dialog")?.open) return;
+        if (document.querySelector("#action-dialog")?.open || document.querySelector("#service-dialog")?.open) return;
         const scanner = document.querySelector("#world-scanner");
         if (!scanner.hidden) {
           scanner.hidden = true;
+          world?.setPaused(false);
           world?.renderer.domElement.focus();
           return;
         }
@@ -1047,12 +1165,31 @@
       refreshContext();
     });
     for (const event of ["app-context-ready", "capabilities", "subscriber-context-changed"]) document.addEventListener(event, contextChanged);
+    const paintTelemetry = () => {
+      const snap = store2.snapshot?.session_id === getContext()?.session_id ? store2.snapshot : null, wan2 = snap?.wan?.data ?? snap?.wan, clients = snap?.clients?.data ?? snap?.clients;
+      const rows3 = Array.isArray(wan2) ? wan2 : [];
+      document.querySelector("#field-wan").textContent = rows3[0]?.status || "Não coletada";
+      document.querySelector("#field-clients").textContent = Array.isArray(clients) ? clients.length : "Não coletados";
+      const ping2 = [...service.entries].reverse().find((e) => e.path === "/api/device/diagnostics/ping" && e.session === getContext()?.session_id && e.ok !== false);
+      document.querySelector("#field-latency").textContent = Number.isFinite(ping2?.data?.avg_ms) ? ping2.data.avg_ms + " ms" : "Não testada";
+      document.querySelector("#field-loss").textContent = Number.isFinite(ping2?.data?.loss_percent) ? ping2.data.loss_percent + "%" : "Não testada";
+    };
+    document.addEventListener("device-snapshot", paintTelemetry);
+    document.addEventListener("app-context-ready", paintTelemetry);
+    const unsubscribeTelemetry = subscribeService(paintTelemetry);
+    paintTelemetry();
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) audio.pauseMusic();
+      if (document.hidden) {
+        audio.pauseMusic();
+        ambient.pause();
+      }
     });
     window.addEventListener("pagehide", () => {
       world?.dispose();
       audio.dispose();
+      ambient.dispose();
+      modalObserver.disconnect();
+      unsubscribeTelemetry();
       cache.clear();
     });
     return { openPanel, exit, enter, unavailable: unavailable2, get active() {
@@ -2548,7 +2685,7 @@
         if (value2) dhcp[key] = value2;
         else delete dhcp[key];
       }
-      const names = fd.getAll("host-name"), ips = fd.getAll("host-ip"), nextHosts = names.map((name, i) => ({ name: String(name).trim(), ip: String(ips[i] || "").trim() })).filter((h) => h.name || h.ip);
+      const names2 = fd.getAll("host-name"), ips = fd.getAll("host-ip"), nextHosts = names2.map((name, i) => ({ name: String(name).trim(), ip: String(ips[i] || "").trim() })).filter((h) => h.name || h.ip);
       const nextDns = { ...dns, domain_name: String(fd.get("domain_name") || "").trim(), ipv4_1: String(fd.get("ipv4_1") || "").trim(), ipv4_2: String(fd.get("ipv4_2") || "").trim(), ipv6_1: String(fd.get("ipv6_1") || "").trim(), ipv6_2: String(fd.get("ipv6_2") || "").trim(), hosts: nextHosts };
       delete nextDns.servers;
       delete nextDns.primary;

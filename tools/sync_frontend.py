@@ -10,8 +10,8 @@ def build(check=False):
     if not executable.exists():
         raise SystemExit('Execute npm ci antes de python tools/sync_frontend.py.')
     base=ROOT/'apps/access_manager/static/js'
-    for entry, filename in [('entry.js','runtime.js'), ('world/renderer.js','world-runtime.js'), ('voxel/renderer.js','voxel-runtime.js')]:
-        result=subprocess.run([str(executable),str(base/entry),'--bundle','--format=iife','--target=es2020','--charset=utf8',*(['--minify-whitespace'] if filename.endswith('world-runtime.js') or filename=='voxel-runtime.js' else [])],capture_output=True,text=True,check=True,cwd=ROOT)
+    for entry, filename in [('entry.js','runtime.js'), ('world/renderer.js','world-runtime.js'), ('voxel/renderer.js','voxel-runtime.js'), ('wasteland/renderer.js','wasteland-runtime.js')]:
+        result=subprocess.run([str(executable),str(base/entry),'--bundle','--format=iife','--target=es2020','--charset=utf8',*(['--minify-whitespace'] if filename.endswith('world-runtime.js') or filename in ('voxel-runtime.js','wasteland-runtime.js') else [])],capture_output=True,text=True,check=True,cwd=ROOT)
         output=base/filename
         if check:
             if not output.exists() or output.read_text(encoding='utf-8')!=result.stdout:

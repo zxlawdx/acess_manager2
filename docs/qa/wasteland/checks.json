@@ -1,0 +1,29 @@
+{
+  "checks": [
+    "login-1366",
+    "world-router-1366",
+    "real-diagnostics-panel-1366",
+    "field-terminal-1366",
+    "service-1366",
+    "terminal-interface-1366",
+    "world-juniper-1366",
+    "login-1600",
+    "world-router-1600",
+    "real-diagnostics-panel-1600",
+    "field-terminal-1600",
+    "service-1600",
+    "terminal-interface-1600",
+    "world-juniper-1600",
+    "login-1920",
+    "world-router-1920",
+    "real-diagnostics-panel-1920",
+    "field-terminal-1920",
+    "service-1920",
+    "terminal-interface-1920",
+    "world-juniper-1920",
+    "WebGL context loss fallback",
+    "lazy bundle failure fallback"
+  ],
+  "errors": [],
+  "fixtureData": true
+}

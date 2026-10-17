@@ -1,0 +1,39 @@
+/* Original field equipment identity. All 2D overrides are scoped to Terminal. */
+html[data-experience-theme=terminal]{--terminal-font-ui:"Space Mono","Cascadia Mono","JetBrains Mono",Consolas,monospace;--terminal-letter-spacing-title:.12em;--terminal-field-glow:0 0 6px #33ff6638;--text-muted:#819886}
+html[data-experience-theme=terminal] :is(.app-shell,#login-page,#action-dialog,#service-dialog){font-family:var(--terminal-font-ui)}
+html[data-experience-theme=terminal] :is(.app-shell,#login-page,#action-dialog,#service-dialog) :is(h1,h2,h3,.brand){font-family:var(--terminal-font-ui)!important;letter-spacing:var(--terminal-letter-spacing-title)!important;text-transform:uppercase;text-shadow:var(--terminal-field-glow)!important;line-height:1.45}
+html[data-experience-theme=terminal] :is(.app-shell,#action-dialog,#service-dialog) :is(.field label,.metric label,.nav-group){font-size:10px!important;letter-spacing:.07em;text-transform:uppercase;color:#96b29d!important}
+html[data-experience-theme=terminal] #page-kicker::before{content:'SYS:// ';color:#7dff9c}
+html[data-experience-theme=terminal] .status-badge{border-left:3px solid #33ff66;padding-left:8px}
+html[data-experience-theme=terminal] :is(.app-shell,#login-page,#action-dialog,#service-dialog) .button::before,html[data-experience-theme=terminal] :is(.app-shell,#login-page,#action-dialog,#service-dialog) .button::after{content:none!important}
+html[data-experience-theme=terminal] :is(input,select,textarea,button):focus-visible{outline:2px solid #7dff9c!important;outline-offset:3px}
+html[data-experience-theme=terminal] :is(.app-shell,#service-dialog) pre{font-family:var(--terminal-font-ui)!important;letter-spacing:0!important;line-height:1.65!important;text-shadow:none!important}
+.experience-cards{grid-template-columns:repeat(5,minmax(0,1fr))}
+.preview-wasteland{background:radial-gradient(ellipse at 65% 5%,#f6b46a8c,transparent 65%),linear-gradient(#544737 65%,#6e4a2f 66%);border:1px solid #7b4a2c!important;border-radius:2px!important}
+.preview-wasteland::before{content:'';position:absolute;left:58%;bottom:0;width:4px;height:44px;background:#222d20;box-shadow:9px 0 #222d20,-1px -2px 0 1px #ffc857}
+.preview-wasteland::after{content:'';position:absolute;left:12%;bottom:7px;width:30px;height:22px;background:linear-gradient(#0b120d 3px,#33ff66 4px,#083215 17px,#7b4a2c 18px);border:4px solid #23281f;box-shadow:0 0 10px #33ff6640}
+html[data-experience-theme=terminal] .experience-card{border-color:#4b654c;background:linear-gradient(#0b120d,#111a13)}html[data-experience-theme=terminal] .experience-card.selected{outline-color:#7dff9c;background:linear-gradient(#16291b,#0b120d)}
+html[data-experience-theme=terminal] .experience-card small{color:#afc3b1}
+@media(max-width:700px){.experience-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.experience-card:last-child{grid-column:1/-1}}
+/* Field world HUD never inherits Aero glass styling. */
+#aero-world[data-experience=wasteland]{background:#493b28;color:#c6e6c8;font-family:var(--terminal-font-ui);--field-border:#557453}
+#aero-world[data-experience=wasteland] .world-glass{background:linear-gradient(110deg,#0b120df2,#142017e8)!important;border:1px solid var(--field-border)!important;border-left:3px solid #7b4a2c!important;border-radius:2px!important;box-shadow:0 2px 8px #0006,inset 0 0 16px #33ff6605!important;color:#c6e6c8!important;backdrop-filter:none}
+#aero-world[data-experience=wasteland] .world-hud{gap:8px;left:16px;right:16px;top:16px}
+#aero-world[data-experience=wasteland] .world-hud strong{color:#7dff9c;font-size:16px;letter-spacing:.1em}
+#aero-world[data-experience=wasteland] .world-hud :is(button,select){background:#0b120d!important;border-color:#486a4c!important;border-radius:1px!important;color:#7dff9c!important;padding:6px 9px}
+#aero-world[data-experience=wasteland] .world-hud small{color:#a0b8a5;max-width:200px}
+#aero-world[data-experience=wasteland] :is(button,select):focus-visible{outline:2px solid #ffc857!important;outline-offset:2px}
+#aero-world[data-experience=wasteland] #world-map{background:#0b120d;border:2px solid #7b4a2c;border-radius:2px!important;box-shadow:0 0 18px #33ff6615!important}
+#aero-world[data-experience=wasteland] #world-debug{color:#7dff9c;background:#0b120dec;border:1px solid #557453;border-radius:1px;font-size:10px}
+#aero-world[data-experience=wasteland] #world-prompt{color:#7dff9c!important;font-size:11px;max-width:calc(100% - 360px);line-height:1.5}
+#aero-world[data-experience=wasteland] .field-region-label{font:10px var(--terminal-font-ui);color:#7dff9c;border:1px solid #618562;background:#0b120deb;border-radius:1px!important;letter-spacing:.035em;text-shadow:0 0 4px #33ff6620;max-width:210px}
+#field-telemetry{position:absolute;left:16px;bottom:45px;max-width:240px;padding:12px;font-size:10px;line-height:1.8;pointer-events:none}#field-telemetry[hidden]{display:none}#field-telemetry strong{color:#7dff9c;letter-spacing:.1em;font-size:10px}#field-telemetry div{display:flex;gap:24px;justify-content:space-between}#field-telemetry small{display:block;font-size:9px;color:#a3b5a4;max-width:190px}
+#field-sector{display:none;font-size:10px;color:#ffc857}#aero-world[data-experience=wasteland] #field-sector{display:block}
+#aero-world[data-experience=wasteland] #world-scanner{left:20%;top:28%;width:60%;max-height:55%;overflow:auto;box-sizing:border-box}
+#aero-world[data-experience=wasteland] #world-scanner button{background:#142217;color:#7dff9c;border:1px solid #4f7656;padding:10px;font-family:inherit}
+.world-mode.wasteland-mode.world-panel-open>.layout{background:#0b120df7;border:2px solid #7b4a2c!important;border-radius:2px!important;box-shadow:0 0 15px #33ff6615!important}
+.world-mode.wasteland-mode #world-close-panel{background:#0b120d;color:#7dff9c;border:1px solid #7b4a2c;border-radius:1px;font-family:var(--terminal-font-ui)}
+#aero-world[data-experience=wasteland]::after{content:'';pointer-events:none;position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,#00000008 3px 4px);opacity:.5}
+@media(max-width:1000px){#aero-world[data-experience=wasteland] .world-hud>div:nth-of-type(3){display:none}#aero-world[data-experience=wasteland] #world-prompt{max-width:75%;bottom:8px}#field-telemetry{bottom:80px;max-width:170px}}
+@media(prefers-reduced-motion:reduce){html[data-experience-theme=terminal] *{animation-duration:0s!important;scroll-behavior:auto!important}#aero-world[data-experience=wasteland]::after{display:none}}
+@media(min-width:781px) and (max-height:820px){html[data-experience-theme=terminal] #login-page .connection-content h1{font-size:19px!important;letter-spacing:.07em!important;line-height:1.3!important}#login-page .experience-card strong{font-size:10px;line-height:1.35}#login-page .experience-preview{height:36px}#login-page #experience-choices{margin:8px 0}#login-page .connection-content{padding-top:18px!important;padding-bottom:16px!important}}
