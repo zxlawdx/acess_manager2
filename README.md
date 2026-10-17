@@ -33,3 +33,7 @@ python tools/sync_frontend.py --check
 A escrita depende da sessão e da capability do provider. Uma leitura comprovada não habilita escrita desconhecida. O histórico SQLite reutiliza o repository e a redação de segredos do legado. Diagnósticos, taxas e detalhes de clientes usam respostas reais; fixtures só existem em testes.
 
 Limitações e evidências: `docs/NETPULSE_EXECUTION_REPORT.md`.
+
+## Terminal, Frutiger Aero e Access World 3D
+
+Escolha a experiência no login ou altere o tema e o modo após conectar. O Aero inclui variantes próprias para tabelas, controles, modais e drawers. O mundo deriva suas regiões das rotas reais e capabilities de Huawei/ZTE ou Juniper, mantendo os mesmos painéis técnicos. Música é opcional e local; nenhuma faixa é distribuída. Instruções, suporte a GLB, áudio e limites: [docs/FRUTIGER_WORLD.md](docs/FRUTIGER_WORLD.md). Evidências: [docs/AERO_WORLD_PATCH_REPORT.md](docs/AERO_WORLD_PATCH_REPORT.md).

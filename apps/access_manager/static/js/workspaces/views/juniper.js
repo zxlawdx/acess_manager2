@@ -68,7 +68,7 @@ export function mountSubscribers(){
  };
  if(query)queueMicrotask(()=>form.requestSubmit());
 }
-async function selectSubscriber(id){const run=++selectionGeneration;const scope=currentScope(),host=document.querySelector('#subscriber-detail');host.innerHTML='<p class="j-inline-status">Consultando sessão…</p>';try{const row=await read('subscribers/detail',{session_id:id},scope);if(!scopeActive(scope)||run!==selectionGeneration)return;selected=row;drawResults();renderSideDetail()}catch(e){if(scopeActive(scope)&&run===tabGeneration)host.innerHTML=`<p role="alert">${esc(e.message)}</p>`}}
+async function selectSubscriber(id){const run=++selectionGeneration;const scope=currentScope(),host=document.querySelector('#subscriber-detail');host.innerHTML='<p class="j-inline-status">Consultando sessão…</p>';try{const row=await read('subscribers/detail',{session_id:id},scope);if(!scopeActive(scope)||run!==selectionGeneration)return;selected=row;drawResults();renderSideDetail();document.dispatchEvent(new CustomEvent('subscriber-context-changed'))}catch(e){if(scopeActive(scope)&&run===tabGeneration)host.innerHTML=`<p role="alert">${esc(e.message)}</p>`}}
 function renderSideDetail(active='details'){
  const host=document.querySelector('#subscriber-detail');if(!host||!selected)return;
  const row=selected;host.innerHTML=`<div class="j-panel-header"><div><h2>${esc(row.username)}</h2>${status(row.state)}</div><button class="icon-button" data-close-detail aria-label="Recolher detalhes" title="Recolher detalhes">×</button></div>${tabs([['details','Detalhes'],['service','Serviço'],['network','Rede']],active,'data-side-tab')}<div class="j-detail-body">${active==='service'?detailData(row.service_sessions||[]):active==='network'?kv([['IPv6',row.ipv6_addresses],['Underlying',row.underlying_interface],['VLAN / S-VLAN',[row.vlan_id,row.stacked_vlan_id].filter(Boolean).join(' / ')],['Routing instance',row.routing_instance]]):kv([['IPv4',row.ipv4_address],['MAC',row.mac_address],['Interface',row.interface],['Subscriber Session ID',row.session_id],['PPPoE Session ID',row.pppoe_session_id]])}</div><div class="j-detail-actions"><button class="button primary" data-access-cpe ${row.ipv4_address?'':'disabled'}>Acessar CPE</button>${button('Abrir sessão','juniperSubscriber')}${button('Diagnóstico','juniperPppoe')}</div>`;
@@ -116,3 +116,6 @@ async function accessCpe(row){
   };
  }catch(error){toast(error.message)}
 }
+
+// Existing contextual CPE drawer is an action of the registered subscriber view, never a fabricated route.
+export const worldActions=[{id:'access-cpe',routeId:'juniperSubscriber',label:'Acessar CPE',kind:'cpe',capability:'subscriber_detail',available:()=>Boolean(selected?.ipv4_address),run:()=>selected&&accessCpe(selected)}];

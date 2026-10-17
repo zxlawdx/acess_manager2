@@ -1,0 +1,21 @@
+const clamp=v=>Number.isFinite(Number(v))?Math.max(0,Math.min(1,Number(v))):.35;
+export class AudioManager {
+ constructor({volume=.35,enabled=false,onChange=()=>{}}={}){this.context=null;this.active=false;this.enabled=enabled;this.volume=clamp(volume);this.title='Nenhuma música instalada';this.onChange=onChange;this.regionTracks={};this.loop=true;this.operation=0;}
+ notify(){this.onChange({active:this.active,enabled:this.enabled,title:this.title,installed:Boolean(this.element),volume:this.volume})}
+ ensureContext(){if(this.context)return;const Context=window.AudioContext||window.webkitAudioContext;if(!Context)throw new Error('Áudio indisponível nesta WebView.');this.context=new Context();this.master=this.context.createGain();this.master.gain.value=0;this.master.connect(this.context.destination);for(const channel of ['music','ambient','ui','sfx']){this[channel]=this.context.createGain();this[channel].connect(this.master)}if(this.element)this.connectElement();}
+ connectElement(){this.source?.disconnect();this.source=this.context.createMediaElementSource(this.element);this.source.connect(this.music);}
+ setTrack(url,title,{objectURL=false}={}){this.pauseMusic();this.source?.disconnect();if(this.objectURL)URL.revokeObjectURL(this.objectURL);this.objectURL=objectURL?url:null;this.element=new Audio(url);this.element.preload='metadata';this.element.loop=this.loop;this.title=title||'Música local';this.element.onerror=()=>{this.active=false;this.title='Não foi possível ler esta música local';this.notify()};if(this.context)this.connectElement();this.notify();}
+ async loadInstalled(manifestURL){if(!manifestURL||this.manifestLoaded)return;this.manifestLoaded=true;try{const response=await fetch(manifestURL,{credentials:'same-origin'});if(!response.ok)return;const manifest=await response.json();this.regionTracks=manifest.regions||{};if(!manifest.track||this.element)return;const url=new URL(manifest.track,new URL(manifestURL,location.href));const base=new URL('.',url);const permitted=new URL('.',new URL(manifestURL,location.href));if(url.origin!==location.origin||base.href!==permitted.href||! /\.(mp3|ogg|wav)$/i.test(url.pathname))return;this.setTrack(url.href,manifest.title||'Música local instalada');}catch{/* An absent track is a silent, non-fatal state. */}finally{this.notify()}}
+ importFile(file){if(!file||! /\.(mp3|ogg|wav)$/i.test(file.name))throw new Error('Selecione um arquivo OGG, MP3 ou WAV.');this.setTrack(URL.createObjectURL(file),file.name,{objectURL:true});}
+ setEnabled(value){this.enabled=Boolean(value);if(!this.enabled)this.pauseMusic();this.notify();}
+ setMasterVolume(value){this.volume=clamp(value);if(this.context)this.fadeTo(this.active&&this.enabled?this.volume:0,.08);this.notify();}
+ setMusicVolume(value){if(this.context)this.music.gain.setTargetAtTime(clamp(value),this.context.currentTime,.08);}
+ fadeTo(value,duration=.25){if(!this.context)return;const gain=this.master.gain;gain.cancelScheduledValues(this.context.currentTime);gain.setTargetAtTime(clamp(value),this.context.currentTime,Math.max(.01,duration/3));}
+ async playMusic(){if(!this.element){this.notify();return false;}const operation=++this.operation;this.ensureContext();await this.context.resume();await this.element.play();if(operation!==this.operation){this.element.pause();return false;}this.enabled=true;this.active=true;this.fadeTo(this.volume);this.notify();return true;}
+ pauseMusic({immediate=false}={}){const operation=++this.operation,element=this.element;this.active=false;if(this.context)this.fadeTo(0,.12);if(immediate||!this.context)element?.pause();else setTimeout(()=>{if(this.element!==element||operation===this.operation)element?.pause();},120);this.notify();}
+ async toggle(){if(this.active){this.setEnabled(false);return false;}return this.playMusic();}
+ setLoop(value){this.loop=Boolean(value);if(this.element)this.element.loop=this.loop;}
+ // Compatibility with callers from the first experimental world.
+ pause(){this.pauseMusic();}
+ dispose(){this.pauseMusic({immediate:true});this.source?.disconnect();if(this.element){this.element.removeAttribute('src');this.element.load();}if(this.objectURL)URL.revokeObjectURL(this.objectURL);this.context?.close();this.element=null;}
+}

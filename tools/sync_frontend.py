@@ -10,13 +10,14 @@ def build(check=False):
     if not executable.exists():
         raise SystemExit('Execute npm ci antes de python tools/sync_frontend.py.')
     base=ROOT/'apps/access_manager/static/js'
-    result=subprocess.run([str(executable),str(base/'entry.js'),'--bundle','--format=iife','--target=es2020','--charset=utf8'],capture_output=True,text=True,check=True,cwd=ROOT)
-    output=base/'runtime.js'
-    if check:
-        if output.read_text(encoding='utf-8')!=result.stdout:
-            raise SystemExit('runtime.js desatualizado; execute tools/sync_frontend.py.')
-    else:
-        output.write_text(result.stdout,encoding='utf-8')
+    for entry, filename in [('entry.js','runtime.js'), ('world/renderer.js','world-runtime.js')]:
+        result=subprocess.run([str(executable),str(base/entry),'--bundle','--format=iife','--target=es2020','--charset=utf8',*(['--minify-whitespace'] if filename=='world-runtime.js' else [])],capture_output=True,text=True,check=True,cwd=ROOT)
+        output=base/filename
+        if check:
+            if not output.exists() or output.read_text(encoding='utf-8')!=result.stdout:
+                raise SystemExit(f'{filename} desatualizado; execute tools/sync_frontend.py.')
+        else:
+            output.write_text(result.stdout,encoding='utf-8')
     print('Frontend sincronizado.' if not check else 'Frontend está atualizado.')
 
 if __name__=='__main__':

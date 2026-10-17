@@ -5,6 +5,619 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // apps/access_manager/static/js/ui/theme.js
+  var preferenceKeys = { theme: "accessManager.theme", experience: "accessManager.experience", enabled: "accessManager.audio.enabled", volume: "accessManager.audio.volume", quality: "accessManager.world.quality" };
+  function readPreference(name, fallback) {
+    try {
+      return localStorage.getItem(preferenceKeys[name] || name) || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  function savePreference(name, value2) {
+    try {
+      localStorage.setItem(preferenceKeys[name] || name, String(value2));
+    } catch {
+    }
+  }
+  function presentLabel(raw, navigation2 = false) {
+    if (navigation2 && /^\s*\d{2}\s*$/.test(raw)) return "";
+    return raw.replace(/^(\s*)\[\s*(.*?)\s*\](\s*)$/, "$1$2$3").replace(/^(\s*)(?:>\s+|\/\/\s+)/, "$1");
+  }
+  var icons = { overview: "🌐", clients: "👥", traffic: "📈", wifi: "📶", wan: "🌍", lan: "🔌", dhcpdns: "🗂", diagnostics: "🧪", completeDiagnostics: "🩺", profiles: "🧰", management: "⚙", subscribers: "👥", juniperSubscriber: "🔗", juniperInterfaces: "🔌", juniperRouting: "🌐", juniperDiagnostics: "🔎", juniperSystem: "🏢" };
+  function mountThemeProvider() {
+    const root2 = document.documentElement, shell = document.querySelector(".app-shell");
+    let theme = "terminal";
+    const originals = /* @__PURE__ */ new Map();
+    let scheduled = false;
+    const paths = { overview: "M3 12h18M12 3c6 6 6 12 0 18-6-6-6-12 0-18M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0", clients: "M8 10a3 3 0 1 0 0-6 3 3 0 1 0 0 6M3 19v-3c0-5 10-5 10 0v3M17 6a3 3 0 0 1 0 6m0 2c3 0 4 2 4 5", traffic: "M3 19V4m0 15h18M5 14l5-6 4 4 6-8", wifi: "M3 8c5-5 13-5 18 0M6 12c3-3 9-3 12 0m-9 4c2-2 4-2 6 0m-3 3v1", wan: "M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0m0 0h18M12 3v18", lan: "M5 8h14v10H5zm3-4v7m4-7v7m4-7v7m-4 7v4", dhcpdns: "M3 5h18v5H3zm0 9h18v5H3zm4-6h2m-2 9h2", diagnostics: "M5 10a6 6 0 1 0 12 0 6 6 0 1 0-12 0m10 5 6 6", profiles: "M6 3h12v18H6zm3 5h6m-6 4h6m-6 4h6", management: "M12 4v3m0 10v3M4 12h3m10 0h3M6 6l2 2m8 8 2 2M6 18l2-2m8-8 2-2M8 12a4 4 0 1 0 8 0 4 4 0 1 0-8 0" };
+    function decorate() {
+      scheduled = false;
+      document.querySelectorAll("#sidebar .nav").forEach((button2) => {
+        button2.dataset.aeroIcon = icons[button2.dataset.view] || "◈";
+        const path2 = paths[button2.dataset.view] || paths[button2.dataset.view === "subscribers" ? "clients" : "dhcpdns"];
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#a5eeff"/><stop offset=".5" stop-color="#218cbd"/><stop offset="1" stop-color="#146f9b"/></linearGradient></defs><circle cx="14" cy="14" r="13" fill="url(#g)" stroke="#68adca"/><path d="${path2}" transform="translate(2 2)" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        button2.style.setProperty("--aero-icon", `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+      });
+      document.querySelectorAll("button,h1,h2,h3,h4,th,.nav,.nav-group,.status-badge,.diagnostic-status,.badge,.connection-eyebrow,small,.data-table td").forEach((el) => {
+        if (el.closest("pre,code,[data-raw],.raw-output,[contenteditable]")) return;
+        for (const node of el.childNodes) {
+          if (node.nodeType !== 3) continue;
+          const old = originals.get(node);
+          const raw = old && node.data === old.display ? old.raw : node.data;
+          const labelAllowed = !el.matches("td") || /^\s*\[\s*(?:ATIVO|OK|INFO|ATENÇÃO|CRÍTICO|PARCIAL|N\/D)\s*\]\s*$/i.test(raw);
+          const display = theme === "aero" && labelAllowed ? presentLabel(raw, el.matches(".nav")) : raw;
+          if (display !== raw) originals.set(node, { raw, display });
+          else originals.delete(node);
+          if (node.data !== display) node.data = display;
+        }
+      });
+      for (const [node, old] of originals) {
+        if (!node.isConnected) originals.delete(node);
+        else if (theme === "terminal") {
+          if (node.data === old.display) node.data = old.raw;
+          originals.delete(node);
+        }
+      }
+    }
+    function apply(value2, { persist = true } = {}) {
+      theme = value2 === "aero" ? "aero" : "terminal";
+      root2.dataset.experienceTheme = theme;
+      shell?.classList.toggle("aero-theme", theme === "aero");
+      root2.style.colorScheme = theme === "aero" ? "light" : "dark";
+      document.querySelector("#action-dialog")?.classList.toggle("aero-theme", theme === "aero");
+      document.querySelector("#login-page")?.classList.toggle("aero-theme", theme === "aero");
+      const select = document.querySelector("#theme-select");
+      if (select) select.value = theme;
+      const button2 = document.querySelector("#world-theme");
+      if (button2) {
+        button2.textContent = theme === "aero" ? "Tema Terminal" : "Tema Aero";
+        button2.setAttribute("aria-pressed", String(theme === "aero"));
+      }
+      if (persist) savePreference("theme", theme);
+      decorate();
+      document.dispatchEvent(new CustomEvent("theme-changed", { detail: theme }));
+    }
+    const observer = new MutationObserver(() => {
+      if (!scheduled) {
+        scheduled = true;
+        queueMicrotask(decorate);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    document.querySelector("#theme-select")?.addEventListener("change", (e) => apply(e.target.value));
+    window.addEventListener("pagehide", () => {
+      observer.disconnect();
+      originals.clear();
+    }, { once: true });
+    apply(readPreference("theme", readPreference("am-theme", "terminal")), { persist: false });
+    return { apply, get theme() {
+      return theme;
+    } };
+  }
+
+  // apps/access_manager/static/js/ui/login.js
+  function supportsWebGL() {
+    try {
+      const canvas = document.createElement("canvas");
+      const gl = canvas.getContext("webgl2") || canvas.getContext("webgl");
+      if (!gl) return false;
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  function mountLoginExperience(theme) {
+    const selector = document.querySelector("#experience-choices");
+    if (!selector) return { afterConnect: async () => {
+    } };
+    const input = document.querySelector("#login-experience");
+    let selected2 = readPreference("experience", "interface") === "world3d" ? "world3d" : readPreference("theme", readPreference("am-theme", "terminal")) === "aero" ? "aero" : "terminal";
+    let probed = false, supported = true;
+    function select(value2, persist = true) {
+      selected2 = value2;
+      input.value = value2;
+      selector.querySelectorAll("[data-login-experience]").forEach((b) => {
+        const checked = b.dataset.loginExperience === value2;
+        b.setAttribute("aria-checked", String(checked));
+        b.classList.toggle("selected", checked);
+        b.tabIndex = checked ? 0 : -1;
+      });
+      theme.apply(value2 === "terminal" ? "terminal" : "aero", { persist });
+      if (persist) savePreference("experience", value2 === "world3d" ? "world3d" : "interface");
+      if (value2 === "world3d") {
+        if (!probed) {
+          supported = supportsWebGL();
+          probed = true;
+        }
+        document.querySelector("#login-3d-status").textContent = supported ? "O mundo será aberto após autenticar." : "3D indisponível neste dispositivo. Você entrará na interface Aero.";
+      }
+    }
+    selector.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-login-experience]");
+      if (b) select(b.dataset.loginExperience);
+    });
+    selector.addEventListener("keydown", (e) => {
+      const buttons = [...selector.querySelectorAll("[data-login-experience]")];
+      if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"].includes(e.key)) {
+        e.preventDefault();
+        const index = buttons.findIndex((b) => b.dataset.loginExperience === selected2);
+        const next = e.key === "Home" ? 0 : e.key === "End" ? 2 : (index + (["ArrowLeft", "ArrowUp"].includes(e.key) ? 2 : 1)) % 3;
+        select(buttons[next].dataset.loginExperience);
+        buttons[next].focus();
+      }
+    });
+    select(selected2, false);
+    return { get selected() {
+      return selected2;
+    }, async afterConnect(world) {
+      theme.apply(selected2 === "terminal" ? "terminal" : "aero");
+      savePreference("experience", selected2 === "world3d" ? "world3d" : "interface");
+      if (selected2 === "world3d") {
+        if (!probed) {
+          supported = supportsWebGL();
+          probed = true;
+        }
+        if (supported) await world.enter();
+        else world.unavailable("3D indisponível neste dispositivo. A interface Aero está disponível.");
+      }
+    } };
+  }
+
+  // apps/access_manager/static/js/core/routes.js
+  var routerNavigation = [
+    ["VISÃO OPERACIONAL", [["overview", "Visão geral"], ["clients", "Clientes"], ["traffic", "Tráfego"]]],
+    ["REDE", [["wifi", "Wi-Fi e SSIDs"], ["wan", "WAN"], ["lan", "LAN"], ["dhcpdns", "DHCP e DNS"]]],
+    ["OPERAÇÕES", [["diagnostics", "Diagnóstico"], ["completeDiagnostics", "Diagnóstico completo"], ["profiles", "Perfis"], ["management", "Gerenciamento"]]]
+  ];
+  var requirements = { clients: ["clients"], traffic: ["traffic"], wifi: ["wifi", "wifi_radio"], wan: ["wan"], lan: ["lan"], dhcpdns: ["dhcp", "dns"], diagnostics: ["diagnostics"], completeDiagnostics: ["diagnostics", "runtime_diagnostic"], juniperSubscriber: ["subscriber_detail"], subscribers: ["subscriber_lookup"], juniperAccounting: ["juniper_accounting"], juniperServices: ["subscriber_detail"], juniperInterfaces: ["juniper_interfaces"], juniperLacp: ["juniper_lacp"], juniperOptics: ["juniper_optics"], juniperRouting: ["juniper_route", "juniper_fib"], juniperRadius: ["juniper_aaa"], juniperAuth: ["juniper_aaa"], juniperAaaAccounting: ["juniper_accounting"], juniperDynamic: ["juniper_aaa"], juniperPppoe: ["juniper_pppoe"], juniperLockout: ["juniper_lockout"], juniperDiagnostics: ["juniper_ping", "juniper_traceroute"], juniperSystem: ["juniper_resources"], juniperFpc: ["juniper_chassis"], juniperEnvironment: ["juniper_health"], juniperHardware: ["juniper_chassis"] };
+  var kinds = { overview: "globe", clients: "clients", traffic: "traffic", wifi: "wifi", wan: "globe", lan: "ports", dhcpdns: "dns", diagnostics: "probe", completeDiagnostics: "probe", profiles: "profiles", management: "gear", subscribers: "subscribers", juniperSubscriber: "tunnel", juniperAccounting: "traffic", juniperServices: "profiles", juniperInterfaces: "rack", juniperLacp: "ports", juniperOptics: "fiber", juniperRouting: "routes", juniperRadius: "hub", juniperAuth: "hub", juniperAaaAccounting: "traffic", juniperDynamic: "hub", juniperPppoe: "tunnel", juniperLockout: "probe", juniperDiagnostics: "probe", juniperSystem: "rack", juniperFpc: "rack", juniperEnvironment: "globe", juniperHardware: "rack", juniperOverview: "hub", juniperLogs: "profiles" };
+  function capabilityAllows(cap2) {
+    if (!cap2) return false;
+    return cap2.enabled?.read === true || ["SUPPORTED", "PARTIAL"].includes(cap2.read) || cap2.enabled?.write === true || cap2.write === "SUPPORTED";
+  }
+  function createRouteRegistry(views2, juniperNavigation, actions = []) {
+    const collect = (navigation2, family) => navigation2.flatMap(([group, items]) => items.filter(([id]) => Object.hasOwn(views2, id)).map(([id, label]) => ({ id, label, group, family, kind: kinds[id] || "orb", capabilities: requirements[id] || [] })));
+    return [...collect(routerNavigation, "router"), ...collect(juniperNavigation, "juniper")].map((route) => ({ ...route, actions: actions.filter((a) => a.routeId === route.id) }));
+  }
+  function applicableRoutes(registry, session2, capabilities) {
+    const family = session2?.vendor === "juniper" ? "juniper" : "router";
+    return registry.filter((r) => r.family === family && (!r.capabilities.length || r.capabilities.some((c) => capabilityAllows(capabilities?.[c]))));
+  }
+
+  // apps/access_manager/static/js/world/regions.js
+  var palette = [1288654, 5485633, 236475, 7826651, 15115581, 2920919];
+  function deriveWorldRegions(registry, session2, capabilities) {
+    const layout = session2?.vendor === "juniper" ? "juniper" : "router";
+    const routes = applicableRoutes(registry, session2, capabilities);
+    const items = routes.flatMap((route) => [{ routeId: route.id, id: route.id, label: route.label, kind: route.kind, available: true }, ...(route.actions || []).filter((a) => a.available() && (!a.capability || capabilityAllows(capabilities?.[a.capability]))).map((a) => ({ routeId: route.id, id: a.id, actionId: a.id, label: a.label, kind: a.kind, available: true }))]);
+    return items.map((r, i) => {
+      const col = i % 5, row = Math.floor(i / 5);
+      return { ...r, layout, x: layout === "juniper" ? (col - 2) * 15 : (col - 2) * 17, z: layout === "juniper" ? -16 + row * 15 : -12 + row * 18, color: palette[i % palette.length] };
+    });
+  }
+
+  // apps/access_manager/static/js/world/icon-metadata.js
+  var minimapGlyph = { wifi: "◔", globe: "◎", clients: "●", subscribers: "♙", rack: "▤", ports: "▦", fiber: "↔", tunnel: "↔", traffic: "⇄", dns: "◇", profiles: "▣", probe: "⌕", gear: "⚙", hub: "✦", routes: "✧", cpe: "⌂" };
+
+  // apps/access_manager/static/js/world/audio.js
+  var clamp = (v) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(1, Number(v))) : 0.35;
+  var AudioManager = class {
+    constructor({ volume = 0.35, enabled = false, onChange = () => {
+    } } = {}) {
+      this.context = null;
+      this.active = false;
+      this.enabled = enabled;
+      this.volume = clamp(volume);
+      this.title = "Nenhuma música instalada";
+      this.onChange = onChange;
+      this.regionTracks = {};
+      this.loop = true;
+      this.operation = 0;
+    }
+    notify() {
+      this.onChange({ active: this.active, enabled: this.enabled, title: this.title, installed: Boolean(this.element), volume: this.volume });
+    }
+    ensureContext() {
+      if (this.context) return;
+      const Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) throw new Error("Áudio indisponível nesta WebView.");
+      this.context = new Context();
+      this.master = this.context.createGain();
+      this.master.gain.value = 0;
+      this.master.connect(this.context.destination);
+      for (const channel of ["music", "ambient", "ui", "sfx"]) {
+        this[channel] = this.context.createGain();
+        this[channel].connect(this.master);
+      }
+      if (this.element) this.connectElement();
+    }
+    connectElement() {
+      this.source?.disconnect();
+      this.source = this.context.createMediaElementSource(this.element);
+      this.source.connect(this.music);
+    }
+    setTrack(url, title, { objectURL = false } = {}) {
+      this.pauseMusic();
+      this.source?.disconnect();
+      if (this.objectURL) URL.revokeObjectURL(this.objectURL);
+      this.objectURL = objectURL ? url : null;
+      this.element = new Audio(url);
+      this.element.preload = "metadata";
+      this.element.loop = this.loop;
+      this.title = title || "Música local";
+      this.element.onerror = () => {
+        this.active = false;
+        this.title = "Não foi possível ler esta música local";
+        this.notify();
+      };
+      if (this.context) this.connectElement();
+      this.notify();
+    }
+    async loadInstalled(manifestURL) {
+      if (!manifestURL || this.manifestLoaded) return;
+      this.manifestLoaded = true;
+      try {
+        const response = await fetch(manifestURL, { credentials: "same-origin" });
+        if (!response.ok) return;
+        const manifest = await response.json();
+        this.regionTracks = manifest.regions || {};
+        if (!manifest.track || this.element) return;
+        const url = new URL(manifest.track, new URL(manifestURL, location.href));
+        const base = new URL(".", url);
+        const permitted = new URL(".", new URL(manifestURL, location.href));
+        if (url.origin !== location.origin || base.href !== permitted.href || !/\.(mp3|ogg|wav)$/i.test(url.pathname)) return;
+        this.setTrack(url.href, manifest.title || "Música local instalada");
+      } catch {
+      } finally {
+        this.notify();
+      }
+    }
+    importFile(file) {
+      if (!file || !/\.(mp3|ogg|wav)$/i.test(file.name)) throw new Error("Selecione um arquivo OGG, MP3 ou WAV.");
+      this.setTrack(URL.createObjectURL(file), file.name, { objectURL: true });
+    }
+    setEnabled(value2) {
+      this.enabled = Boolean(value2);
+      if (!this.enabled) this.pauseMusic();
+      this.notify();
+    }
+    setMasterVolume(value2) {
+      this.volume = clamp(value2);
+      if (this.context) this.fadeTo(this.active && this.enabled ? this.volume : 0, 0.08);
+      this.notify();
+    }
+    setMusicVolume(value2) {
+      if (this.context) this.music.gain.setTargetAtTime(clamp(value2), this.context.currentTime, 0.08);
+    }
+    fadeTo(value2, duration = 0.25) {
+      if (!this.context) return;
+      const gain = this.master.gain;
+      gain.cancelScheduledValues(this.context.currentTime);
+      gain.setTargetAtTime(clamp(value2), this.context.currentTime, Math.max(0.01, duration / 3));
+    }
+    async playMusic() {
+      if (!this.element) {
+        this.notify();
+        return false;
+      }
+      const operation = ++this.operation;
+      this.ensureContext();
+      await this.context.resume();
+      await this.element.play();
+      if (operation !== this.operation) {
+        this.element.pause();
+        return false;
+      }
+      this.enabled = true;
+      this.active = true;
+      this.fadeTo(this.volume);
+      this.notify();
+      return true;
+    }
+    pauseMusic({ immediate = false } = {}) {
+      const operation = ++this.operation, element = this.element;
+      this.active = false;
+      if (this.context) this.fadeTo(0, 0.12);
+      if (immediate || !this.context) element?.pause();
+      else setTimeout(() => {
+        if (this.element !== element || operation === this.operation) element?.pause();
+      }, 120);
+      this.notify();
+    }
+    async toggle() {
+      if (this.active) {
+        this.setEnabled(false);
+        return false;
+      }
+      return this.playMusic();
+    }
+    setLoop(value2) {
+      this.loop = Boolean(value2);
+      if (this.element) this.element.loop = this.loop;
+    }
+    // Compatibility with callers from the first experimental world.
+    pause() {
+      this.pauseMusic();
+    }
+    dispose() {
+      this.pauseMusic({ immediate: true });
+      this.source?.disconnect();
+      if (this.element) {
+        this.element.removeAttribute("src");
+        this.element.load();
+      }
+      if (this.objectURL) URL.revokeObjectURL(this.objectURL);
+      this.context?.close();
+      this.element = null;
+    }
+  };
+
+  // apps/access_manager/static/js/world/bridge.js
+  function mountWorldBridge({ store: store2, theme, registry, navigate, suspend, resume }) {
+    const shell = document.querySelector(".app-shell"), host = document.querySelector("#aero-world");
+    if (!host) return;
+    const button2 = document.querySelector("#world-toggle"), close = document.querySelector("#world-close-panel"), notice = document.querySelector("#world-notice");
+    const cache = /* @__PURE__ */ new Map();
+    let world = null, loading = null, entering = false, generation3 = 0, active2 = false, panel3 = false, contextKey = "", signature = "", currentRegions = [];
+    const getContext = () => store2.session?.session;
+    const key = () => `${getContext()?.vendor || "router"}:${getContext()?.session_id || "session"}`;
+    const unavailable2 = (message) => {
+      notice.textContent = message;
+      notice.hidden = !message;
+    };
+    const audio = new AudioManager({ volume: readPreference("volume", ".35"), enabled: readPreference("enabled", "false") === "true", onChange: (state2) => {
+      document.querySelector("#world-track").textContent = state2.title;
+      document.querySelector("#world-music").textContent = state2.active ? "♪ Silenciar" : "♪ Reproduzir";
+      document.querySelector("#world-music").setAttribute("aria-pressed", String(state2.active));
+    } });
+    function closePanel() {
+      if (!active2 || !panel3) return;
+      document.querySelector("#action-dialog")?.close();
+      panel3 = false;
+      shell.classList.remove("world-panel-open");
+      close.hidden = true;
+      refreshContext();
+      suspend();
+      world?.setPaused(false);
+    }
+    async function openPanel(region) {
+      if (!active2 || !currentRegions.some((r) => r.id === region.id)) return;
+      panel3 = true;
+      shell.classList.add("world-panel-open");
+      close.hidden = false;
+      world.setPaused(true);
+      const source = key();
+      await navigate(region.routeId);
+      if (source !== key() || !active2) return;
+      if (region.actionId) {
+        const action = registry.flatMap((r) => r.actions || []).find((a) => a.id === region.actionId);
+        if (action?.available()) try {
+          await action.run();
+        } catch (error) {
+          unavailable2(error.message);
+        }
+      }
+      close.focus();
+    }
+    function load() {
+      if (window.AccessManagerWorld) return Promise.resolve(window.AccessManagerWorld);
+      if (loading) return loading;
+      loading = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = host.dataset.bundle;
+        script.onload = () => window.AccessManagerWorld ? resolve(window.AccessManagerWorld) : reject(new Error("Renderer indisponível"));
+        script.onerror = () => {
+          script.remove();
+          reject(new Error("Não foi possível carregar o módulo 3D local."));
+        };
+        document.head.append(script);
+      }).catch((error) => {
+        loading = null;
+        throw error;
+      });
+      return loading;
+    }
+    function remember() {
+      if (world && contextKey) cache.set(contextKey, world.getState());
+    }
+    function refreshContext() {
+      if (!store2.session?.connected) return;
+      const regions = deriveWorldRegions(registry, getContext(), store2.capabilities), next = key(), nextSignature = JSON.stringify(regions);
+      if (next === contextKey && nextSignature === signature) return;
+      currentRegions = regions;
+      host.dataset.layout = getContext()?.vendor === "juniper" ? "juniper" : "router";
+      host.dataset.regionCount = String(regions.length);
+      document.querySelector("#world-context-label").textContent = host.dataset.layout === "juniper" ? "Backbone, BNG e assinantes" : "Natureza, internet e telecom";
+      if (world && next !== contextKey) {
+        remember();
+        world.dispose();
+        world = null;
+      }
+      contextKey = next;
+      signature = nextSignature;
+      if (world) world.setRegions(regions);
+      else if (active2 && window.AccessManagerWorld) createWorld();
+    }
+    function createWorld() {
+      world = new window.AccessManagerWorld.WorldRenderer(host, { regions: currentRegions, layout: host.dataset.layout, interact: openPanel, onError: (message) => {
+        exit({ persist: false });
+        world?.dispose();
+        world = null;
+        unavailable2(message);
+      }, modelURL: host.dataset.model });
+      world.restoreState(cache.get(contextKey));
+      world.applyQuality(readPreference("quality", readPreference("am-world-quality", "medium")));
+      document.querySelector("#world-quality").value = world.quality;
+      world.setPaused(panel3);
+      if (active2) world.start();
+    }
+    function exit({ persist = true } = {}) {
+      generation3++;
+      active2 = false;
+      entering = false;
+      button2.disabled = false;
+      panel3 = false;
+      remember();
+      world?.stop();
+      audio.pauseMusic();
+      host.hidden = true;
+      close.hidden = true;
+      shell.classList.remove("world-mode", "world-panel-open");
+      button2.textContent = "Mundo 3D";
+      button2.setAttribute("aria-pressed", "false");
+      if (persist) savePreference("experience", "interface");
+      if (store2.session?.connected) resume();
+      button2.focus();
+    }
+    async function enter() {
+      if (entering || active2 || !store2.session?.connected) return;
+      entering = true;
+      const token = ++generation3;
+      button2.disabled = true;
+      button2.textContent = "Carregando Access World…";
+      unavailable2("");
+      try {
+        await load();
+        if (token !== generation3 || !store2.session?.connected) return;
+        refreshContext();
+        host.hidden = false;
+        if (!world) createWorld();
+        theme.apply("aero");
+        active2 = true;
+        shell.classList.add("world-mode");
+        suspend();
+        world.setPaused(false);
+        world.start();
+        button2.textContent = "Voltar à interface";
+        button2.setAttribute("aria-pressed", "true");
+        savePreference("experience", "world3d");
+        await audio.loadInstalled(host.dataset.audioManifest);
+        audio.notify();
+      } catch (error) {
+        world?.dispose();
+        world = null;
+        active2 = false;
+        shell.classList.remove("world-mode");
+        theme.apply("aero");
+        savePreference("experience", "interface");
+        unavailable2(`${error.message} A interface Aero continua disponível.`);
+        button2.textContent = "Mundo 3D";
+        host.hidden = true;
+      } finally {
+        entering = false;
+        button2.disabled = false;
+      }
+    }
+    button2.onclick = () => active2 ? exit() : enter();
+    close.onclick = closePanel;
+    document.querySelector("#world-theme").onclick = () => theme.apply(theme.theme === "aero" ? "terminal" : "aero");
+    document.addEventListener("theme-changed", (e) => {
+      if (e.detail === "terminal" && active2) exit();
+    });
+    document.querySelector("#world-quality").onchange = (e) => {
+      world?.applyQuality(e.target.value);
+      savePreference("quality", e.target.value);
+      world?.renderer.domElement.focus();
+    };
+    document.querySelector("#world-music").onclick = async () => {
+      try {
+        await audio.toggle();
+        savePreference("enabled", audio.enabled);
+      } catch (error) {
+        unavailable2(error.message);
+      }
+    };
+    document.querySelector("#world-volume").value = audio.volume;
+    document.querySelector("#world-volume").oninput = (e) => {
+      audio.setMasterVolume(e.target.value);
+      savePreference("volume", audio.volume);
+    };
+    document.querySelector("#world-audio-settings").onclick = () => document.querySelector("#world-audio-file").click();
+    document.querySelector("#world-audio-file").onchange = async (e) => {
+      try {
+        audio.importFile(e.target.files[0]);
+        await audio.playMusic();
+        savePreference("enabled", audio.enabled);
+      } catch (error) {
+        unavailable2(error.message);
+      } finally {
+        e.target.value = "";
+      }
+    };
+    document.querySelector("#world-audio-loop").checked = readPreference("accessManager.audio.loop", "true") === "true";
+    audio.setLoop(document.querySelector("#world-audio-loop").checked);
+    document.querySelector("#world-audio-loop").onchange = (e) => {
+      audio.setLoop(e.target.checked);
+      savePreference("accessManager.audio.loop", e.target.checked);
+    };
+    document.querySelector("#world-gamification").onchange = (e) => {
+      document.querySelector("#world-inventory").hidden = !e.target.checked;
+      savePreference("am-world-gamification", e.target.checked);
+    };
+    const gamification = readPreference("am-world-gamification", "true") === "true";
+    document.querySelector("#world-gamification").checked = gamification;
+    document.querySelector("#world-inventory").hidden = !gamification;
+    const map = document.querySelector("#world-map");
+    let ctx;
+    host.addEventListener("focusin", () => {
+      ctx ?? (ctx = map.getContext?.("2d"));
+    });
+    host.addEventListener("world-frame", (e) => {
+      const { player, hotspot, fps, visited, total } = e.detail;
+      document.querySelector("#world-prompt").textContent = hotspot ? `E · Inspecionar ${hotspot.label}` : "WASD · Shift correr · Espaço pular · Arraste para olhar";
+      document.querySelector("#world-debug").textContent = `${fps} FPS · ${world.quality} · ${world.modelStatus || "Mascote procedural"}`;
+      document.querySelector("#world-inventory").textContent = `Exploração: ${visited}/${total} regiões visitadas`;
+      if (ctx) {
+        ctx.clearRect(0, 0, 180, 180);
+        ctx.fillStyle = host.dataset.layout === "juniper" ? "#e0f2fa" : "#e2f4d1";
+        ctx.fillRect(0, 0, 180, 180);
+        ctx.font = "13px sans-serif";
+        ctx.textAlign = "center";
+        for (const h of currentRegions) {
+          ctx.fillStyle = "#" + h.color.toString(16).padStart(6, "0");
+          ctx.fillText(minimapGlyph[h.kind] || "●", 90 + h.x * 1.5, 93 + h.z * 1.5);
+        }
+        ctx.fillStyle = "#123c60";
+        ctx.beginPath();
+        ctx.arc(90 + player.x * 1.5, 90 + player.z * 1.5, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && active2) {
+        if (document.querySelector("#action-dialog")?.open) return;
+        if (panel3) closePanel();
+        else exit();
+      }
+    });
+    const contextChanged = () => queueMicrotask(() => {
+      if (!store2.session?.connected) {
+        if (active2 || entering) exit({ persist: false });
+        world?.dispose();
+        world = null;
+        cache.clear();
+        contextKey = "";
+        signature = "";
+        return;
+      }
+      refreshContext();
+    });
+    for (const event of ["app-context-ready", "capabilities", "subscriber-context-changed"]) document.addEventListener(event, contextChanged);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) audio.pauseMusic();
+    });
+    window.addEventListener("pagehide", () => {
+      world?.dispose();
+      audio.dispose();
+      cache.clear();
+    });
+    return { openPanel, exit, enter, unavailable: unavailable2, get active() {
+      return active2;
+    } };
+  }
+
   // apps/access_manager/static/js/services/api.js
   var ApiError = class extends Error {
     constructor(message, { code, type, retryable = false, status: status3, request_id, health: health2 } = {}) {
@@ -482,6 +1095,7 @@
       selected = row;
       drawResults();
       renderSideDetail();
+      document.dispatchEvent(new CustomEvent("subscriber-context-changed"));
     } catch (e) {
       if (scopeActive(scope) && run === tabGeneration) host.innerHTML = `<p role="alert">${esc(e.message)}</p>`;
     }
@@ -725,6 +1339,7 @@
       toast(error.message);
     }
   }
+  var worldActions = [{ id: "access-cpe", routeId: "juniperSubscriber", label: "Acessar CPE", kind: "cpe", capability: "subscriber_detail", available: () => Boolean(selected?.ipv4_address), run: () => selected && accessCpe(selected) }];
 
   // apps/access_manager/static/js/workspaces/views/overview.js
   var overview_exports = {};
@@ -1099,7 +1714,26 @@
         const d = await request("/api/device/wifi/reveal-password", { method: "POST", body: "{}" });
         const r = (Array.isArray(d) ? d : d.networks || []).find((r2) => String(r2.id) === b.dataset.revealWifi);
         if (!r?.password || r.password_hidden === true) throw new Error("Senha não disponível neste firmware/login.");
-        dialog("Senha Wi-Fi", `<p>${esc(r.ssid)}</p><p class="mono" style="user-select:all">${esc(r.password)}</p>`);
+        const modal = dialog("Senha Wi-Fi", `<p>${esc(r.ssid)}</p><div class="field"><label for="wifi-revealed-password">Senha da rede</label><input id="wifi-revealed-password" type="password" readonly autocomplete="off"></div>`, `<button class="button" data-show-wifi-password>Mostrar</button><button class="button" data-copy-wifi-password>Copiar</button><button class="button" data-dismiss-wifi-password>Fechar</button>`);
+        const password = modal.querySelector("#wifi-revealed-password");
+        password.value = r.password;
+        modal.querySelector("[data-show-wifi-password]").onclick = (e) => {
+          password.type = password.type === "password" ? "text" : "password";
+          e.currentTarget.textContent = password.type === "password" ? "Mostrar" : "Ocultar";
+        };
+        modal.querySelector("[data-copy-wifi-password]").onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(password.value);
+            toast("Senha copiada.");
+          } catch {
+            toast("Não foi possível copiar.");
+          }
+        };
+        modal.querySelector("[data-dismiss-wifi-password]").onclick = () => modal.close();
+        modal.addEventListener("close", () => {
+          password.value = "";
+          r.password = "";
+        }, { once: true });
       } catch (err) {
         toast(err.message);
       } finally {
@@ -2050,6 +2684,8 @@
   var mountedRoot = null;
   var workspace = null;
   var connectionBusy = false;
+  var worldBridge;
+  var loginExperience;
   var infrastructureSettings = {};
   var viewStates = /* @__PURE__ */ new Map();
   var meta = {
@@ -2126,6 +2762,7 @@
     const updated = document.querySelector("#ctx-updated");
     if (disconnect) disconnect.disabled = !s;
     if (updated) updated.textContent = s?.updated_at ? `Atualizado ${new Date(s.updated_at).toLocaleTimeString()}` : "—";
+    document.dispatchEvent(new CustomEvent("app-context-ready"));
   }
   async function render9(name = store.view, background = false) {
     if (store.session?.session?.vendor === "juniper" && !Object.hasOwn(juniperRoutes, name)) name = "juniperOverview";
@@ -2251,6 +2888,7 @@
       if (password) password.value = "";
       toast(`Conectado via ${payload.vendor === "juniper" ? s.session.protocol_family || "SSH" : payload.https ? "HTTPS" : "HTTP"} em ${s.session.model || s.session.vendor || payload.host}.`);
       await render9("overview");
+      await loginExperience?.afterConnect(worldBridge);
     } catch (err) {
       document.querySelector("#connection-feedback").textContent = err?.message || "Não foi possível conectar ao equipamento.";
       document.querySelector("#connection-status").textContent = "Conexão não confirmada";
@@ -2274,6 +2912,15 @@
     window.__amStore = store;
     workspace = document.querySelector("#workspace");
     if (!workspace) throw new Error("Workspace do Access Manager não foi encontrado.");
+    const theme = mountThemeProvider();
+    loginExperience = mountLoginExperience(theme);
+    const routeRegistry = createRouteRegistry(views, navigation, worldActions);
+    worldBridge = mountWorldBridge({ store, theme, registry: routeRegistry, navigate: (name) => render9(name), suspend: () => {
+      views[store.view]?.unmount?.();
+      beginView("world");
+    }, resume: () => render9(store.view) });
+    let ordinal = 0;
+    document.querySelector("#sidebar").innerHTML = routerNavigation.map(([group, items]) => `<div class="nav-group">${esc(group)}</div>${items.map(([id, label], index) => `<button class="nav" data-view="${id}">${String(++ordinal).padStart(2, "0")} <span>${esc(label)}</span></button>`).join("")}`).join("");
     const oldNav = document.querySelectorAll("[data-juniper-nav]");
     oldNav.forEach((n) => n.remove());
     document.querySelector("#sidebar").insertAdjacentHTML("afterbegin", navigation.map(([group, items], index) => `<details class="juniper-nav-group" data-juniper-nav hidden ${index < 2 ? "open" : ""}><summary>${esc(group)}</summary>${items.map(([route, label]) => `<button class="nav" data-juniper-nav data-view="${route}" hidden><span>${esc(label)}</span></button>`).join("")}</details>`).join(""));
@@ -2385,6 +3032,7 @@
       store.setCapabilities(s.session?.capabilities || {});
       syncContext();
       await render9(s.connected ? currentScope() ? store.view : "overview" : store.view);
+      if (s.connected && loginExperience?.selected === "world3d") await worldBridge.enter();
     } catch (error) {
       console.error("[Access Manager] Falha ao consultar sessão inicial:", error);
       await render9(store.view);
