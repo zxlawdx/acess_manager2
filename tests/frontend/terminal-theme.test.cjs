@@ -54,6 +54,13 @@ test('Juniper login resets the legacy 540px cap and collapses before fields clip
   assert.match(regressions,/@media \(max-width:620px\)\{[\s\S]*\.password-field\{[\s\S]*display:grid!important/);
 });
 
+test('Matrix canvas stays out of login layout flow and cannot create phantom scrolling',()=>{
+  assert.match(regressions,/#matrix-bg\{[\s\S]*position:absolute!important/);
+  assert.match(regressions,/#matrix-bg\{[\s\S]*inset:0!important/);
+  assert.match(regressions,/#login-page > :not\(#matrix-bg\)/);
+  assert.doesNotMatch(regressions,/#login-page > \*,\s*\.connection-card > \*,\s*\.app-wrapper > \*/);
+});
+
 test('terminal integration preserves existing functional selectors and Vela runtime',()=>{
   for(const selector of ['id="connect-form"','id="connection-vendor"','id="inspect-host-key"','id="sidebar"','id="workspace"','id="action-dialog"','id="disconnect-button"']){
     assert.ok(template.includes(selector),selector+' must remain stable');
