@@ -5,6 +5,181 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // apps/access_manager/static/js/service/model.js
+  var service = { id: null, activeSession: null, session: null, started: null, entries: [], notes: "" };
+  var listeners = /* @__PURE__ */ new Set();
+  var subscribeService = (fn) => {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  };
+  var notify = () => listeners.forEach((fn) => fn());
+  function startService(session2) {
+    const s = session2?.session;
+    if (!session2?.connected) {
+      service.id = null;
+      service.activeSession = null;
+      service.session = null;
+      service.started = null;
+      service.entries = [];
+      service.notes = "";
+      notify();
+      return;
+    }
+    const id = s?.session_id || `${s?.vendor}:${s?.host}`;
+    if (service.activeSession === id) return;
+    if (service.id) {
+      service.activeSession = id;
+      addEntry({ category: "Conexão", action: "Contexto selecionado / acesso CPE", target: [s?.vendor, s?.model, s?.host].filter(Boolean).join(" · "), result: "Sessão ativa" });
+      return;
+    }
+    service.id = id;
+    service.activeSession = id;
+    service.session = { vendor: s?.vendor, model: s?.model, host: s?.host, technician: s?.username || s?.user || "Não informado", id };
+    service.started = (/* @__PURE__ */ new Date()).toISOString();
+    service.entries = [];
+    service.notes = "";
+    addEntry({ category: "Conexão", action: "Sessão iniciada", target: [s?.vendor, s?.model, s?.host].filter(Boolean).join(" · "), result: "Conectado" });
+  }
+  function addEntry(entry) {
+    if (!service.id) return;
+    service.entries.push({ time: (/* @__PURE__ */ new Date()).toISOString(), session: service.activeSession, route: typeof window !== "undefined" ? window.__amStore?.view || "conexão" : "conexão", ...entry });
+    notify();
+  }
+  function setServiceNotes(value2) {
+    service.notes = String(value2);
+    notify();
+  }
+  function formatService({ summary = false, secrets = false, markdown = false } = {}) {
+    const format = (value2) => JSON.stringify(value2, (_key, v) => v === void 0 ? null : v, 2);
+    const detail = (entry, key) => {
+      const value2 = entry[key];
+      return value2 === void 0 ? "" : `
+${key === "before" ? "Antes" : key === "after" ? "Depois" : "Dados"}: ${format(value2)}`;
+    };
+    const entries = summary ? service.entries.filter((e) => e.category !== "Leitura" || e.observations) : service.entries;
+    const lines = entries.map((e) => `[${new Date(e.time).toLocaleTimeString("pt-BR")}] ${e.category} · ${e.action}
+Tela: ${e.route} · Sessão: ${e.session || service.id} · Alvo: ${e.target || "Equipamento"}
+Resultado: ${e.result || "Registrado"}${detail(e, "before")}${detail(e, "after")}${summary ? "" : detail(e, "data")}${e.secrets ? `
+Senha anterior: ${secrets ? e.secrets.old : "••••••••"}
+Senha nova: ${secrets ? e.secrets.new : "••••••••"}` : ""}${e.observations ? "\nObservações: " + e.observations : ""}`);
+    return `${markdown ? "# " : ""}Atendimento atual
+Início: ${service.started || "Sem sessão"}
+Equipamento: ${service.session?.vendor || ""} ${service.session?.model || ""} · ${service.session?.host || ""}
+Técnico: ${service.session?.technician || ""} · Sessão: ${service.id || ""}
+
+${lines.join("\n\n")}
+
+Observações do técnico:
+${service.notes || "Sem observações."}`;
+  }
+  var sensitive = /(password|passwd|senha|secret|token|authorization|cookie|passphrase|psk|credential|security.?key)/i;
+  var redact = (value2) => {
+    if (Array.isArray(value2)) return value2.slice(0, 40).map(redact);
+    if (value2 && typeof value2 === "object") {
+      if ([value2.field, value2.label, value2.key, value2.name].some((v) => typeof v === "string" && sensitive.test(v))) return { campo: "Dado sensível omitido" };
+      return Object.fromEntries(Object.entries(value2).filter(([k]) => !sensitive.test(k) && !/(raw|config_text|backup|command|script)/i.test(k)).slice(0, 40).map(([k, v]) => [k, redact(v)]));
+    }
+    return typeof value2 === "string" ? value2.slice(0, 500).replace(/(password|passwd|senha|secret|psk)\s*[=:]\s*\S+/ig, "$1: [omitido]") : value2;
+  };
+  var seen = /* @__PURE__ */ new Map();
+  function observeOperation(path2, method, body, data, ok, route) {
+    if (!service.id || /reveal-password|settings|host-key|operations|history|poll|export|download|preview|traffic/.test(path2)) return;
+    const url = path2.split("?")[0];
+    if (!/^\/api\/(device|infrastructure|profiles)/.test(url)) return;
+    const read2 = method === "GET";
+    if (read2 && !/\/device$|clients|wan|optical|subscribers|subscriber\/|interfaces/.test(url)) return;
+    const last = seen.get(url);
+    if (read2 && last?.id === service.id && Date.now() - last.time < 3e4) return;
+    seen.set(url, { id: service.id, time: Date.now() });
+    if (url === "/api/device/wifi/ssid") return;
+    let input = {};
+    try {
+      input = typeof body === "string" ? JSON.parse(body || "{}") : body || {};
+    } catch {
+    }
+    const category = read2 ? "Leitura" : /diagnostic|ping|traceroute|test/.test(url) ? "Diagnóstico" : /profiles/.test(url) ? "Perfis" : /infrastructure/.test(url) ? "Juniper" : /wifi/.test(url) ? "Wi-Fi" : "Alteração";
+    const labels2 = { device: "Identificação do equipamento", clients: "Clientes observados", wan: "Leitura WAN", optical: "Sinal óptico", ping: "Ping", traceroute: "Traceroute", "wifi-neighbors": "Scan de Wi-Fi vizinho", reboot: "Reinício", capture: "Captura de perfil", apply: "Aplicação de perfil", "connect-cpe": "Acesso CPE", lookup: "Consulta de assinante", run: "Diagnóstico completo" };
+    const action = labels2[url.split("/").at(-1)] || url.split("/").filter(Boolean).slice(2).join(" / ");
+    const safe = redact(data);
+    let observations = "";
+    if (read2 && ok) {
+      if (/clients$/.test(url) && Array.isArray(data)) observations = `Clientes observados: ${data.length}.`;
+      if (/optical$/.test(url)) observations = `Sinal óptico RX: ${data?.rx ?? data?.rx_power ?? "Não disponível"} dBm.`;
+      if (/wan$/.test(url)) {
+        const rows3 = Array.isArray(data) ? data : [data];
+        observations = rows3.map((r) => `WAN ${r.name || ""}: ${r.status || "estado indisponível"}; IP ${r.ipv4 || r.ip || "não disponível"}.`).join(" ");
+      }
+    }
+    addEntry({ ...route ? { route } : {}, category, action, target: input.host || input.ip || input.ssid_id || input.band || "Equipamento", observations, result: ok ? read2 ? "Leitura concluída" : data?.verified === true ? "Confirmado por leitura" : "Resposta recebida; verificar resultado abaixo" : "Falha", data: Array.isArray(safe) ? { quantidade: safe.length, registros: safe } : safe, ...!read2 ? { after: redact(input) } : {} });
+  }
+
+  // apps/access_manager/static/js/service/panel.js
+  function mountServicePanel(store2) {
+    const button2 = document.querySelector("#service-current");
+    if (!button2) return;
+    const panel3 = document.createElement("dialog");
+    panel3.id = "service-dialog";
+    panel3.className = "service-dialog";
+    panel3.setAttribute("aria-label", "Atendimento atual");
+    panel3.innerHTML = '<div class="dialog-inner"><div class="dialog-header"><h2>Atendimento atual</h2><button class="button" data-dismiss>Fechar</button></div><p>Registro em memória desta sessão. Ao desconectar, o conteúdo é descartado.</p><label><input type="checkbox" data-secrets> Mostrar e incluir senhas completas ao copiar/exportar</label><label class="field">Observações do técnico<textarea data-notes rows="3"></textarea></label><div class="inline-actions"><button class="button" data-copy="summary">Copiar resumo</button><button class="button" data-copy="timeline">Copiar registro</button><button class="button" data-copy="markdown">Copiar markdown</button><button class="button" data-export>Exportar TXT</button><button class="button" data-clear>Limpar observações</button></div><label>Visualização <select data-mode><option value="summary">Resumo operacional</option><option value="timeline">Linha do tempo completa</option></select></label><p role="status" data-status></p><pre data-record tabindex="0"></pre></div>';
+    document.body.append(panel3);
+    let secrets = false;
+    const paint = () => {
+      button2.textContent = `Atendimento atual (${service.entries.length})`;
+      if (panel3.open) panel3.querySelector("[data-record]").textContent = formatService({ secrets, summary: panel3.querySelector("[data-mode]").value === "summary" });
+    };
+    subscribeService(paint);
+    panel3.querySelector("[data-mode]").onchange = paint;
+    const show = () => {
+      secrets = false;
+      panel3.querySelector("[data-secrets]").checked = false;
+      panel3.querySelector("[data-notes]").value = service.notes;
+      panel3.classList.toggle("aero-theme", document.documentElement.dataset.experienceTheme === "aero");
+      panel3.showModal();
+      paint();
+    };
+    button2.onclick = show;
+    document.addEventListener("open-service", show);
+    panel3.querySelector("[data-dismiss]").onclick = () => panel3.close();
+    panel3.addEventListener("close", () => {
+      secrets = false;
+      panel3.querySelector("[data-record]").textContent = "";
+      panel3.querySelector("[data-notes]").value = "";
+      panel3.querySelector("[data-secrets]").checked = false;
+    });
+    panel3.querySelector("[data-secrets]").onchange = (e) => {
+      secrets = e.target.checked;
+      paint();
+    };
+    panel3.querySelector("[data-notes]").oninput = (e) => setServiceNotes(e.target.value);
+    panel3.querySelector("[data-clear]").onclick = () => {
+      setServiceNotes("");
+      panel3.querySelector("[data-notes]").value = "";
+    };
+    panel3.querySelectorAll("[data-copy]").forEach((b) => b.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(formatService({ secrets, summary: b.dataset.copy === "summary", markdown: b.dataset.copy === "markdown" }));
+        panel3.querySelector("[data-status]").textContent = "Registro copiado.";
+      } catch {
+        panel3.querySelector("[data-status]").textContent = "Cópia indisponível. Selecione o texto do registro.";
+      }
+    });
+    panel3.querySelector("[data-export]").onclick = () => {
+      const url = URL.createObjectURL(new Blob([formatService({ secrets })], { type: "text/plain;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "atendimento.txt";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1e3);
+    };
+    document.addEventListener("app-context-ready", () => {
+      startService(store2.session);
+      if (!store2.session?.connected && panel3.open) panel3.close();
+    });
+    window.__amObserveOperation = observeOperation;
+    window.addEventListener("pagehide", () => startService(null));
+  }
+
   // apps/access_manager/static/js/ui/theme.js
   var preferenceKeys = { theme: "accessManager.theme", experience: "accessManager.experience", enabled: "accessManager.audio.enabled", volume: "accessManager.audio.volume", quality: "accessManager.world.quality" };
   function readPreference(name, fallback) {
@@ -113,7 +288,7 @@
     if (!selector) return { afterConnect: async () => {
     } };
     const input = document.querySelector("#login-experience");
-    let selected2 = readPreference("experience", "interface") === "world3d" ? "world3d" : readPreference("theme", readPreference("am-theme", "terminal")) === "aero" ? "aero" : "terminal";
+    let selected2 = ["world3d", "voxel"].includes(readPreference("experience", "interface")) ? readPreference("experience", "interface") : readPreference("theme", readPreference("am-theme", "terminal")) === "aero" ? "aero" : "terminal";
     let probed = false, supported = true;
     function select(value2, persist = true) {
       selected2 = value2;
@@ -125,8 +300,8 @@
         b.tabIndex = checked ? 0 : -1;
       });
       theme.apply(value2 === "terminal" ? "terminal" : "aero", { persist });
-      if (persist) savePreference("experience", value2 === "world3d" ? "world3d" : "interface");
-      if (value2 === "world3d") {
+      if (persist) savePreference("experience", ["world3d", "voxel"].includes(value2) ? value2 : "interface");
+      if (["world3d", "voxel"].includes(value2)) {
         if (!probed) {
           supported = supportsWebGL();
           probed = true;
@@ -143,7 +318,7 @@
       if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"].includes(e.key)) {
         e.preventDefault();
         const index = buttons.findIndex((b) => b.dataset.loginExperience === selected2);
-        const next = e.key === "Home" ? 0 : e.key === "End" ? 2 : (index + (["ArrowLeft", "ArrowUp"].includes(e.key) ? 2 : 1)) % 3;
+        const next = e.key === "Home" ? 0 : e.key === "End" ? buttons.length - 1 : (index + (["ArrowLeft", "ArrowUp"].includes(e.key) ? buttons.length - 1 : 1)) % buttons.length;
         select(buttons[next].dataset.loginExperience);
         buttons[next].focus();
       }
@@ -153,13 +328,13 @@
       return selected2;
     }, async afterConnect(world) {
       theme.apply(selected2 === "terminal" ? "terminal" : "aero");
-      savePreference("experience", selected2 === "world3d" ? "world3d" : "interface");
-      if (selected2 === "world3d") {
+      savePreference("experience", ["world3d", "voxel"].includes(selected2) ? selected2 : "interface");
+      if (["world3d", "voxel"].includes(selected2)) {
         if (!probed) {
           supported = supportsWebGL();
           probed = true;
         }
-        if (supported) await world.enter();
+        if (supported) await world.enter(selected2);
         else world.unavailable("3D indisponível neste dispositivo. A interface Aero está disponível.");
       }
     } };
@@ -359,10 +534,12 @@
     const shell = document.querySelector(".app-shell"), host = document.querySelector("#aero-world");
     if (!host) return;
     const button2 = document.querySelector("#world-toggle"), close = document.querySelector("#world-close-panel"), notice = document.querySelector("#world-notice");
+    const experience = document.querySelector("#world-experience");
+    let mode = "world3d", namespace = null;
     const cache = /* @__PURE__ */ new Map();
     let world = null, loading = null, entering = false, generation3 = 0, active2 = false, panel3 = false, contextKey = "", signature = "", currentRegions = [];
     const getContext = () => store2.session?.session;
-    const key = () => `${getContext()?.vendor || "router"}:${getContext()?.session_id || "session"}`;
+    const key = () => `${mode}:${getContext()?.vendor || "router"}:${getContext()?.session_id || "session"}`;
     const unavailable2 = (message) => {
       notice.textContent = message;
       notice.hidden = !message;
@@ -402,21 +579,19 @@
       close.focus();
     }
     function load() {
-      if (window.AccessManagerWorld) return Promise.resolve(window.AccessManagerWorld);
+      const name = mode === "voxel" ? "AccessManagerVoxel" : "AccessManagerWorld";
+      if (window[name]) return Promise.resolve(window[name]);
       if (loading) return loading;
       loading = new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = host.dataset.bundle;
-        script.onload = () => window.AccessManagerWorld ? resolve(window.AccessManagerWorld) : reject(new Error("Renderer indisponível"));
+        script.src = mode === "voxel" ? host.dataset.voxelBundle : host.dataset.bundle;
+        script.onload = () => window[name] ? resolve(window[name]) : reject(new Error("Renderer indisponível"));
         script.onerror = () => {
           script.remove();
           reject(new Error("Não foi possível carregar o módulo 3D local."));
         };
         document.head.append(script);
-      }).catch((error) => {
-        loading = null;
-        throw error;
-      });
+      }).finally(() => loading = null);
       return loading;
     }
     function remember() {
@@ -438,10 +613,10 @@
       contextKey = next;
       signature = nextSignature;
       if (world) world.setRegions(regions);
-      else if (active2 && window.AccessManagerWorld) createWorld();
+      else if (active2 && namespace) createWorld();
     }
     function createWorld() {
-      world = new window.AccessManagerWorld.WorldRenderer(host, { regions: currentRegions, layout: host.dataset.layout, interact: openPanel, onError: (message) => {
+      world = new namespace.WorldRenderer(host, { regions: currentRegions, layout: host.dataset.layout, interact: openPanel, onError: (message) => {
         exit({ persist: false });
         world?.dispose();
         world = null;
@@ -467,11 +642,26 @@
       shell.classList.remove("world-mode", "world-panel-open");
       button2.textContent = "Mundo 3D";
       button2.setAttribute("aria-pressed", "false");
-      if (persist) savePreference("experience", "interface");
+      if (persist) {
+        savePreference("experience", "interface");
+        if (experience) experience.value = "interface";
+      }
       if (store2.session?.connected) resume();
       button2.focus();
     }
-    async function enter() {
+    async function enter(nextMode = "world3d") {
+      if (!["world3d", "voxel"].includes(nextMode)) nextMode = "world3d";
+      if (active2 && mode !== nextMode) exit({ persist: false });
+      if (mode !== nextMode) {
+        remember();
+        world?.dispose();
+        world = null;
+        contextKey = "";
+        signature = "";
+        mode = nextMode;
+      }
+      if (experience) experience.value = mode;
+      host.dataset.experience = mode;
       if (entering || active2 || !store2.session?.connected) return;
       entering = true;
       const token = ++generation3;
@@ -479,7 +669,7 @@
       button2.textContent = "Carregando Access World…";
       unavailable2("");
       try {
-        await load();
+        namespace = await load();
         if (token !== generation3 || !store2.session?.connected) return;
         refreshContext();
         host.hidden = false;
@@ -492,7 +682,7 @@
         world.start();
         button2.textContent = "Voltar à interface";
         button2.setAttribute("aria-pressed", "true");
-        savePreference("experience", "world3d");
+        savePreference("experience", mode);
         await audio.loadInstalled(host.dataset.audioManifest);
         audio.notify();
       } catch (error) {
@@ -510,7 +700,8 @@
         button2.disabled = false;
       }
     }
-    button2.onclick = () => active2 ? exit() : enter();
+    button2.onclick = () => active2 ? exit() : enter(experience?.value === "voxel" ? "voxel" : "world3d");
+    if (experience) experience.onchange = () => experience.value === "interface" ? exit() : enter(experience.value);
     close.onclick = closePanel;
     document.querySelector("#world-theme").onclick = () => theme.apply(theme.theme === "aero" ? "terminal" : "aero");
     document.addEventListener("theme-changed", (e) => {
@@ -559,6 +750,32 @@
     const gamification = readPreference("am-world-gamification", "true") === "true";
     document.querySelector("#world-gamification").checked = gamification;
     document.querySelector("#world-inventory").hidden = !gamification;
+    document.querySelector("#world-service").onclick = () => document.dispatchEvent(new CustomEvent("open-service"));
+    host.addEventListener("world-scan", (e) => {
+      const scan = document.querySelector("#world-scanner");
+      scan.hidden = !scan.hidden;
+      scan.replaceChildren();
+      for (const region of e.detail) {
+        const b = document.createElement("button");
+        b.className = "button";
+        b.textContent = region.label;
+        b.onclick = () => {
+          scan.hidden = true;
+          openPanel(region);
+        };
+        scan.append(b);
+      }
+    });
+    document.addEventListener("locate-world-route", async (e) => {
+      await enter("voxel");
+      const region = currentRegions.find((r) => r.routeId === e.detail.routeId);
+      if (region) {
+        unavailable2(`Localização: ${region.label}. O painel mostra a tabela real de clientes; não representa localização física.`);
+        const state2 = world.getState();
+        state2.player = { ...state2.player, x: region.x, z: region.z + 6, y: 0 };
+        world.restoreState(state2);
+      } else unavailable2("Região não disponível nesta sessão.");
+    });
     const map = document.querySelector("#world-map");
     let ctx;
     host.addEventListener("focusin", () => {
@@ -566,7 +783,7 @@
     });
     host.addEventListener("world-frame", (e) => {
       const { player, hotspot, fps, visited, total } = e.detail;
-      document.querySelector("#world-prompt").textContent = hotspot ? `E · Inspecionar ${hotspot.label}` : "WASD · Shift correr · Espaço pular · Arraste para olhar";
+      document.querySelector("#world-prompt").textContent = hotspot ? `E · Inspecionar ${hotspot.label}` : mode === "voxel" ? "WASD · Shift · Espaço · E interagir · F scanner · V câmera" : "WASD · Shift correr · Espaço pular · Arraste para olhar";
       document.querySelector("#world-debug").textContent = `${fps} FPS · ${world.quality} · ${world.modelStatus || "Mascote procedural"}`;
       document.querySelector("#world-inventory").textContent = `Exploração: ${visited}/${total} regiões visitadas`;
       if (ctx) {
@@ -588,6 +805,12 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && active2) {
         if (document.querySelector("#action-dialog")?.open) return;
+        const scanner = document.querySelector("#world-scanner");
+        if (!scanner.hidden) {
+          scanner.hidden = true;
+          world?.renderer.domElement.focus();
+          return;
+        }
         if (panel3) closePanel();
         else exit();
       }
@@ -635,7 +858,7 @@
     }
   }
   async function request(path2, options = {}) {
-    const { scope = defaultScope(path2, options), forceRefresh = false, ...fetchOptions } = options;
+    const { scope = defaultScope(path2, options), forceRefresh = false, onResult, ...fetchOptions } = options;
     const method = String(options.method || "GET").toUpperCase(), read2 = method === "GET";
     if (!scopeActive(scope)) throw cancelled();
     const canCache = read2 && cachedPaths.has(path2);
@@ -650,16 +873,20 @@
     }
     const key = cacheSession + ":" + (scope?.identity ?? "global") + ":" + path2;
     if (canCache && pending.has(key)) return pending.get(key);
-    const start = performance.now(), epoch = revision;
+    const start = performance.now(), epoch = revision, operationRoute = window.__amStore?.view, operationSession = window.__amStore?.session?.session?.session_id ?? null;
+    let reported = false;
     const work = (async () => {
       const url = new URL(path2, window.location.origin);
       const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read2 ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
       const text2 = await res.text(), data = parseResponseBody(text2);
+      reported = true;
+      onResult?.(data, res.ok && data?.success !== false);
+      if (operationSession === (window.__amStore?.session?.session?.session_id ?? null)) window.__amObserveOperation?.(path2, method, options.body, data, res.ok && data?.success !== false, operationRoute);
       if (!read2 && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/profiles/capture", "/api/triage", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/diagnostics/full/run", "/api/device/diagnostics/full/history", "/api/device/diagnostics/full/export", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path2)) clearSnapshots();
       if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
       if (!res.ok || data?.success === false) {
-        const details = data?.error || {};
-        const error = new ApiError(details.message || data?.message || (!res.ok ? `HTTP ${res.status} ao acessar ${url.pathname}` : "Falha na operação"), { ...details, status: res.status });
+        const details2 = data?.error || {};
+        const error = new ApiError(details2.message || data?.message || (!res.ok ? `HTTP ${res.status} ao acessar ${url.pathname}` : "Falha na operação"), { ...details2, status: res.status });
         if (path2.startsWith("/api/infrastructure/")) document.dispatchEvent(new CustomEvent("juniper-read-state", { detail: { failed: true, code: error.code, health: error.health, transportFailure: ["CONNECTION_TIMEOUT", "SSH_UNAVAILABLE", "NETCONF_UNAVAILABLE"].includes(error.code) } }));
         throw error;
       }
@@ -672,6 +899,7 @@
       return data;
     })().catch((e) => {
       if (!scopeActive(scope) || isCancelled(e)) throw cancelled();
+      if (!reported && operationSession === (window.__amStore?.session?.session?.session_id ?? null)) window.__amObserveOperation?.(path2, method, options.body, { status: "Resposta indisponível", error: { message: e.message } }, false, operationRoute);
       throw e;
     }).finally(() => {
       if (pending.get(key) === work) pending.delete(key);
@@ -1356,6 +1584,85 @@
     render: () => render,
     topology: () => topology
   });
+
+  // apps/access_manager/static/js/service/client-diagnostic.js
+  function clientObservations(client, present, ping) {
+    const observations = [];
+    const rssi = Number(client.rssi);
+    if (client.rssi != null && Number.isFinite(rssi)) observations.push(rssi < -70 ? "RSSI fraco: possível distância ou interferência; confirmar no local." : "RSSI adequado; não comprova qualidade da conexão nem exclui interferência.");
+    if (present === false) observations.push("Ausente na tabela atual; pode não estar conectado ao SSID esperado.");
+    if (present === true) observations.push("Presente na tabela atual; presença não comprova acesso à internet.");
+    if (ping === false && present === true) observations.push("Sem resposta ao ping: firewall, isolamento ou standby são possibilidades.");
+    return observations.join(" ");
+  }
+  var details = (r) => ({ Hostname: r.hostname || r.nome, IPv4: r.ip || r.ipv4, IPv6: Array.isArray(r.ipv6_addresses) ? r.ipv6_addresses.join(", ") : r.ipv6_addresses || r.ipv6, MAC: r.mac, Banda: r.band || r.banda, SSID: r.ssid, Interface: r.interface || r.port, RSSI: r.rssi, SNR: r.snr, "RX bytes": r.rx_bytes, "TX bytes": r.tx_bytes, "Taxa RX": r.rx_rate, "Taxa TX": r.tx_rate, "Tempo conectado": r.uptime || r.connected_time, Fabricante: r.manufacturer || r.vendor, Estado: r.status ?? r.online, Lease: r.lease });
+  function openClientDiagnostic(client) {
+    const target = client.hostname || client.nome || client.ip || client.mac || "Cliente";
+    const d = dialog("Diagnóstico do dispositivo", `${kv(details(client))}<div class="inline-actions"><button class="button primary" data-test-client>Diagnosticar dispositivo / Testar conexão</button><button class="button" data-add-client>Adicionar ao atendimento</button><button class="button" data-find-client>Localizar no mundo</button></div><div data-client-result role="status"></div>`);
+    d.classList.add("drawer");
+    const record = (data, result, observations) => addEntry({ category: "Cliente", action: "Diagnóstico específico", target, data, result, observations });
+    d.querySelector("[data-add-client]").onclick = () => {
+      record(details(client), "Dados observados", clientObservations(client, null, null));
+      toast("Cliente adicionado ao atendimento.");
+    };
+    d.querySelector("[data-find-client]").onclick = () => {
+      d.close();
+      document.dispatchEvent(new CustomEvent("locate-world-route", { detail: { routeId: "clients" } }));
+    };
+    d.querySelector("[data-test-client]").onclick = async (e) => {
+      const button2 = e.currentTarget;
+      button2.disabled = true;
+      const output = d.querySelector("[data-client-result]"), scope = d._requestScope;
+      let current = client, present = null, ping = null;
+      const tests2 = [];
+      output.textContent = "Atualizando tabela de clientes…";
+      try {
+        if (cap("clients").enabled?.read) {
+          try {
+            const rows3 = await request("/api/device/clients", { scope, forceRefresh: true });
+            if (Array.isArray(rows3)) {
+              const match = rows3.find((r) => client.mac ? r.mac?.toLowerCase() === client.mac.toLowerCase() : (r.ip || r.ipv4) === (client.ip || client.ipv4));
+              present = Boolean(match);
+              if (match) current = match;
+              tests2.push({ teste: "Tabela de clientes", resultado: present ? "Presente" : "Ausente" });
+            }
+          } catch (error) {
+            tests2.push({ teste: "Tabela de clientes", resultado: error.message });
+          }
+        }
+        const ip = current.ip || current.ipv4;
+        if (ip && cap("diagnostics").enabled?.write) {
+          try {
+            const result = await request("/api/device/diagnostics/ping", { method: "POST", scope, body: JSON.stringify({ host: ip, count: 4 }) });
+            const received = result.received ?? result.packets_received ?? result.recebidos;
+            ping = typeof received === "number" ? received > 0 : null;
+            tests2.push({ teste: "Ping a partir do equipamento", resultado: result });
+          } catch (error) {
+            tests2.push({ teste: "Ping", resultado: error.message });
+          }
+        } else tests2.push({ teste: "Ping", resultado: ip ? "Não suportado pelas capabilities desta sessão." : "IP indisponível." });
+        if (cap("wifi_radio").enabled?.read) {
+          try {
+            const radios2 = await request("/api/device/wifi/radios", { scope });
+            const list = Array.isArray(radios2) ? radios2 : radios2?.radios || [];
+            const band2 = current.band || current.banda;
+            const radio = band2 ? list.find((r) => String(r.band || r.banda).replace(/[^0-9.]/g, "") === String(band2).replace(/[^0-9.]/g, "")) : null;
+            if (radio) tests2.push({ teste: "Rádio relacionado", banda: band2, canal: radio.channel ?? radio.canal, largura: radio.bandwidth ?? radio.largura });
+          } catch (error) {
+            tests2.push({ teste: "Rádio", resultado: error.message });
+          }
+        }
+        const pingResult = tests2.find((t) => t.teste === "Ping a partir do equipamento")?.resultado;
+        const observations = [`IP: ${current.ip || current.ipv4 || "indisponível"}; banda: ${current.band || current.banda || "indisponível"}; RSSI: ${current.rssi ?? "indisponível"}; SNR: ${current.snr ?? "indisponível"}.`, clientObservations(current, present, ping), pingResult ? `Ping: ${pingResult.received ?? "não informado"}/${pingResult.sent ?? "não informado"} respostas; perda ${pingResult.loss_percent ?? "não informada"}%.` : tests2.find((t) => t.teste === "Ping")?.resultado].filter(Boolean).join(" ");
+        record({ cliente: details(current), testes: tests2 }, "Verificações concluídas", observations);
+        if (scopeActive(scope)) output.innerHTML = `${kv(details(current))}<pre>${esc(JSON.stringify(tests2, null, 2))}</pre><p>${esc(observations || "Sem dados suficientes para inferir conectividade. Não há teste equivalente habilitado nesta sessão.")}</p>`;
+      } finally {
+        button2.disabled = false;
+      }
+    };
+  }
+
+  // apps/access_manager/static/js/workspaces/views/clients.js
   var rows2 = [];
   var status2 = (r) => {
     const v = pick(r, "status", "estado", "online");
@@ -1385,13 +1692,7 @@
   function mountDetails() {
     document.querySelectorAll("[data-client]").forEach((btn) => btn.onclick = () => {
       const r = rows2[Number(btn.dataset.client)];
-      if (!r) return;
-      const data = { Hostname: pick(r, "hostname", "nome"), IPv4: pick(r, "ip", "ipv4"), IPv6: pick(r, "ipv6_addresses", "ipv6"), MAC: pick(r, "mac"), Conexão: connection(r), Interface: pick(r, "interface", "port"), SSID: pick(r, "ssid"), Banda: band(r), RSSI: pick(r, "rssi"), SNR: pick(r, "snr"), "RX bytes": pick(r, "rx_bytes"), "TX bytes": pick(r, "tx_bytes"), "Taxa RX": pick(r, "rx_rate"), "Taxa TX": pick(r, "tx_rate"), Fabricante: pick(r, "manufacturer"), Estado: linkStatus(pick(r, "status", "online")), Lease: pick(r, "lease") };
-      const d = dialog("Detalhes do cliente", kv(data));
-      d.classList.add("drawer");
-      d.addEventListener("close", () => {
-        if (!d.open) d.classList.remove("drawer");
-      }, { once: true });
+      if (r) openClientDiagnostic(r);
     });
   }
   async function render() {
@@ -1668,12 +1969,41 @@
 
   // apps/access_manager/static/js/shared/forms.js
   function editConfig(title, path2, fields2, extra = {}) {
+    const serviceId = service.activeSession, operationRoute = window.__amStore?.view;
     const supported = fields2.filter((f) => f.value !== void 0 && f.value !== null && f.value !== "—");
     const d = dialog(title, `<form class="form-grid">${supported.map((f) => `<div class="field"><label>${esc(f.label)}</label>${f.options ? `<select name="${esc(f.key)}" ${f.options.length ? "" : "disabled"}><option value="${esc(f.value)}">${esc(f.value)}</option>${f.options.filter((o) => String(o.value) !== String(f.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select>` : f.type === "bool" ? `<select name="${esc(f.key)}"><option value="true" ${f.value === true || f.value === "1" ? "selected" : ""}>Ativo</option><option value="false" ${f.value === false || f.value === "0" ? "selected" : ""}>Inativo</option></select>` : `<input name="${esc(f.key)}" value="${esc(f.value)}" type="${f.type || "text"}">`}</div>`).join("")}<div class="dialog-footer"><button class="button primary">Aplicar alterações</button></div></form>`);
+    let oldPassword = "Não disponível neste firmware/login";
+    let closed = false;
+    const isWifi = path2 === "/api/device/wifi/ssid";
+    if (isWifi) {
+      const status3 = document.createElement("p");
+      status3.dataset.passwordAuditStatus = "";
+      status3.className = "muted";
+      status3.textContent = "Lendo senha anterior para o atendimento…";
+      d.querySelector("form").prepend(status3);
+    }
+    const passwordRead = isWifi ? request("/api/device/wifi/reveal-password", { method: "POST", scope: d._requestScope, body: "{}" }).then((data) => {
+      const row = (Array.isArray(data) ? data : data.networks || []).find((r) => String(r.id) === String(extra.ssid_id));
+      if (!closed && row?.password && row.password_hidden !== true) oldPassword = row.password;
+    }).catch(() => {
+    }).finally(() => {
+      const status3 = d.querySelector("[data-password-audit-status]");
+      if (!closed && status3) status3.textContent = oldPassword === "Não disponível neste firmware/login" ? "Senha anterior indisponível; o registro indicará essa limitação." : "Senha anterior capturada em memória; exibição mascarada no atendimento.";
+    }) : Promise.resolve();
+    d.addEventListener("close", () => {
+      closed = true;
+      oldPassword = "";
+    }, { once: true });
+    const audit = (config, result, previous = oldPassword) => {
+      if (serviceId !== service.activeSession) return;
+      addEntry({ route: operationRoute, category: isWifi ? "Wi-Fi" : "Alteração", action: config.password ? "Alteração de senha / SSID" : title, target: isWifi ? `${fields2.find((f) => f.key === "ssid")?.value || "SSID"} (${extra.ssid_id})` : extra.band || path2, before: Object.fromEntries(supported.filter((f) => f.key !== "password" && f.key in config).map((f) => [f.key, f.value])), after: Object.fromEntries(Object.entries(config).filter(([k]) => k !== "password")), result, ...config.password ? { secrets: { old: previous, new: config.password } } : {} });
+    };
     const form = d.querySelector("form");
     const original = new FormData(form);
+    let submitting = false;
     form.onsubmit = async (e) => {
       e.preventDefault();
+      if (submitting) return;
       const values = new FormData(form), config = {};
       for (const f of supported) {
         if (values.get(f.key) !== original.get(f.key)) {
@@ -1688,15 +2018,25 @@
       const payload = extra.ssid_id ? { ssid_id: extra.ssid_id, config } : { ...extra, ...config };
       const b = form.querySelector("button");
       b.disabled = true;
+      submitting = true;
+      let audited = false;
       try {
-        const result = await request(path2, { method: "POST", scope: d._requestScope, body: JSON.stringify(payload) });
+        await passwordRead;
+        if (closed) return;
+        const previous = oldPassword;
+        const result = await request(path2, { method: "POST", scope: d._requestScope, body: JSON.stringify(payload), onResult: (data, ok) => {
+          audited = true;
+          audit(config, ok ? data?.verified === true ? "Confirmado por leitura" : "Comando enviado; confirmar estado no equipamento" : "Falha reportada pelo equipamento", previous);
+        } });
         toast(result?.verified === true ? "Alteração confirmada por leitura do equipamento." : "Comando enviado; consulte o estado atualizado.");
         d.close();
         document.dispatchEvent(new CustomEvent("refresh-view"));
       } catch (err) {
+        if (!audited) audit(config, err.name === "AbortError" ? "Espera cancelada; resultado remoto não confirmado" : `Falha: ${err.message}`);
         toast(err.message);
       } finally {
         b.disabled = false;
+        submitting = false;
       }
     };
   }
@@ -2912,6 +3252,7 @@
     window.__amStore = store;
     workspace = document.querySelector("#workspace");
     if (!workspace) throw new Error("Workspace do Access Manager não foi encontrado.");
+    mountServicePanel(store);
     const theme = mountThemeProvider();
     loginExperience = mountLoginExperience(theme);
     const routeRegistry = createRouteRegistry(views, navigation, worldActions);

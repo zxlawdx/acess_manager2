@@ -34,3 +34,13 @@ html[data-experience-theme=aero] .app-shell .nav::before{content:''!important;ba
 #login-page .experience-card small{font-size:10px;line-height:1.35}
 html[data-experience-theme=aero] #login-page .connection-content .brand{font-size:18px!important;text-transform:none!important}
 @media(max-width:780px){#login-page{padding:16px 12px!important}#login-page .connection-content{padding:20px!important}}
+.experience-cards{grid-template-columns:repeat(4,minmax(0,1fr))}.preview-voxel{background:linear-gradient(#91dcf8 65%,#67a744 65%,#67a744 77%,#93704f 77%);border-radius:5px;image-rendering:pixelated}.preview-voxel::before{content:'';position:absolute;width:18px;height:35px;background:repeating-linear-gradient(#477c91 0 5px,#a0e9ec 5px 8px);right:18%;bottom:17%;box-shadow:4px 0 #2b596e,-3px -4px #d8f8ff}.preview-voxel i{width:12px;height:14px;background:#e5bd84;position:absolute;left:26%;top:14px;box-shadow:0 13px #208ab5,-3px -4px #f4c441}.preview-voxel b{width:19px;height:6px;background:#fff;position:absolute;left:10%;top:8px;box-shadow:27px 3px #fff}
+@media(max-width:700px){.experience-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Explicit second row keeps all session actions inside the header on desktop. */
+@media(min-width:781px) and (max-width:1600px){
+ .app-shell,.app-shell.juniper-shell{grid-template-rows:84px minmax(0,1fr)!important}
+ .app-shell .app-topbar.context-bar{height:84px!important;min-height:84px!important;align-content:center!important;flex-wrap:wrap!important;gap:6px!important;box-sizing:border-box}
+ .app-shell #aero-world{top:84px}.app-shell #world-notice{top:86px}.app-shell #world-close-panel{top:96px}.world-mode.world-panel-open>.layout{top:138px}
+ .app-shell .context-bar .context-meta{display:none!important}.app-shell .context-bar .theme-control{font-size:0}.app-shell .context-bar .theme-control select{font-size:11px!important}
+}
+@media(min-width:781px) and (max-height:800px){#login-page{padding:16px 24px!important}#login-page .connection-content{padding-top:24px!important;padding-bottom:20px!important}#login-page .experience-card small{font-size:9px;line-height:1.25}#login-page .experience-preview{height:42px}#login-page .connection-intro{margin-bottom:8px!important}}

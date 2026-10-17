@@ -10,7 +10,7 @@ function parseResponseBody(text) {
 }
 
 export async function request(path, options = {}) {
-  const {scope=defaultScope(path,options),forceRefresh=false,...fetchOptions}=options;
+  const {scope=defaultScope(path,options),forceRefresh=false,onResult,...fetchOptions}=options;
   const method=String(options.method||'GET').toUpperCase(),read=method==='GET';
   if(!scopeActive(scope))throw cancelled();
   const canCache=read&&cachedPaths.has(path);sessionKey();
@@ -21,18 +21,21 @@ export async function request(path, options = {}) {
   }
   const key=cacheSession+':'+(scope?.identity??'global')+':'+path;
   if(canCache&&pending.has(key))return pending.get(key);
-  const start=performance.now(),epoch=revision;
+  const start=performance.now(),epoch=revision,operationRoute=window.__amStore?.view,operationSession=window.__amStore?.session?.session?.session_id??null;
+  let reported=false;
   const work=(async()=>{
     const url=new URL(path,window.location.origin);
     const res=await fetch(url,{credentials:'same-origin',...fetchOptions,signal:read?(fetchOptions.signal||scope?.controller.signal):fetchOptions.signal,headers:{'Content-Type':'application/json',...(options.headers||{})}});
     const text=await res.text(),data=parseResponseBody(text);
+    reported=true;onResult?.(data,res.ok&&data?.success!==false);
+    if(operationSession===(window.__amStore?.session?.session?.session_id??null))window.__amObserveOperation?.(path,method,options.body,data,res.ok&&data?.success!==false,operationRoute);
     if(!read&&!['/api/device/wifi/reveal-password','/api/device/traffic/history','/api/profiles/preview','/api/profiles/capture','/api/triage','/api/device/diagnostics/ping','/api/device/diagnostics/traceroute','/api/device/diagnostics/dns-lookup','/api/device/diagnostics/speedtest-discovery','/api/device/configuration/read','/api/device/configuration/preview','/api/device/factory-reset/preview','/api/device/diagnostics/speedtest/poll','/api/device/diagnostics/workstation','/api/device/diagnostics/full/run','/api/device/diagnostics/full/history','/api/device/diagnostics/full/export','/api/device/traffic/device-history','/api/management/artifacts/download'].includes(path))clearSnapshots();
     if(!scopeActive(scope)||(canCache&&epoch!==revision))throw cancelled();
     if(!res.ok||data?.success===false){const details=data?.error||{};const error=new ApiError(details.message||data?.message||(!res.ok?`HTTP ${res.status} ao acessar ${url.pathname}`:'Falha na operação'),{...details,status:res.status});if(path.startsWith('/api/infrastructure/'))document.dispatchEvent(new CustomEvent('juniper-read-state',{detail:{failed:true,code:error.code,health:error.health,transportFailure:['CONNECTION_TIMEOUT','SSH_UNAVAILABLE','NETCONF_UNAVAILABLE'].includes(error.code)}}));throw error;}
     if(path.startsWith('/api/infrastructure/')&&!path.endsWith('/operations')&&!path.includes('/settings')&&!path.includes('/host-key'))document.dispatchEvent(new CustomEvent('juniper-read-state',{detail:{failed:Boolean(data?.health?.last_read_failed),health:data?.health,transportFailure:Boolean(data?.health?.last_transport_failure)}}));
     if(canCache){const safe=clean(data);snapshots.set(path,{time:Date.now(),data:safe});return clone(safe)}
     return data;
-  })().catch(e=>{if(!scopeActive(scope)||isCancelled(e))throw cancelled();throw e}).finally(()=>{if(pending.get(key)===work)pending.delete(key);timing(path.startsWith('/api/device/wifi')?'wifi.load.'+(path.split('/').at(-1)==='wifi'?'total':path.split('/').at(-1)):path+'.load',start)});
+  })().catch(e=>{if(!scopeActive(scope)||isCancelled(e))throw cancelled();if(!reported&&operationSession===(window.__amStore?.session?.session?.session_id??null))window.__amObserveOperation?.(path,method,options.body,{status:'Resposta indisponível',error:{message:e.message}},false,operationRoute);throw e}).finally(()=>{if(pending.get(key)===work)pending.delete(key);timing(path.startsWith('/api/device/wifi')?'wifi.load.'+(path.split('/').at(-1)==='wifi'?'total':path.split('/').at(-1)):path+'.load',start)});
   if(canCache)pending.set(key,work);
   return work;
 }
