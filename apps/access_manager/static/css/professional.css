@@ -1,0 +1,895 @@
+/* Access Manager professional UI refinement.
+   Loaded after app.css and juniper.css so the existing Vela-backed DOM and
+   frontend contracts remain untouched while the visual hierarchy is unified. */
+
+/* Shell --------------------------------------------------------------------- */
+.app-shell {
+  --shell-sidebar-width: var(--sidebar-width);
+  grid-template-rows: 56px minmax(0, 1fr);
+  background: var(--background);
+}
+
+.app-shell.sidebar-collapsed {
+  --shell-sidebar-width: var(--sidebar-collapsed-width);
+}
+
+.app-shell .layout {
+  grid-template-columns: var(--shell-sidebar-width) minmax(0, 1fr);
+  transition: grid-template-columns var(--transition);
+}
+
+.app-topbar.context-bar {
+  min-width: 0;
+  min-height: 56px;
+  gap: var(--space-3);
+  padding: 0 clamp(12px, 1.4vw, 22px);
+  background: color-mix(in srgb, var(--surface) 96%, var(--background));
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.app-topbar .brand {
+  flex: 0 0 auto;
+  font-size: 13px;
+  letter-spacing: .035em;
+  white-space: nowrap;
+}
+
+.app-topbar .device-title {
+  flex: 1 1 220px;
+  min-width: 120px;
+  max-width: 440px;
+}
+
+.app-topbar .device-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.app-topbar .device-title small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 10px/1.35 var(--font-mono);
+}
+
+.app-topbar .status-badge {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-weight: 700;
+  background: var(--surface-raised);
+}
+
+#ctx-status[data-health="online"] {
+  color: var(--success) !important;
+  border-color: color-mix(in srgb, var(--success) 28%, var(--border));
+  background: color-mix(in srgb, var(--success) 7%, var(--surface));
+}
+
+#ctx-status[data-health="degraded"] {
+  color: var(--warning) !important;
+  border-color: color-mix(in srgb, var(--warning) 30%, var(--border));
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+}
+
+#ctx-status[data-health="offline"] {
+  color: var(--text-secondary) !important;
+}
+
+#mobile-nav {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+#mobile-nav:hover {
+  color: var(--text-primary);
+  background: var(--surface-raised);
+  border-color: var(--border);
+}
+
+.shell-theme-toggle {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* Sidebar ------------------------------------------------------------------- */
+.app-sidebar {
+  width: var(--shell-sidebar-width);
+  padding: var(--space-3) var(--space-2) var(--space-5);
+  background: var(--sidebar);
+  border-right: 1px solid color-mix(in srgb, var(--sidebar-border) 80%, transparent);
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-border) transparent;
+  transition: width var(--transition), padding var(--transition);
+}
+
+.app-sidebar .nav-group {
+  padding: 15px 10px 6px;
+  color: var(--sidebar-muted);
+  font-size: 9px;
+  line-height: 1.2;
+  letter-spacing: .13em;
+}
+
+.app-sidebar .nav {
+  position: relative;
+  min-height: 36px;
+  margin: 1px 0;
+  padding: 8px 10px;
+  gap: 9px;
+  border-radius: var(--radius-sm);
+  color: var(--sidebar-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.app-sidebar .nav span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sidebar-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-sidebar .nav:hover:not(.active) {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-active-text);
+}
+
+.app-sidebar .nav:hover:not(.active) span {
+  color: var(--sidebar-active-text);
+}
+
+.app-sidebar .nav.active {
+  background: var(--sidebar-active);
+  color: var(--sidebar-active-text);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.app-sidebar .nav.active span {
+  color: var(--sidebar-active-text);
+  font-weight: 700;
+}
+
+.sidebar-collapsed .app-sidebar {
+  padding-inline: 8px;
+  overflow-x: hidden;
+}
+
+.sidebar-collapsed .app-sidebar > .nav-group,
+.sidebar-collapsed .app-sidebar > .juniper-nav-group > summary {
+  height: 10px;
+  margin: 7px 0;
+  padding: 0;
+  overflow: hidden;
+  color: transparent;
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.sidebar-collapsed .app-sidebar > .juniper-nav-group > summary::after {
+  display: none;
+}
+
+.sidebar-collapsed .app-sidebar .nav {
+  justify-content: center;
+  padding-inline: 6px;
+  font-size: 10px;
+  letter-spacing: -.01em;
+}
+
+.sidebar-collapsed .app-sidebar .nav span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.sidebar-collapsed .app-sidebar .nav[data-juniper-nav]::before,
+.sidebar-collapsed .app-sidebar .juniper-nav-group .nav::before {
+  content: "•";
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Main content --------------------------------------------------------------- */
+.app-main {
+  min-width: 0;
+  background: var(--background);
+  scrollbar-gutter: stable;
+}
+
+.page-content {
+  width: 100%;
+  max-width: 1840px;
+  margin: 0;
+  padding: clamp(16px, 1.6vw, 26px) clamp(16px, 2vw, 32px) 36px;
+}
+
+.page-heading {
+  min-height: 44px;
+  margin: 0 0 var(--space-4);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.page-heading small,
+.am-page-header small {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .11em;
+}
+
+.page-heading h1 {
+  margin-top: 2px;
+  font-size: clamp(20px, 1.45vw, 25px);
+  line-height: 1.18;
+  letter-spacing: -.025em;
+}
+
+.am-page-header {
+  margin: 0 0 var(--space-4);
+}
+
+.am-page-header h2 {
+  margin: 5px 0 2px;
+  font-size: clamp(22px, 1.7vw, 27px);
+  line-height: 1.2;
+  letter-spacing: -.035em;
+}
+
+.am-page-header p {
+  margin: 4px 0 0;
+}
+
+/* Panels, metrics and density ------------------------------------------------ */
+.panel,
+.metric,
+.am-panel,
+.am-metric,
+.diagnostic-panel,
+.diagnostic-metric {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.panel,
+.am-panel,
+.diagnostic-panel {
+  border-radius: var(--radius);
+}
+
+.panel {
+  padding: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.metric {
+  min-height: 92px;
+  padding: var(--space-4);
+  border-top: 2px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+}
+
+.metric strong {
+  margin-top: var(--space-2);
+  font-size: clamp(20px, 1.45vw, 24px);
+}
+
+.am-panel {
+  padding: clamp(14px, 1.25vw, 18px);
+}
+
+.am-panel h2 {
+  margin-bottom: var(--space-3);
+  font-size: 16px;
+}
+
+.am-metric {
+  min-height: 92px;
+  padding: 14px 15px;
+  border-radius: var(--radius);
+}
+
+.am-metric span {
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.am-metric strong {
+  margin-top: 10px;
+  font-size: clamp(17px, 1.3vw, 21px);
+  line-height: 1.2;
+}
+
+.overview-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.am-dashboard-split {
+  grid-template-columns: minmax(0, 1.5fr) minmax(270px, .9fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.am-three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.am-two-columns {
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.split {
+  gap: var(--space-4);
+}
+
+.empty-state {
+  min-height: 180px;
+  padding: var(--space-6);
+  text-align: center;
+  background: color-mix(in srgb, var(--surface) 86%, var(--background));
+}
+
+.empty-state strong {
+  color: var(--text-primary);
+}
+
+.notice {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Technical values ----------------------------------------------------------- */
+.mono,
+.tech-value,
+.tech-rate,
+.tech-address,
+.tech-radio-value,
+.kv span,
+.data-table td:nth-child(n+2) {
+  font-variant-numeric: tabular-nums;
+}
+
+.tech-value,
+.tech-rate,
+.tech-address,
+.tech-radio-value {
+  font-family: var(--font-mono);
+  font-size: .94em;
+}
+
+/* Tables -------------------------------------------------------------------- */
+.panel:has(> .data-table),
+.j-table-scroll {
+  max-width: 100%;
+  overflow: auto;
+}
+
+.data-table {
+  width: 100%;
+  min-width: 680px;
+  border-spacing: 0;
+  font-size: 12px;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 10px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  border-bottom-color: var(--border-strong);
+  font-size: 9px;
+}
+
+.data-table td {
+  padding: 9px 10px;
+  border-bottom-color: var(--border);
+}
+
+.data-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+}
+
+.data-table .icon-button {
+  min-height: 28px;
+  padding: 3px 5px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Forms and toolbars --------------------------------------------------------- */
+.toolbar,
+.am-toolbar {
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.toolbar input,
+.toolbar select,
+.am-toolbar input,
+.am-toolbar select,
+.field input,
+.field select,
+.field textarea {
+  min-height: 36px;
+  border-radius: var(--radius-sm);
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.toolbar input:focus-visible,
+.toolbar select:focus-visible,
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border-color: var(--border-strong);
+  font-size: 12px;
+  line-height: 1.25;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.button:hover:not(:disabled) {
+  filter: none;
+  background: var(--surface-raised);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button.primary {
+  color: var(--accent-contrast);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.button.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.button.danger {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 5%, var(--surface));
+}
+
+.icon-button {
+  border-radius: var(--radius-sm);
+}
+
+/* Status and badges ---------------------------------------------------------- */
+.badge,
+.vendor-badge,
+.status-badge {
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  background: var(--surface-raised);
+}
+
+.badge.ok {
+  background: color-mix(in srgb, var(--success) 8%, var(--surface));
+}
+
+.badge.warn {
+  border-color: color-mix(in srgb, var(--warning) 30%, var(--border));
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+}
+
+.badge.bad {
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+}
+
+/* Client cards / topology ---------------------------------------------------- */
+.client-cards {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--space-3);
+}
+
+.client-card {
+  gap: 5px;
+  padding: 13px;
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+.client-card:hover {
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+}
+
+.topology-root {
+  margin: 8px auto 16px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+
+.topology-branches {
+  gap: var(--space-3);
+}
+
+/* Dialogs / drawers ---------------------------------------------------------- */
+dialog {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+}
+
+dialog::backdrop {
+  background: color-mix(in srgb, #11131a 58%, transparent);
+}
+
+.dialog-inner {
+  padding: var(--space-5);
+}
+
+.dialog-header {
+  margin-bottom: var(--space-4);
+}
+
+.dialog-footer {
+  margin-top: var(--space-4);
+}
+
+dialog.drawer {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+#toast-region {
+  right: var(--space-4);
+  bottom: var(--space-4);
+}
+
+.toast {
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/* Login --------------------------------------------------------------------- */
+.app-wrapper {
+  padding: clamp(16px, 3vw, 32px);
+  background: var(--background);
+}
+
+.connection-card {
+  width: min(100%, 920px);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+}
+
+.connection-content {
+  padding: clamp(26px, 3.2vw, 42px);
+}
+
+.connection-content .brand {
+  margin-bottom: 20px;
+}
+
+.connection-content h1 {
+  font-size: clamp(24px, 2.2vw, 30px);
+}
+
+.connection-intro {
+  margin: 10px 0 20px;
+}
+
+.connection-content .field {
+  margin-bottom: 11px;
+}
+
+.connection-content input:not([type="checkbox"]) {
+  min-height: 42px;
+  background: var(--surface-raised);
+}
+
+.connection-status {
+  margin: 11px 0;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+}
+
+.connection-content #connect-button {
+  min-height: 42px;
+}
+
+.connection-visual {
+  background: var(--surface-raised);
+  border-left-color: var(--border);
+}
+
+/* Full diagnostics ----------------------------------------------------------- */
+.diagnostic-page-header {
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.diagnostic-page-header h2 {
+  margin: 5px 0;
+  font-size: clamp(22px, 1.7vw, 27px);
+}
+
+.diagnostic-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.diagnostic-metric {
+  min-height: 94px;
+  padding: 14px;
+  border-radius: var(--radius);
+}
+
+.diagnostic-metric-value {
+  margin: 10px 0 4px;
+  font-size: clamp(19px, 1.45vw, 23px);
+}
+
+.diagnostic-dashboard-grid {
+  gap: var(--space-4);
+}
+
+.diagnostic-panel {
+  padding: var(--space-4);
+  border-radius: var(--radius);
+}
+
+.diagnostic-chart {
+  min-height: 200px;
+}
+
+/* Juniper integration -------------------------------------------------------- */
+.juniper-shell {
+  --shell-sidebar-width: var(--sidebar-width);
+  grid-template-rows: 48px minmax(0, 1fr);
+}
+
+.juniper-shell.sidebar-collapsed,
+.sidebar-collapsed.juniper-shell {
+  --shell-sidebar-width: var(--sidebar-collapsed-width);
+}
+
+.juniper-shell .app-sidebar {
+  width: var(--shell-sidebar-width);
+}
+
+.juniper-shell .page-content {
+  width: 100%;
+  max-width: 1840px;
+  padding: clamp(16px, 1.4vw, 22px) clamp(16px, 1.8vw, 28px) 30px;
+}
+
+.juniper-shell .panel {
+  border-radius: var(--radius-sm);
+}
+
+.juniper-shell .data-table {
+  min-width: 620px;
+}
+
+/* Dark theme ---------------------------------------------------------------- */
+:root[data-theme="dark"] .app-main,
+:root[data-theme="dark"] .app-wrapper {
+  background: var(--background);
+}
+
+:root[data-theme="dark"] .connection-card,
+:root[data-theme="dark"] .connection-visual,
+:root[data-theme="dark"] .panel,
+:root[data-theme="dark"] .metric,
+:root[data-theme="dark"] .am-panel,
+:root[data-theme="dark"] .am-metric,
+:root[data-theme="dark"] .diagnostic-panel,
+:root[data-theme="dark"] .diagnostic-metric,
+:root[data-theme="dark"] .client-card,
+:root[data-theme="dark"] .toolbar input,
+:root[data-theme="dark"] .toolbar select,
+:root[data-theme="dark"] .am-panel select,
+:root[data-theme="dark"] .am-toolbar select,
+:root[data-theme="dark"] .field input,
+:root[data-theme="dark"] .field select,
+:root[data-theme="dark"] dialog,
+:root[data-theme="dark"] .toast {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+:root[data-theme="dark"] .connection-content input:not([type="checkbox"]),
+:root[data-theme="dark"] .diagnostic-dashboard select,
+:root[data-theme="dark"] .wifi-diagnostic-card {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+
+:root[data-theme="dark"] .data-table th,
+:root[data-theme="dark"] .juniper-shell .data-table th,
+:root[data-theme="dark"] .juniper-surface .data-table th {
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+}
+
+:root[data-theme="dark"] .data-table tr:hover td {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+:root[data-theme="dark"] .connection-status {
+  background: color-mix(in srgb, var(--success) 9%, var(--surface));
+  border-color: color-mix(in srgb, var(--success) 25%, var(--border));
+}
+
+:root[data-theme="dark"] .juniper-shell,
+:root[data-theme="dark"] .juniper-surface {
+  --am-bg: var(--background);
+  --am-sidebar: var(--sidebar);
+  --am-surface: var(--surface);
+  --am-text: var(--text-primary);
+  --am-text-secondary: var(--text-secondary);
+  --am-text-tertiary: var(--text-muted);
+  --am-border: var(--border);
+  --am-border-soft: var(--border);
+  --am-hover: var(--surface-raised);
+  --am-selected: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+:root[data-theme="dark"] .juniper-shell .panel,
+:root[data-theme="dark"] .juniper-shell .button,
+:root[data-theme="dark"] .juniper-surface .button,
+:root[data-theme="dark"] .juniper-shell input,
+:root[data-theme="dark"] .juniper-shell select,
+:root[data-theme="dark"] .juniper-surface input,
+:root[data-theme="dark"] .juniper-surface select,
+:root[data-theme="dark"] .juniper-shell .kv,
+:root[data-theme="dark"] .juniper-surface,
+:root[data-theme="dark"] .juniper-surface .dialog-footer {
+  background: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+:root[data-theme="dark"] .juniper-shell .nav {
+  color: var(--sidebar-text);
+}
+
+:root[data-theme="dark"] .juniper-shell .nav:hover,
+:root[data-theme="dark"] .juniper-shell .nav.active {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-active-text);
+}
+
+/* Responsive ---------------------------------------------------------------- */
+@media (max-width: 1280px) {
+  .context-meta { display: none; }
+  .page-content { padding-inline: 20px; }
+  .am-three-columns { gap: var(--space-3); }
+}
+
+@media (max-width: 1080px) {
+  .am-dashboard-split,
+  .diagnostic-dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+  .am-three-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-topbar #ctx-module { display: none; }
+}
+
+@media (max-width: 780px) {
+  .app-shell,
+  .juniper-shell { --shell-sidebar-width: var(--sidebar-width); }
+
+  .app-shell .layout { grid-template-columns: minmax(0, 1fr); }
+
+  .app-sidebar,
+  .juniper-shell .app-sidebar {
+    width: min(var(--sidebar-width), calc(100vw - 48px));
+    padding: var(--space-3) var(--space-2) var(--space-5);
+  }
+
+  .sidebar-collapsed .app-sidebar > .nav-group,
+  .sidebar-collapsed .app-sidebar > .juniper-nav-group > summary {
+    height: auto;
+    margin: 0;
+    padding: 15px 10px 6px;
+    overflow: visible;
+    color: var(--sidebar-muted);
+    border-top: 0;
+  }
+
+  .sidebar-collapsed .app-sidebar .nav {
+    justify-content: flex-start;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .sidebar-collapsed .app-sidebar .nav span {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: hidden;
+    clip-path: none;
+  }
+
+  .sidebar-collapsed .app-sidebar .nav[data-juniper-nav]::before,
+  .sidebar-collapsed .app-sidebar .juniper-nav-group .nav::before { content: none; }
+
+  .app-topbar.context-bar {
+    gap: 7px;
+    padding-inline: 10px;
+  }
+
+  .app-topbar .brand { display: none; }
+  .app-topbar .device-title { flex-basis: 120px; }
+  .app-topbar .device-title small { display: none; }
+  .app-topbar #disconnect-button { margin-left: 0; }
+  .shell-theme-toggle { padding-inline: 8px; }
+
+  .page-content { padding: 14px 12px 28px; }
+  .page-heading { min-height: 38px; }
+  .am-three-columns,
+  .am-two-columns { grid-template-columns: minmax(0, 1fr); }
+  .toolbar { align-items: stretch; }
+  .toolbar input,
+  .toolbar select { flex: 1 1 160px; }
+  .connection-card { grid-template-columns: 1fr; }
+  .connection-visual { border-left: 0; border-top: 1px solid var(--border); }
+}
+
+@media (max-width: 520px) {
+  .app-topbar .vendor-badge,
+  .app-topbar .context-meta { display: none; }
+  .app-topbar .status-badge { padding-inline: 7px; font-size: 10px; }
+  .app-topbar #disconnect-button { padding-inline: 8px; }
+  .page-heading { align-items: flex-start; }
+  .page-heading h1 { font-size: 20px; }
+  .overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .data-table { min-width: 620px; }
+  .connection-content { padding: 22px 18px; }
+  .connection-visual { display: none; }
+}
+
+@media (max-width: 390px) {
+  .overview-metrics { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

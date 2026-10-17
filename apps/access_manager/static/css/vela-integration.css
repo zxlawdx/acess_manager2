@@ -1,0 +1,135 @@
+/* Final integration layer for specialized workspaces hosted by Vela.
+   Keep vendor-specific surfaces authoritative over the global refinement. */
+
+.juniper-shell .app-topbar.context-bar {
+  min-height: 48px;
+  height: 48px;
+  padding: 0 16px;
+  gap: 12px;
+  background: #29263b;
+  color: #fff;
+  border: 0;
+  box-shadow: none;
+}
+
+.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav {
+  min-height: 32px;
+  padding: 6px 10px;
+  margin: 0;
+  border-radius: 4px;
+  border-left: 2px solid transparent;
+  color: #333238;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav span {
+  color: inherit;
+  font-weight: inherit;
+}
+
+.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav:hover {
+  color: #333238;
+  background: var(--am-hover);
+}
+
+.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav.active {
+  color: #3a2e63;
+  background: var(--am-selected);
+  border-left-color: var(--am-primary);
+  box-shadow: none;
+}
+
+.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav.active span {
+  color: inherit;
+  font-weight: 600;
+}
+
+/* The compact state remains available for Juniper, but uses its own palette. */
+.juniper-shell.sidebar-collapsed .app-sidebar .nav {
+  color: var(--am-text-secondary);
+  background: transparent;
+}
+
+.juniper-shell.sidebar-collapsed .app-sidebar .nav:hover,
+.juniper-shell.sidebar-collapsed .app-sidebar .nav.active {
+  color: #3a2e63;
+  background: var(--am-selected);
+}
+
+:root[data-theme="dark"] .juniper-shell,
+:root[data-theme="dark"] .juniper-surface {
+  --am-bg: var(--background);
+  --am-sidebar: var(--surface);
+  --am-surface: var(--surface);
+  --am-text: var(--text-primary);
+  --am-text-secondary: var(--text-secondary);
+  --am-text-tertiary: var(--text-muted);
+  --am-border: var(--border);
+  --am-border-soft: var(--border);
+  --am-hover: var(--surface-raised);
+  --am-selected: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --am-primary: var(--accent);
+  --am-primary-hover: var(--accent-hover);
+}
+
+:root[data-theme="dark"] .juniper-shell .app-topbar.context-bar {
+  background: #171a25;
+}
+
+:root[data-theme="dark"] .juniper-shell .app-sidebar {
+  background: var(--am-sidebar);
+  border-right-color: var(--am-border);
+}
+
+:root[data-theme="dark"] .juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav,
+:root[data-theme="dark"] .juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav span {
+  color: var(--text-secondary);
+}
+
+:root[data-theme="dark"] .juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav:hover,
+:root[data-theme="dark"] .juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav.active,
+:root[data-theme="dark"] .juniper-shell.sidebar-collapsed .app-sidebar .nav:hover,
+:root[data-theme="dark"] .juniper-shell.sidebar-collapsed .app-sidebar .nav.active {
+  color: var(--text-primary);
+  background: var(--am-selected);
+}
+
+:root[data-theme="dark"] .juniper-shell .button.primary,
+:root[data-theme="dark"] .juniper-surface .button.primary {
+  color: var(--accent-contrast);
+  background: var(--am-primary);
+  border-color: var(--am-primary);
+}
+
+:root[data-theme="dark"] .juniper-shell .button.primary:hover,
+:root[data-theme="dark"] .juniper-surface .button.primary:hover {
+  background: var(--am-primary-hover);
+  border-color: var(--am-primary-hover);
+}
+
+:root[data-theme="dark"] .juniper-shell .app-topbar .button {
+  color: #fff;
+  background: transparent;
+  border-color: #ffffff55;
+}
+
+:root[data-theme="dark"] .juniper-shell .panel,
+:root[data-theme="dark"] .juniper-shell .kv,
+:root[data-theme="dark"] .juniper-surface,
+:root[data-theme="dark"] .juniper-surface .dialog-footer,
+:root[data-theme="dark"] .juniper-shell input,
+:root[data-theme="dark"] .juniper-shell select,
+:root[data-theme="dark"] .juniper-surface input,
+:root[data-theme="dark"] .juniper-surface select {
+  color: var(--text-primary);
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+@media (max-width: 780px) {
+  .juniper-shell .app-topbar.context-bar {
+    padding-inline: 10px;
+    gap: 7px;
+  }
+}
