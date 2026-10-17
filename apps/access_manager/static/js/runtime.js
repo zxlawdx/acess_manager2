@@ -5,6 +5,176 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // apps/access_manager/static/js/service/human-formatter.js
+  var present = (v) => v !== void 0 && v !== null && v !== "" && v !== "—" && (!Array.isArray(v) || v.length > 0);
+  var scalar = (v) => present(v) && ["string", "number", "boolean"].includes(typeof v) ? String(v) : "";
+  var pick = (o, ...keys) => {
+    for (const k of keys) if (present(o?.[k])) return o[k];
+  };
+  var number = (o, ...keys) => {
+    for (const k of keys) {
+      const v = o?.[k];
+      if (present(v) && !(typeof v === "string" && !v.trim()) && typeof v !== "boolean" && Number.isFinite(Number(v))) return Number(v);
+    }
+    return void 0;
+  };
+  var list = (v) => Array.isArray(v) ? v : Array.isArray(v?.registros) ? v.registros : Array.isArray(v?.data) ? v.data : Array.isArray(v?.rows) ? v.rows : [];
+  var object = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  var line = (label, v, unit = "") => scalar(v) ? `${label}: ${scalar(v)}${unit}.` : "";
+  var join = (lines) => lines.filter(Boolean).join("\n");
+  var clock = (time) => {
+    const d = new Date(time);
+    return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  };
+  var numeric = (v, digits = 2) => v === void 0 ? "" : Number(v.toFixed(digits)).toString();
+  var temperature = (r) => {
+    const value2 = number(r, "temperature_c", "temperature");
+    if (value2 !== void 0) return value2;
+    const match = scalar(r.temperature).match(/^\s*(-?\d+(?:\.\d+)?)\s*(?:degrees\s*)?(?:°\s*)?C(?:\b|$)/i);
+    return match ? Number(match[1]) : void 0;
+  };
+  var up = (v) => /^(up|active|ativo|online|connected|conectado|associated)$/i.test(String(v));
+  var down = (v) => /^(down|inactive|inativo|offline|disconnected|desconectado)$/i.test(String(v));
+  function opticalFacts(data) {
+    const rx = number(data, "rx_power_dbm", "rx_dbm", "rxPower", "rx", "rx_power"), tx = number(data, "tx_power_dbm", "tx_dbm", "txPower", "tx", "tx_power");
+    return join([rx !== void 0 ? `Sinal óptico RX: ${rx.toFixed(2)} dBm.` : "", tx !== void 0 ? `Sinal óptico TX: ${tx.toFixed(2)} dBm.` : ""]);
+  }
+  function identification(data) {
+    const d = object(data);
+    return join([line("Equipamento identificado", [scalar(d.manufacturer || d.vendor)?.toUpperCase(), scalar(d.model)].filter(Boolean).join(" ")), line("Nome do equipamento", d.hostname), line("Firmware", pick(d, "firmware", "software_version", "junos_version", "version"))]);
+  }
+  function wanFacts(data) {
+    return list(Array.isArray(data) || data?.registros ? data : [data]).map((r) => {
+      const status3 = pick(r, "status", "state"), rawType = scalar(pick(r, "connection_type", "type")), type = /^pppoe$/i.test(rawType) ? "PPPoE" : rawType.toUpperCase();
+      return join([`WAN${scalar(r.name) ? " " + r.name : ""}${up(status3) ? " conectada" : down(status3) ? " desconectada" : scalar(status3) ? ": " + status3 : " consultada"}${type ? " via " + type : ""}.`, line("IP WAN", pick(r, "ipv4", "ip", "ipv4_address")), line("Gateway", r.gateway), line("VLAN", r.vlan), line("DNS", Array.isArray(r.dns) ? r.dns.map(scalar).filter(Boolean).join(" / ") : r.dns)]);
+    }).join("\n\n");
+  }
+  function resources(data) {
+    return list(Array.isArray(data) || data?.registros ? data : [data]).slice(0, 8).map((r) => join([
+      `Recursos do equipamento${present(r.slot) ? " — slot " + scalar(r.slot) : ""}:`,
+      line("CPU livre", pick(r, "cpu_idle_percent", "cpu_idle"), "%"),
+      line("CPU em uso", r.cpu_percent, "%"),
+      line("Memória em uso", pick(r, "memory_used_percent", "memory_percent"), "%"),
+      line("Temperatura", numeric(temperature(r)), " °C"),
+      line("Load average", [r.load_average_1, r.load_average_5, r.load_average_15].map(scalar).filter(Boolean).join(" / "))
+    ])).filter((text2) => text2.split("\n").length > 1).join("\n\n");
+  }
+  function interfaces(data) {
+    const rows3 = list(data);
+    if (!rows3.length) return "Nenhuma interface retornada na consulta.";
+    const total = number(data, "quantidade") ?? rows3.length;
+    const active2 = rows3.filter((r) => up(pick(r, "oper_state", "oper_status", "link_state", "status"))).length, inactive = rows3.filter((r) => down(pick(r, "oper_state", "oper_status", "link_state", "status"))).length;
+    return join([`Interfaces consultadas: ${total}.`, `${total > rows3.length ? "Estados na amostra de " + rows3.length + " interfaces — " : ""}Ativas: ${active2}; inativas: ${inactive}${rows3.length - active2 - inactive ? `; sem estado informado: ${rows3.length - active2 - inactive}` : ""}.`, ...rows3.filter((r) => up(pick(r, "oper_state", "oper_status", "link_state", "status")) && /^(et-|xe-|ae\d)/.test(String(r.name))).slice(0, 3).map((r) => `${scalar(r.name)}: ativa${scalar(r.speed) ? " / " + r.speed : ""}.`)]);
+  }
+  function subscriber(row) {
+    return join([line("Assinante encontrado", row.username), line("Contrato", row.contract), line("IP do assinante", pick(row, "ipv4_address", "ip", "ipv4")), line("MAC", pick(row, "mac_address", "mac")), line("VLAN", pick(row, "vlan", "vlan_id")), line("Interface", row.interface), line("Estado do assinante", up(row.state) ? "ativo" : down(row.state) ? "inativo" : row.state)]);
+  }
+  function lookup(data, input) {
+    const rows3 = Array.isArray(data.sessions) ? data.sessions : ["username", "ipv4_address", "mac_address", "interface"].some((k) => present(data[k])) ? [data] : [];
+    const rawQuery = pick(input, "query", "contract", "username") || data.query;
+    const query2 = scalar(typeof rawQuery === "object" ? rawQuery?.value : rawQuery);
+    return join([query2 ? `Consultado o contrato ou identificador ${query2}.` : "Consulta de assinante realizada.", rows3.length ? rows3.slice(0, 3).map(subscriber).join("\n\n") : data.complete === true || data.status === "NOT_FOUND" ? "Nenhum assinante localizado na consulta." : "Consulta sem resultado confirmado."]);
+  }
+  function ping(data, target) {
+    const host = scalar(pick(data, "target", "host", "destination")) || scalar(target), sent = number(data, "sent", "packets_sent", "transmitted"), received = number(data, "received", "packets_received"), loss = number(data, "loss_percent", "packet_loss_percent", "packet_loss_reported"), avg = number(data, "avg_ms", "average_ms", "latency_ms");
+    return join([`Ping${host ? " para " + host : ""}${received === 0 ? " sem resposta." : " realizado."}`, sent !== void 0 && received !== void 0 ? `${sent} pacotes enviados, ${received} recebidos.` : "", line("Perda", numeric(loss), "%"), line("Latência média", numeric(avg), " ms")]);
+  }
+  function trace(data, target) {
+    const hops = Array.isArray(data.hops) ? data.hops : [], host = scalar(data.target || target), last = hops.at(-1);
+    const reached = data.reached === true || data.destination_reached === true || Boolean(host && last && (last.address === host || last.ip === host));
+    const times = Array.isArray(last?.times_ms) ? last.times_ms.filter((v) => typeof v === "number" && Number.isFinite(v)) : [];
+    const avg = times.length ? times.reduce((a, b) => a + b, 0) / times.length : number(last, "latency_ms", "avg_ms");
+    return join([`Traceroute${host ? " para " + host : ""} realizado.`, reached ? `Destino alcançado em ${hops.length} saltos.` : hops.length ? `${hops.length} saltos retornados; alcance do destino não confirmado.` : "Sem confirmação de alcance do destino.", reached ? line("Latência final aproximada", numeric(avg), " ms") : ""]);
+  }
+  var fields = { ssid: "Nome da rede", channel: "Canal", auto_channel: "Canal automático", bandwidth: "Largura de canal", enabled: "Estado", broadcast: "Visibilidade do SSID", isolation: "Isolamento", ipv4_1: "DNS primário", ipv4_2: "DNS secundário", dns1: "DNS primário", dns2: "DNS secundário", lan_ip: "IP da LAN", pool_start: "Início do pool DHCP", pool_end: "Fim do pool DHCP", lease_seconds: "Tempo de concessão", internal_client: "Cliente interno", external_port: "Porta externa", internal_port: "Porta interna", protocol: "Protocolo", tx_power: "Potência", standard: "Padrão Wi-Fi", country: "País" };
+  function changes(e, secrets) {
+    const before = object(e.before), after = object(e.after?.config || e.after), target = scalar(e.target);
+    const failed = e.ok === false || /falha|erro/i.test(e.result || "");
+    const status3 = failed ? "Falha reportada pelo equipamento" : /confirmado por leitura/i.test(e.result || "") ? "Confirmado por leitura" : /cancelad|não confirmado/i.test(e.result || "") ? "Resultado remoto não confirmado" : "Comando enviado; aplicação não confirmada por leitura";
+    const title = e.secrets ? `${failed ? "Não foi confirmada a alteração da senha Wi-Fi" : /confirmado por leitura/i.test(e.result || "") ? "Senha Wi-Fi alterada" : "Solicitada alteração da senha Wi-Fi"}${target ? " na rede " + target : ""}.` : `${e.category === "Wi-Fi" ? "Configuração Wi-Fi" : "Alteração de configuração"}${target && target !== "Equipamento" ? " em " + target : ""}.`;
+    return join([title, ...Object.entries(fields).filter(([k]) => present(after[k])).map(([k, label]) => {
+      const value2 = (v) => typeof v === "boolean" ? v ? "habilitado" : "desabilitado" : scalar(v);
+      return present(before[k]) ? `${label} alterado de ${value2(before[k])} para ${value2(after[k])}.` : `${label} solicitado: ${value2(after[k])}.`;
+    }), e.secrets ? `Senha anterior: ${secrets ? scalar(e.secrets.old) : "********"}` : "", e.secrets ? `Senha nova: ${secrets ? scalar(e.secrets.new) : "********"}` : "", status3 + "."]);
+  }
+  function clientDiagnostic(e) {
+    const d = object(e.data), c = object(d.cliente || d.client || d);
+    const tests2 = Array.isArray(d.testes) ? d.testes : [], p = tests2.find((t) => /^Ping a partir/.test(t.teste || ""))?.resultado;
+    return join([`${e.result === "Dados observados" ? "Registradas informações" : "Diagnóstico específico realizado"} no dispositivo ${scalar(e.target) || scalar(c.Hostname) || "selecionado"}.`, ...["Hostname", "IPv4", "IPv6", "IP", "MAC", "Banda", "SSID", "Interface"].map((k) => line(k, c[k])), line("RSSI", c.RSSI, " dBm"), line("SNR", c.SNR, " dB"), p ? ping(p, c.IP || c.IPv4) : "", number(c, "RSSI") !== void 0 ? Number(c.RSSI) < -70 ? "Sinal fraco no momento da leitura; distância ou interferência podem estar contribuindo." : "Sinal adequado no momento da leitura; isso não comprova acesso à internet." : "", tests2.some((t) => t.teste === "Tabela de clientes" && t.resultado === "Presente") ? "Dispositivo presente na tabela de clientes." : "", tests2.some((t) => t.teste === "Tabela de clientes" && t.resultado === "Ausente") ? "Dispositivo ausente na tabela consultada." : "", p && number(p, "received") === 0 ? "A ausência de resposta pode decorrer de firewall, isolamento ou standby." : "", ...tests2.filter((t) => t.teste === "Ping" && typeof t.resultado === "string").map((t) => `Ping não concluído: ${t.resultado}`)]);
+  }
+  var pathFor = (e) => e.path || { "Identificação do equipamento": "/api/device", "Leitura WAN": "/api/device/wan", "Sinal óptico": "/api/device/optical", "Clientes observados": "/api/device/clients", "Consulta de assinante": "/api/infrastructure/subscribers/lookup", "Ping": "/api/device/diagnostics/ping", "Traceroute": "/api/device/diagnostics/traceroute", "Acesso CPE": "/api/infrastructure/subscribers/connect-cpe", system: "/api/infrastructure/system", resources: "/api/infrastructure/resources", interfaces: "/api/infrastructure/interfaces" }[e.action] || "";
+  function humanEvent(e, { secrets = false } = {}) {
+    const path2 = pathFor(e), d = object(e.data), input = object(e.input || e.after), failed = e.ok === false || d.health?.last_read_failed === true || /^(Falha|Erro)/i.test(e.result || "");
+    if (e.category === "Conexão") {
+      const s = object(e.connection), target2 = [scalar(s.vendor).toUpperCase(), scalar(s.model), scalar(s.host)].filter(Boolean).join(" · ") || scalar(e.target);
+      return { kind: "connection", key: "connection", text: `${e.action === "Sessão iniciada" ? "Conectado ao equipamento" : "Contexto selecionado"}${target2 ? " " + target2 : ""}.` };
+    }
+    if (e.category === "Cliente") return { kind: "test", text: clientDiagnostic(e) };
+    if (e.secrets || e.before) return { kind: "change", text: changes(e, secrets) };
+    const target = scalar(input.host || input.target || e.target);
+    if (failed) return { kind: "test", text: `Não foi possível concluir ${/ping/.test(path2) ? "o ping" : /traceroute/.test(path2) ? "o traceroute" : /subscribers/.test(path2) ? "a consulta do assinante" : "a operação solicitada"}${target && target !== "Equipamento" ? " para " + target : ""}. Resultado não confirmado.` };
+    if (/connect-cpe$/.test(path2)) return { kind: "connection", key: "cpe", text: join(["Realizado acesso ao CPE do assinante" + (scalar(input.contract) ? " " + input.contract : "") + ".", line("IP do CPE", input.host || d.session?.host), line("Porta", input.port)]) };
+    if (/cpe-draft$/.test(path2)) return { kind: "read", key: "cpe-preparation", text: join(["Preparado acesso ao CPE; autenticação ainda não confirmada.", line("IP do CPE", d.host), line("Porta", d.port)]) };
+    if (/cpe-port$/.test(path2)) return { kind: "test", text: d.status === "CPE_PORT_REACHABLE" ? "Porta do CPE acessível a partir deste computador; autenticação ainda não testada." : "Teste da porta do CPE sem confirmação de acesso." };
+    if (/subscribers\/(lookup|detail|context)$/.test(path2)) {
+      const result = d.data || d, rows3 = Array.isArray(result.sessions) ? result.sessions : [result], fingerprint = rows3.map(subscriber).filter(Boolean).join("\n");
+      return { kind: "read", key: "subscriber", fingerprint: fingerprint || void 0, text: lookup(result, input) };
+    }
+    ;
+    if (/\/device$|\/system$/.test(path2)) return { kind: "read", key: "identification", text: identification(d) };
+    if (/\/wan$/.test(path2)) return { kind: "read", key: "wan", text: wanFacts(e.data) };
+    if (/\/optical$/.test(path2)) return { kind: "read", key: "optical", text: opticalFacts(d) };
+    if (/\/resources$/.test(path2)) return { kind: "read", key: "resources", text: resources(e.data) };
+    if (/\/interfaces$/.test(path2)) return { kind: "read", key: "interfaces", text: interfaces(e.data) };
+    if (/\/clients$/.test(path2)) {
+      const count = Array.isArray(e.data) ? e.data.length : number(d, "quantidade");
+      return { kind: "read", key: "clients", text: count === 0 ? "Nenhum cliente conectado foi identificado no momento da consulta." : count !== void 0 ? `${count} cliente(s) identificado(s) na tabela no momento da consulta.` : "" };
+    }
+    if (/\/ping$/.test(path2)) return { kind: "test", text: ping(d, target) };
+    if (/\/traceroute$/.test(path2)) return { kind: "test", text: trace(d, target) };
+    if (/\/wifi-neighbors$/.test(path2)) return { kind: "test", text: "Realizada consulta de redes Wi-Fi vizinhas." };
+    if (/\/full\/run$/.test(path2)) return { kind: "test", text: join(["Diagnóstico completo executado.", line("Latência", d.latency_ms, " ms"), line("Perda", d.packet_loss_percent, "%")]) };
+    if (/\/reboot$/.test(path2)) return { kind: "change", text: "Enviado comando de reinicialização do equipamento; verificar o retorno da conexão." };
+    if (/\/profiles\/(capture|apply)$/.test(path2)) return { kind: /capture$/.test(path2) ? "read" : "change", text: /capture$/.test(path2) ? "Capturada a configuração atual como rascunho de perfil." : `Solicitada aplicação do perfil${scalar(input.name) ? " " + input.name : ""}; consultar o resultado das alterações.` };
+    if (/\/wifi\/(radio|ssid)$|\/dns|\/dhcp|\/port-forward|\/dmz|\/nat/.test(path2)) return { kind: e.read ? "read" : "change", text: e.read ? "Consultada configuração de " + (/dns/.test(path2) ? "DNS" : /dhcp/.test(path2) ? "DHCP" : "rede") + "." : changes({ ...e, after: input }, secrets) };
+    return { kind: e.read ? "read" : "test", text: e.read ? "Consulta técnica concluída no equipamento." : "Operação registrada no equipamento; consulte os detalhes técnicos para verificar o resultado." };
+  }
+  function formatHumanService(service2, { mode = "summary", secrets = false, markdown = false } = {}) {
+    const header = service2.started ? `Atendimento iniciado às ${clock(service2.started)}.` : "Nenhum atendimento iniciado.";
+    const facts = [], timeline = [], last = /* @__PURE__ */ new Map();
+    let connectedCpeHost = "";
+    for (const e of service2.entries) {
+      if (e.category === "Conexão" && e.action !== "Sessão iniciada" && connectedCpeHost && e.connection?.host === connectedCpeHost) {
+        connectedCpeHost = "";
+        continue;
+      }
+      const fact = humanEvent(e, { secrets });
+      if (fact.key === "cpe") connectedCpeHost = scalar(e.input?.host || e.after?.host || e.data?.session?.host);
+      if (!fact.text) continue;
+      const key = `${e.session || ""}:${fact.key || fact.kind}`;
+      if (["read", "connection"].includes(fact.kind) && last.get(key) === (fact.fingerprint || fact.text)) continue;
+      last.set(key, fact.fingerprint || fact.text);
+      facts.push(fact);
+      timeline.push(`${clock(e.time)} — ${fact.text}`);
+    }
+    const notes = scalar(service2.notes);
+    let body;
+    if (mode === "timeline") body = timeline.join("\n\n");
+    else if (mode === "prose") body = facts.map((f) => f.text.replaceAll("\n", " ")).join(" ");
+    else {
+      const sections = [];
+      let previous = "";
+      const titles2 = { read: "Verificações realizadas:", change: "Alterações realizadas:", test: "Diagnósticos e consultas:" };
+      for (const fact of facts) {
+        if (fact.kind !== previous && titles2[fact.kind]) sections.push(titles2[fact.kind]);
+        sections.push(fact.text);
+        previous = fact.kind;
+      }
+      body = sections.join("\n\n");
+    }
+    return [markdown ? "# Atendimento\n\n" + header : header, body, notes ? "Observações do técnico:\n" + notes : "", service2.started ? "Atendimento permanece em andamento." : ""].filter(Boolean).join("\n\n");
+  }
+
   // apps/access_manager/static/js/service/model.js
   var service = { id: null, activeSession: null, session: null, started: null, entries: [], notes: "" };
   var listeners = /* @__PURE__ */ new Set();
@@ -25,11 +195,12 @@
       notify();
       return;
     }
+    const connection2 = { vendor: s?.vendor, model: s?.model, host: s?.host, port: s?.metadata?.port, scheme: s?.metadata?.scheme };
     const id = s?.session_id || `${s?.vendor}:${s?.host}`;
     if (service.activeSession === id) return;
     if (service.id) {
       service.activeSession = id;
-      addEntry({ category: "Conexão", action: "Contexto selecionado / acesso CPE", target: [s?.vendor, s?.model, s?.host].filter(Boolean).join(" · "), result: "Sessão ativa" });
+      addEntry({ connection: connection2, category: "Conexão", action: "Contexto selecionado / acesso CPE", target: [s?.vendor, s?.model, s?.host].filter(Boolean).join(" · "), result: "Sessão ativa" });
       return;
     }
     service.id = id;
@@ -38,7 +209,7 @@
     service.started = (/* @__PURE__ */ new Date()).toISOString();
     service.entries = [];
     service.notes = "";
-    addEntry({ category: "Conexão", action: "Sessão iniciada", target: [s?.vendor, s?.model, s?.host].filter(Boolean).join(" · "), result: "Conectado" });
+    addEntry({ connection: connection2, category: "Conexão", action: "Sessão iniciada", target: [s?.vendor, s?.model, s?.host].filter(Boolean).join(" · "), result: "Conectado" });
   }
   function addEntry(entry) {
     if (!service.id) return;
@@ -49,28 +220,9 @@
     service.notes = String(value2);
     notify();
   }
-  function formatService({ summary = false, secrets = false, markdown = false } = {}) {
-    const format = (value2) => JSON.stringify(value2, (_key, v) => v === void 0 ? null : v, 2);
-    const detail = (entry, key) => {
-      const value2 = entry[key];
-      return value2 === void 0 ? "" : `
-${key === "before" ? "Antes" : key === "after" ? "Depois" : "Dados"}: ${format(value2)}`;
-    };
-    const entries = summary ? service.entries.filter((e) => e.category !== "Leitura" || e.observations) : service.entries;
-    const lines = entries.map((e) => `[${new Date(e.time).toLocaleTimeString("pt-BR")}] ${e.category} · ${e.action}
-Tela: ${e.route} · Sessão: ${e.session || service.id} · Alvo: ${e.target || "Equipamento"}
-Resultado: ${e.result || "Registrado"}${detail(e, "before")}${detail(e, "after")}${summary ? "" : detail(e, "data")}${e.secrets ? `
-Senha anterior: ${secrets ? e.secrets.old : "••••••••"}
-Senha nova: ${secrets ? e.secrets.new : "••••••••"}` : ""}${e.observations ? "\nObservações: " + e.observations : ""}`);
-    return `${markdown ? "# " : ""}Atendimento atual
-Início: ${service.started || "Sem sessão"}
-Equipamento: ${service.session?.vendor || ""} ${service.session?.model || ""} · ${service.session?.host || ""}
-Técnico: ${service.session?.technician || ""} · Sessão: ${service.id || ""}
-
-${lines.join("\n\n")}
-
-Observações do técnico:
-${service.notes || "Sem observações."}`;
+  function formatService({ mode = "summary", secrets = false, markdown = false } = {}) {
+    if (mode === "technical") return JSON.stringify({ ...service, entries: service.entries.map((e) => ({ ...e, ...e.secrets ? { secrets: { old: secrets ? e.secrets.old : "********", new: secrets ? e.secrets.new : "********" } } : {} })) }, null, 2);
+    return formatHumanService(service, { mode, secrets, markdown });
   }
   var sensitive = /(password|passwd|senha|secret|token|authorization|cookie|passphrase|psk|credential|security.?key)/i;
   var redact = (value2) => {
@@ -86,31 +238,31 @@ ${service.notes || "Sem observações."}`;
     if (!service.id || /reveal-password|settings|host-key|operations|history|poll|export|download|preview|traffic/.test(path2)) return;
     const url = path2.split("?")[0];
     if (!/^\/api\/(device|infrastructure|profiles)/.test(url)) return;
-    const read2 = method === "GET";
-    if (read2 && !/\/device$|clients|wan|optical|subscribers|subscriber\/|interfaces/.test(url)) return;
-    const last = seen.get(url);
-    if (read2 && last?.id === service.id && Date.now() - last.time < 3e4) return;
-    seen.set(url, { id: service.id, time: Date.now() });
+    const read2 = method === "GET" || /^\/api\/infrastructure\//.test(url) && !/(connect-cpe|cpe-port|diagnostics\/|ping$|traceroute$)/.test(url);
+    if (method === "GET" && !/\/device$|clients|wan|optical|subscribers|subscriber\/|interfaces/.test(url)) return;
     if (url === "/api/device/wifi/ssid") return;
     let input = {};
     try {
       input = typeof body === "string" ? JSON.parse(body || "{}") : body || {};
     } catch {
     }
+    const safe = redact(data), signature = JSON.stringify([safe, redact(input), ok]);
+    const last = seen.get(url);
+    if (read2 && last?.id === service.activeSession && last.signature === signature && Date.now() - last.time < 3e4) return;
+    seen.set(url, { id: service.activeSession, signature, time: Date.now() });
     const category = read2 ? "Leitura" : /diagnostic|ping|traceroute|test/.test(url) ? "Diagnóstico" : /profiles/.test(url) ? "Perfis" : /infrastructure/.test(url) ? "Juniper" : /wifi/.test(url) ? "Wi-Fi" : "Alteração";
     const labels2 = { device: "Identificação do equipamento", clients: "Clientes observados", wan: "Leitura WAN", optical: "Sinal óptico", ping: "Ping", traceroute: "Traceroute", "wifi-neighbors": "Scan de Wi-Fi vizinho", reboot: "Reinício", capture: "Captura de perfil", apply: "Aplicação de perfil", "connect-cpe": "Acesso CPE", lookup: "Consulta de assinante", run: "Diagnóstico completo" };
     const action = labels2[url.split("/").at(-1)] || url.split("/").filter(Boolean).slice(2).join(" / ");
-    const safe = redact(data);
     let observations = "";
     if (read2 && ok) {
       if (/clients$/.test(url) && Array.isArray(data)) observations = `Clientes observados: ${data.length}.`;
-      if (/optical$/.test(url)) observations = `Sinal óptico RX: ${data?.rx ?? data?.rx_power ?? "Não disponível"} dBm.`;
+      if (/optical$/.test(url)) observations = opticalFacts(data);
       if (/wan$/.test(url)) {
         const rows3 = Array.isArray(data) ? data : [data];
         observations = rows3.map((r) => `WAN ${r.name || ""}: ${r.status || "estado indisponível"}; IP ${r.ipv4 || r.ip || "não disponível"}.`).join(" ");
       }
     }
-    addEntry({ ...route ? { route } : {}, category, action, target: input.host || input.ip || input.ssid_id || input.band || "Equipamento", observations, result: ok ? read2 ? "Leitura concluída" : data?.verified === true ? "Confirmado por leitura" : "Resposta recebida; verificar resultado abaixo" : "Falha", data: Array.isArray(safe) ? { quantidade: safe.length, registros: safe } : safe, ...!read2 ? { after: redact(input) } : {} });
+    addEntry({ ...route ? { route } : {}, path: url, method, read: read2, ok, input: redact(input), category, action, target: input.host || input.ip || input.ssid_id || input.band || "Equipamento", observations, result: ok ? read2 ? "Leitura concluída" : data?.verified === true ? "Confirmado por leitura" : "Resposta recebida; verificar resultado abaixo" : "Falha", data: Array.isArray(safe) ? { quantidade: data.length, registros: safe } : safe, ...!read2 ? { after: redact(input) } : {} });
   }
 
   // apps/access_manager/static/js/service/panel.js
@@ -121,17 +273,19 @@ ${service.notes || "Sem observações."}`;
     panel3.id = "service-dialog";
     panel3.className = "service-dialog";
     panel3.setAttribute("aria-label", "Atendimento atual");
-    panel3.innerHTML = '<div class="dialog-inner"><div class="dialog-header"><h2>Atendimento atual</h2><button class="button" data-dismiss>Fechar</button></div><p>Registro em memória desta sessão. Ao desconectar, o conteúdo é descartado.</p><label><input type="checkbox" data-secrets> Mostrar e incluir senhas completas ao copiar/exportar</label><label class="field">Observações do técnico<textarea data-notes rows="3"></textarea></label><div class="inline-actions"><button class="button" data-copy="summary">Copiar resumo</button><button class="button" data-copy="timeline">Copiar registro</button><button class="button" data-copy="markdown">Copiar markdown</button><button class="button" data-export>Exportar TXT</button><button class="button" data-clear>Limpar observações</button></div><label>Visualização <select data-mode><option value="summary">Resumo operacional</option><option value="timeline">Linha do tempo completa</option></select></label><p role="status" data-status></p><pre data-record tabindex="0"></pre></div>';
+    panel3.innerHTML = '<div class="dialog-inner"><div class="dialog-header"><h2>Atendimento atual</h2><button class="button" data-dismiss>Fechar</button></div><p>Registro em memória desta sessão. Ao desconectar, o conteúdo é descartado.</p><label><input type="checkbox" data-secrets> Incluir senhas na visualização, cópia e exportação</label><label class="field">Observações do técnico<textarea data-notes rows="3"></textarea></label><div class="inline-actions"><button class="button primary" data-copy="selected">Copiar atendimento</button><button class="button" data-copy="technical">Copiar detalhes técnicos</button><button class="button" data-copy="markdown">Copiar markdown</button><button class="button" data-export>Exportar TXT</button><button class="button" data-clear>Limpar observações</button></div><label>Formato da cópia <select data-mode><option value="summary">Resumo operacional</option><option value="timeline">Linha do tempo</option><option value="prose">Texto corrido</option><option value="technical">Detalhes técnicos / JSON</option></select></label><p role="status" data-status></p><pre data-record tabindex="0"></pre></div>';
     document.body.append(panel3);
     let secrets = false;
     const paint = () => {
+      panel3.querySelector("[data-export]").textContent = panel3.querySelector("[data-mode]").value === "technical" ? "Exportar JSON técnico" : "Exportar TXT";
       button2.textContent = `Atendimento atual (${service.entries.length})`;
-      if (panel3.open) panel3.querySelector("[data-record]").textContent = formatService({ secrets, summary: panel3.querySelector("[data-mode]").value === "summary" });
+      if (panel3.open) panel3.querySelector("[data-record]").textContent = formatService({ secrets, mode: panel3.querySelector("[data-mode]").value });
     };
     subscribeService(paint);
     panel3.querySelector("[data-mode]").onchange = paint;
     const show = () => {
       secrets = false;
+      panel3.querySelector("[data-mode]").value = "summary";
       panel3.querySelector("[data-secrets]").checked = false;
       panel3.querySelector("[data-notes]").value = service.notes;
       panel3.classList.toggle("aero-theme", document.documentElement.dataset.experienceTheme === "aero");
@@ -158,17 +312,17 @@ ${service.notes || "Sem observações."}`;
     };
     panel3.querySelectorAll("[data-copy]").forEach((b) => b.onclick = async () => {
       try {
-        await navigator.clipboard.writeText(formatService({ secrets, summary: b.dataset.copy === "summary", markdown: b.dataset.copy === "markdown" }));
+        await navigator.clipboard.writeText(formatService({ secrets, mode: b.dataset.copy === "technical" ? "technical" : panel3.querySelector("[data-mode]").value, markdown: b.dataset.copy === "markdown" }));
         panel3.querySelector("[data-status]").textContent = "Registro copiado.";
       } catch {
         panel3.querySelector("[data-status]").textContent = "Cópia indisponível. Selecione o texto do registro.";
       }
     });
     panel3.querySelector("[data-export]").onclick = () => {
-      const url = URL.createObjectURL(new Blob([formatService({ secrets })], { type: "text/plain;charset=utf-8" }));
+      const url = URL.createObjectURL(new Blob([formatService({ secrets, mode: panel3.querySelector("[data-mode]").value })], { type: panel3.querySelector("[data-mode]").value === "technical" ? "application/json;charset=utf-8" : "text/plain;charset=utf-8" }));
       const a = document.createElement("a");
       a.href = url;
-      a.download = "atendimento.txt";
+      a.download = panel3.querySelector("[data-mode]").value === "technical" ? "atendimento-tecnico.json" : "atendimento.txt";
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1e3);
     };
@@ -1027,7 +1181,7 @@ ${service.notes || "Sem observações."}`;
 
   // apps/access_manager/static/js/shared/ui.js
   var esc = (value2) => String(value2 ?? "—").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  var pick = (obj, ...keys) => {
+  var pick2 = (obj, ...keys) => {
     for (const k of keys) {
       const v = obj?.[k];
       if (v !== void 0 && v !== null && v !== "") return v;
@@ -1058,7 +1212,7 @@ ${service.notes || "Sem observações."}`;
   }
   function table(columns2, rows3, empty2 = "Nenhum registro encontrado") {
     if (!Array.isArray(rows3) || !rows3.length) return `<div class="empty-state"><span>${esc(empty2)}</span></div>`;
-    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows3.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    return `<div class="panel"><table class="data-table"><thead><tr>${columns2.map((c) => `<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows3.map((r) => `<tr>${columns2.map((c) => `<td>${c.render ? technicalLabel(c.label) ? `<span class="tech-value">${c.render(r)}</span>` : c.render(r) : valueMarkup(pick2(r, ...c.keys || [c.key]), c.label)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   }
   function cap(feature) {
     return window.__amStore?.capabilities?.[feature] || { read: "UNKNOWN", write: "UNKNOWN", enabled: { read: false, write: false }, evidence: "UNKNOWN" };
@@ -1113,7 +1267,7 @@ ${service.notes || "Sem observações."}`;
     }
     return `${x.toFixed(i ? 2 : 0)} ${units[i]}`;
   }
-  function fields(items) {
+  function fields2(items) {
     return `<div class="human-fields">${items.map(([label, value2]) => `<div class="human-field"><span class="muted">${esc(label)}</span><strong>${valueMarkup(value2, label)}</strong></div>`).join("")}</div>`;
   }
   function uptime(v) {
@@ -1225,10 +1379,10 @@ ${service.notes || "Sem observações."}`;
     const results = await Promise.allSettled([read("system"), read("resources"), read("interfaces")]);
     const data = results[0].status === "fulfilled" ? results[0].value : null;
     if (!data) throw results[0].reason;
-    const resources = results[1].status === "fulfilled" ? results[1].value : [], interfaces2 = results[2].status === "fulfilled" ? results[2].value : [];
-    knownInterfaces = interfaces2;
-    const re = resources[0], idle = Number(re?.cpu_idle_percent), cpu = re?.cpu_idle_percent != null && Number.isFinite(idle) ? `${100 - idle}%` : "—";
-    return `<div class="j-intro"><div><h2>Juniper ${esc(data.model)}</h2><p>${esc(data.hostname || "—")} · ${esc(session()?.host)} · Junos ${esc(data.firmware || "—")}</p></div><div>${button("Buscar assinante", "subscribers")}<button class="button" data-j-refresh>Atualizar</button><button class="button" data-j-identity>Identidade SSH</button></div></div><div class="j-metrics">${[["Conexão", store.session?.connected ? "Online" : "Desconectado"], ["Routing Engine", re?.state || "—"], ["CPU", cpu], ["Memória", re?.memory_used_percent != null ? `${re.memory_used_percent}%` : "—"], ["Tempo ligado", uptime(data.uptime_seconds)]].map(([k, v]) => `<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("")}</div><div class="j-overview-grid">${panel("Infraestrutura", dataTable([["Interface", (r) => copy(r.name)], ["Admin", (r) => esc(r.admin_state)], ["Link", (r) => status(r.oper_state)]], interfaces2), button("Ver interfaces", "juniperInterfaces"))}${panel("AAA / RADIUS", `<p>Estado dos servidores e contadores sob demanda.</p><div class="j-link-list">${button("Servidores RADIUS", "juniperRadius")}${button("Autenticação", "juniperAuth")}${button("Accounting", "juniperAaaAccounting")}${button("Dynamic Requests", "juniperDynamic")}</div>`)}${panel("Identidade do equipamento", kv2([["Modelo", data.model], ["Junos", data.firmware], ["Família", data.family], ["Transporte", session()?.protocol_family]]))}</div>`;
+    const resources2 = results[1].status === "fulfilled" ? results[1].value : [], interfaces3 = results[2].status === "fulfilled" ? results[2].value : [];
+    knownInterfaces = interfaces3;
+    const re = resources2[0], idle = Number(re?.cpu_idle_percent), cpu = re?.cpu_idle_percent != null && Number.isFinite(idle) ? `${100 - idle}%` : "—";
+    return `<div class="j-intro"><div><h2>Juniper ${esc(data.model)}</h2><p>${esc(data.hostname || "—")} · ${esc(session()?.host)} · Junos ${esc(data.firmware || "—")}</p></div><div>${button("Buscar assinante", "subscribers")}<button class="button" data-j-refresh>Atualizar</button><button class="button" data-j-identity>Identidade SSH</button></div></div><div class="j-metrics">${[["Conexão", store.session?.connected ? "Online" : "Desconectado"], ["Routing Engine", re?.state || "—"], ["CPU", cpu], ["Memória", re?.memory_used_percent != null ? `${re.memory_used_percent}%` : "—"], ["Tempo ligado", uptime(data.uptime_seconds)]].map(([k, v]) => `<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("")}</div><div class="j-overview-grid">${panel("Infraestrutura", dataTable([["Interface", (r) => copy(r.name)], ["Admin", (r) => esc(r.admin_state)], ["Link", (r) => status(r.oper_state)]], interfaces3), button("Ver interfaces", "juniperInterfaces"))}${panel("AAA / RADIUS", `<p>Estado dos servidores e contadores sob demanda.</p><div class="j-link-list">${button("Servidores RADIUS", "juniperRadius")}${button("Autenticação", "juniperAuth")}${button("Accounting", "juniperAaaAccounting")}${button("Dynamic Requests", "juniperDynamic")}</div>`)}${panel("Identidade do equipamento", kv2([["Modelo", data.model], ["Junos", data.firmware], ["Família", data.family], ["Transporte", session()?.protocol_family]]))}</div>`;
   }
   function subscribers() {
     ensureContext();
@@ -1422,7 +1576,7 @@ ${service.notes || "Sem observações."}`;
     }
     return detailData(data);
   }
-  async function interfaces(kind = null) {
+  async function interfaces2(kind = null) {
     ensureContext();
     if (kind) return panel(kind === "lacp" ? "LACP sob demanda" : "Óptica sob demanda", `<form id="juniper-link-form" class="j-toolbar"><label for="juniper-link-name">${kind === "lacp" ? "Interface agregada" : "Interface física"}</label><input id="juniper-link-name" name="name" list="juniper-known-links" required pattern="${kind === "lacp" ? "ae[0-9]+" : "(et|xe|ge)-[0-9]+/[0-9]+/[0-9]+(:[0-9]+)?"}" placeholder="${kind === "lacp" ? "ae…" : "et-…/…/…"}" autocomplete="off"><datalist id="juniper-known-links">${knownInterfaces.filter((r) => kind === "lacp" ? /^ae[0-9]+$/.test(r.name) : /^(et|xe|ge)-/.test(r.name)).slice(0, 128).map((r) => `<option value="${esc(r.name)}"></option>`).join("")}</datalist><button class="button primary">Consultar</button></form><p class="j-inline-status">Consulta específica; não carrega inventário global de pp0/demux.</p><div id="link-page-result" data-kind="${kind}"></div>`);
     const result = await read("interfaces");
@@ -1498,7 +1652,7 @@ ${service.notes || "Sem observações."}`;
     wireCopy();
   }
   function routeView(route) {
-    const map = { juniperOverview: [overview, mountCommon], subscribers: [subscribers, mountSubscribers, unmountSubscribers], juniperSubscriber: [() => subscriberPage("summary"), mountSubscriberPage], juniperAccounting: [() => subscriberPage("accounting"), mountSubscriberPage], juniperServices: [() => subscriberPage("services"), mountSubscriberPage], juniperRouting: [() => subscriberPage("routing"), mountSubscriberPage], juniperPppoe: [() => subscriberPage("pppoe"), mountSubscriberPage], juniperLockout: [() => subscriberPage("diagnostic"), mountSubscriberPage], juniperInterfaces: [() => interfaces(), mountInterfaces], juniperLacp: [() => interfaces("lacp"), mountInterfaces], juniperOptics: [() => interfaces("optics"), mountInterfaces], juniperRadius: [() => health("radius")], juniperAuth: [() => health("aaa_authentication")], juniperAaaAccounting: [() => health("aaa_accounting")], juniperDynamic: [() => health("aaa_dynamic")], juniperSystem: [() => system()], juniperFpc: [() => health("fpc")], juniperEnvironment: [() => health("environment")], juniperHardware: [() => system("chassis")], juniperDiagnostics: [diagnostics, mountDiagnostics], juniperLogs: [operationLogs] };
+    const map = { juniperOverview: [overview, mountCommon], subscribers: [subscribers, mountSubscribers, unmountSubscribers], juniperSubscriber: [() => subscriberPage("summary"), mountSubscriberPage], juniperAccounting: [() => subscriberPage("accounting"), mountSubscriberPage], juniperServices: [() => subscriberPage("services"), mountSubscriberPage], juniperRouting: [() => subscriberPage("routing"), mountSubscriberPage], juniperPppoe: [() => subscriberPage("pppoe"), mountSubscriberPage], juniperLockout: [() => subscriberPage("diagnostic"), mountSubscriberPage], juniperInterfaces: [() => interfaces2(), mountInterfaces], juniperLacp: [() => interfaces2("lacp"), mountInterfaces], juniperOptics: [() => interfaces2("optics"), mountInterfaces], juniperRadius: [() => health("radius")], juniperAuth: [() => health("aaa_authentication")], juniperAaaAccounting: [() => health("aaa_accounting")], juniperDynamic: [() => health("aaa_dynamic")], juniperSystem: [() => system()], juniperFpc: [() => health("fpc")], juniperEnvironment: [() => health("environment")], juniperHardware: [() => system("chassis")], juniperDiagnostics: [diagnostics, mountDiagnostics], juniperLogs: [operationLogs] };
     const [render10, mount8, unmount] = map[route];
     return { render: render10, mount: mount8, unmount };
   }
@@ -1513,7 +1667,7 @@ ${service.notes || "Sem observações."}`;
       button2.disabled = true;
       try {
         const result = await read("diagnostics", Object.fromEntries(new FormData(form)), scope);
-        if (scopeActive(scope)) document.querySelector("#juniper-diagnostic-result").innerHTML = fields([["Origem", "Juniper " + (result.hostname || "")], ["Destino", result.target], ["Routing instance", result.routing_instance], ["Enviados", result.packets_sent], ["Recebidos", result.packets_received], ["Perda reportada", result.packet_loss_reported], ["RTT médio (formato do firmware)", result.rtt_average_reported]]) + table([{ label: "Salto", keys: ["hop"] }, { label: "Endereços", render: (r) => esc(r.addresses.join(", ")) }, { label: "RTT reportado", render: (r) => esc(r.rtt_reported.join(", ")) }], result.hops || []);
+        if (scopeActive(scope)) document.querySelector("#juniper-diagnostic-result").innerHTML = fields2([["Origem", "Juniper " + (result.hostname || "")], ["Destino", result.target], ["Routing instance", result.routing_instance], ["Enviados", result.packets_sent], ["Recebidos", result.packets_received], ["Perda reportada", result.packet_loss_reported], ["RTT médio (formato do firmware)", result.rtt_average_reported]]) + table([{ label: "Salto", keys: ["hop"] }, { label: "Endereços", render: (r) => esc(r.addresses.join(", ")) }, { label: "RTT reportado", render: (r) => esc(r.rtt_reported.join(", ")) }], result.hops || []);
       } catch (e) {
         if (scopeActive(scope)) document.querySelector("#juniper-diagnostic-result").textContent = e.message;
       } finally {
@@ -1586,13 +1740,13 @@ ${service.notes || "Sem observações."}`;
   });
 
   // apps/access_manager/static/js/service/client-diagnostic.js
-  function clientObservations(client, present, ping) {
+  function clientObservations(client, present2, ping2) {
     const observations = [];
     const rssi = Number(client.rssi);
     if (client.rssi != null && Number.isFinite(rssi)) observations.push(rssi < -70 ? "RSSI fraco: possível distância ou interferência; confirmar no local." : "RSSI adequado; não comprova qualidade da conexão nem exclui interferência.");
-    if (present === false) observations.push("Ausente na tabela atual; pode não estar conectado ao SSID esperado.");
-    if (present === true) observations.push("Presente na tabela atual; presença não comprova acesso à internet.");
-    if (ping === false && present === true) observations.push("Sem resposta ao ping: firewall, isolamento ou standby são possibilidades.");
+    if (present2 === false) observations.push("Ausente na tabela atual; pode não estar conectado ao SSID esperado.");
+    if (present2 === true) observations.push("Presente na tabela atual; presença não comprova acesso à internet.");
+    if (ping2 === false && present2 === true) observations.push("Sem resposta ao ping: firewall, isolamento ou standby são possibilidades.");
     return observations.join(" ");
   }
   var details = (r) => ({ Hostname: r.hostname || r.nome, IPv4: r.ip || r.ipv4, IPv6: Array.isArray(r.ipv6_addresses) ? r.ipv6_addresses.join(", ") : r.ipv6_addresses || r.ipv6, MAC: r.mac, Banda: r.band || r.banda, SSID: r.ssid, Interface: r.interface || r.port, RSSI: r.rssi, SNR: r.snr, "RX bytes": r.rx_bytes, "TX bytes": r.tx_bytes, "Taxa RX": r.rx_rate, "Taxa TX": r.tx_rate, "Tempo conectado": r.uptime || r.connected_time, Fabricante: r.manufacturer || r.vendor, Estado: r.status ?? r.online, Lease: r.lease });
@@ -1613,7 +1767,7 @@ ${service.notes || "Sem observações."}`;
       const button2 = e.currentTarget;
       button2.disabled = true;
       const output = d.querySelector("[data-client-result]"), scope = d._requestScope;
-      let current = client, present = null, ping = null;
+      let current = client, present2 = null, ping2 = null;
       const tests2 = [];
       output.textContent = "Atualizando tabela de clientes…";
       try {
@@ -1622,9 +1776,9 @@ ${service.notes || "Sem observações."}`;
             const rows3 = await request("/api/device/clients", { scope, forceRefresh: true });
             if (Array.isArray(rows3)) {
               const match = rows3.find((r) => client.mac ? r.mac?.toLowerCase() === client.mac.toLowerCase() : (r.ip || r.ipv4) === (client.ip || client.ipv4));
-              present = Boolean(match);
+              present2 = Boolean(match);
               if (match) current = match;
-              tests2.push({ teste: "Tabela de clientes", resultado: present ? "Presente" : "Ausente" });
+              tests2.push({ teste: "Tabela de clientes", resultado: present2 ? "Presente" : "Ausente" });
             }
           } catch (error) {
             tests2.push({ teste: "Tabela de clientes", resultado: error.message });
@@ -1635,7 +1789,7 @@ ${service.notes || "Sem observações."}`;
           try {
             const result = await request("/api/device/diagnostics/ping", { method: "POST", scope, body: JSON.stringify({ host: ip, count: 4 }) });
             const received = result.received ?? result.packets_received ?? result.recebidos;
-            ping = typeof received === "number" ? received > 0 : null;
+            ping2 = typeof received === "number" ? received > 0 : null;
             tests2.push({ teste: "Ping a partir do equipamento", resultado: result });
           } catch (error) {
             tests2.push({ teste: "Ping", resultado: error.message });
@@ -1644,16 +1798,16 @@ ${service.notes || "Sem observações."}`;
         if (cap("wifi_radio").enabled?.read) {
           try {
             const radios2 = await request("/api/device/wifi/radios", { scope });
-            const list = Array.isArray(radios2) ? radios2 : radios2?.radios || [];
+            const list2 = Array.isArray(radios2) ? radios2 : radios2?.radios || [];
             const band2 = current.band || current.banda;
-            const radio = band2 ? list.find((r) => String(r.band || r.banda).replace(/[^0-9.]/g, "") === String(band2).replace(/[^0-9.]/g, "")) : null;
+            const radio = band2 ? list2.find((r) => String(r.band || r.banda).replace(/[^0-9.]/g, "") === String(band2).replace(/[^0-9.]/g, "")) : null;
             if (radio) tests2.push({ teste: "Rádio relacionado", banda: band2, canal: radio.channel ?? radio.canal, largura: radio.bandwidth ?? radio.largura });
           } catch (error) {
             tests2.push({ teste: "Rádio", resultado: error.message });
           }
         }
         const pingResult = tests2.find((t) => t.teste === "Ping a partir do equipamento")?.resultado;
-        const observations = [`IP: ${current.ip || current.ipv4 || "indisponível"}; banda: ${current.band || current.banda || "indisponível"}; RSSI: ${current.rssi ?? "indisponível"}; SNR: ${current.snr ?? "indisponível"}.`, clientObservations(current, present, ping), pingResult ? `Ping: ${pingResult.received ?? "não informado"}/${pingResult.sent ?? "não informado"} respostas; perda ${pingResult.loss_percent ?? "não informada"}%.` : tests2.find((t) => t.teste === "Ping")?.resultado].filter(Boolean).join(" ");
+        const observations = [`IP: ${current.ip || current.ipv4 || "indisponível"}; banda: ${current.band || current.banda || "indisponível"}; RSSI: ${current.rssi ?? "indisponível"}; SNR: ${current.snr ?? "indisponível"}.`, clientObservations(current, present2, ping2), pingResult ? `Ping: ${pingResult.received ?? "não informado"}/${pingResult.sent ?? "não informado"} respostas; perda ${pingResult.loss_percent ?? "não informada"}%.` : tests2.find((t) => t.teste === "Ping")?.resultado].filter(Boolean).join(" ");
         record({ cliente: details(current), testes: tests2 }, "Verificações concluídas", observations);
         if (scopeActive(scope)) output.innerHTML = `${kv(details(current))}<pre>${esc(JSON.stringify(tests2, null, 2))}</pre><p>${esc(observations || "Sem dados suficientes para inferir conectividade. Não há teste equivalente habilitado nesta sessão.")}</p>`;
       } finally {
@@ -1665,17 +1819,17 @@ ${service.notes || "Sem observações."}`;
   // apps/access_manager/static/js/workspaces/views/clients.js
   var rows2 = [];
   var status2 = (r) => {
-    const v = pick(r, "status", "estado", "online");
+    const v = pick2(r, "status", "estado", "online");
     if (v === "—") return badge("Não disponível");
     if (v === false || /^(offline|disconnected|false|0)$/i.test(String(v))) return badge("Offline", "bad");
     if (v === true || /^(online|connected|associated|up|true|1)$/i.test(String(v))) return badge("Online", "ok");
     return badge(linkStatus(v));
   };
-  var connection = (r) => pick(r, "connection_type", "tipo", "interface");
-  var band = (r) => pick(r, "band", "banda");
-  var columns = [{ label: "Status", render: status2 }, { label: "Hostname", render: (r) => `<button class="icon-button" data-client="${rows2.indexOf(r)}">${esc(pick(r, "hostname", "nome"))}</button>` }, { label: "IPv4", keys: ["ip", "ipv4"] }, { label: "IPv6", keys: ["ipv6"] }, { label: "MAC", keys: ["mac"] }, { label: "Conexão", render: connection }, { label: "SSID / porta", keys: ["ssid", "port", "interface"] }, { label: "Banda", render: band }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }, { label: "RX / TX", render: (r) => `${esc(pick(r, "rx_rate"))} / ${esc(pick(r, "tx_rate"))}` }];
+  var connection = (r) => pick2(r, "connection_type", "tipo", "interface");
+  var band = (r) => pick2(r, "band", "banda");
+  var columns = [{ label: "Status", render: status2 }, { label: "Hostname", render: (r) => `<button class="icon-button" data-client="${rows2.indexOf(r)}">${esc(pick2(r, "hostname", "nome"))}</button>` }, { label: "IPv4", keys: ["ip", "ipv4"] }, { label: "IPv6", keys: ["ipv6"] }, { label: "MAC", keys: ["mac"] }, { label: "Conexão", render: connection }, { label: "SSID / porta", keys: ["ssid", "port", "interface"] }, { label: "Banda", render: band }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }, { label: "RX / TX", render: (r) => `${esc(pick2(r, "rx_rate"))} / ${esc(pick2(r, "tx_rate"))}` }];
   function cards(data) {
-    return `<div class="client-cards">${data.map((r) => `<button class="client-card" data-client="${rows2.indexOf(r)}"><strong>${esc(pick(r, "hostname", "nome"))}</strong><span class="mono tech-address">${esc(pick(r, "ip"))}</span><small>${esc(connection(r))} · ${esc(band(r))}</small>${status2(r)}</button>`).join("")}</div>`;
+    return `<div class="client-cards">${data.map((r) => `<button class="client-card" data-client="${rows2.indexOf(r)}"><strong>${esc(pick2(r, "hostname", "nome"))}</strong><span class="mono tech-address">${esc(pick2(r, "ip"))}</span><small>${esc(connection(r))} · ${esc(band(r))}</small>${status2(r)}</button>`).join("")}</div>`;
   }
   function topology(data, device = "Equipamento", register = true) {
     if (register) rows2 = data;
@@ -1862,18 +2016,18 @@ ${service.notes || "Sem observações."}`;
   function paintRanking(host, sources) {
     const ranked = sources.filter((s) => ["client", "wifi_client"].includes(s.source) && s.counters?.rx_bytes != null && s.counters?.tx_bytes != null && Number.isFinite(Number(s.counters.rx_bytes)) && Number.isFinite(Number(s.counters.tx_bytes))).sort((a, b) => Number(b.counters.rx_bytes) + Number(b.counters.tx_bytes) - (Number(a.counters.rx_bytes) + Number(a.counters.tx_bytes))).slice(0, 5);
     host.querySelector(".ranking-empty").hidden = Boolean(ranked.length);
-    const list = host.querySelector("ol");
+    const list2 = host.querySelector("ol");
     for (const [i, s] of ranked.entries()) {
-      let row = list.children[i];
+      let row = list2.children[i];
       if (!row) {
         row = document.createElement("li");
         row.innerHTML = '<span data-name></span><strong class="tech-value" data-total></strong>';
-        list.append(row);
+        list2.append(row);
       }
       text(row.querySelector("[data-name]"), `${s.hostname || s.label || s.identity}${s.ip ? " · " + s.ip : ""}`);
       text(row.querySelector("[data-total]"), formatBytes(Number(s.counters.rx_bytes) + Number(s.counters.tx_bytes)));
     }
-    while (list.children.length > ranked.length) list.lastElementChild.remove();
+    while (list2.children.length > ranked.length) list2.lastElementChild.remove();
   }
 
   // apps/access_manager/static/js/workspaces/views/overview.js
@@ -1910,7 +2064,7 @@ ${service.notes || "Sem observações."}`;
     }
     if (!scopeActive(scope)) throw cancelled();
     const alerts = (triage?.issues || []).filter((item) => ["WARNING", "CRITICAL"].includes(item.severity));
-    return `<header class="am-page-header"><small>PAINEL DO EQUIPAMENTO</small><h2>${esc(d.model || session2.model || "Equipamento")}</h2><p class="muted">${esc(d.manufacturer || session2.vendor || "")} · equipamento da sessão atual</p></header><div class="overview-metrics">${metric2("Status da internet", linkStatus(w.status), "status")}${metric2("IP WAN", w.ipv4, "wan-ip")}${metric2("Clientes conectados", Array.isArray(clients) ? cl.length : null, "clients")}${opticalApplicable ? metric2("RX óptico", rx == null ? null : rx + " dBm", "optical") : ""}${metric2("Consumo atual", rate(source?.rx_mbps), "throughput")}</div>${triageMarkup(triage)}<div class="am-dashboard-split">${trafficChart("Fluxo de tráfego")}<section class="am-panel"><h2>Resumo do equipamento</h2>${fields([["Uptime", uptime(d.uptime_seconds)], ["Firmware", d.firmware], ["Temperatura", d.temperature_c == null ? null : d.temperature_c + " °C"], ["CPU", d.cpu_percent == null ? null : d.cpu_percent + " %"], ["Memória", d.memory_percent == null ? null : d.memory_percent + " %"], ["Modelo", d.model], ["Serial", d.serial]])}</section></div><div class="am-three-columns"><section class="am-panel"><h2>WAN</h2>${fields([["Interface", w.name], ["Gateway", w.gateway], ["VLAN", w.vlan], ["Link", linkStatus(w.status)], ["Conexão", w.connection_type]])}</section><section class="am-panel"><h2>Wi-Fi</h2>${fields([["SSIDs observados", wi.map((s) => s.ssid).filter(Boolean)], ["Bandas", ra.map((r) => r.band ?? r.banda)], ["Clientes Wi-Fi", Array.isArray(clients) ? cl.filter((c) => c.connection_type === "Wi-Fi").length : null], ["Canais", ra.map((r) => r.channel ?? r.canal)]])}</section><section class="am-panel"><h2>Alertas recentes</h2>${alerts.map((item) => `<p class="notice ${severityClass(item.severity)}">${esc(item.title)}</p>`).join("") || '<p class="muted">Nenhum alerta confirmado pelas leituras disponíveis.</p>'}${triage?.partial ? '<p class="muted">Cobertura parcial: dado ausente não é tratado como falha.</p>' : ""}</section></div><div class="am-two-columns"><section class="am-panel"><h2>Utilização de CPU</h2><strong class="tech-value">${esc(d.cpu_percent == null ? "Não disponível" : d.cpu_percent + " %")}</strong>${Number.isFinite(d.cpu_percent) && d.cpu_percent >= 0 && d.cpu_percent <= 100 ? `<div class="resource-track"><div class="resource-fill violet" style="width:${d.cpu_percent}%"></div></div>` : ""}</section><section class="am-panel"><h2>Qualidade do sinal</h2>${fields([["RSSI médio observado", rssi == null ? null : rssi.toFixed(1) + " dBm"], ["Associações com RSSI", signals.length || null], ["Interferência", null]])}</section></div><section class="am-panel overview-topology"><h2>Topologia da rede</h2>${Array.isArray(clients) ? topology(cl, d.model) : '<p class="muted">Clientes não disponíveis; nenhuma relação inferida.</p>'}</section>`;
+    return `<header class="am-page-header"><small>PAINEL DO EQUIPAMENTO</small><h2>${esc(d.model || session2.model || "Equipamento")}</h2><p class="muted">${esc(d.manufacturer || session2.vendor || "")} · equipamento da sessão atual</p></header><div class="overview-metrics">${metric2("Status da internet", linkStatus(w.status), "status")}${metric2("IP WAN", w.ipv4, "wan-ip")}${metric2("Clientes conectados", Array.isArray(clients) ? cl.length : null, "clients")}${opticalApplicable ? metric2("RX óptico", rx == null ? null : rx + " dBm", "optical") : ""}${metric2("Consumo atual", rate(source?.rx_mbps), "throughput")}</div>${triageMarkup(triage)}<div class="am-dashboard-split">${trafficChart("Fluxo de tráfego")}<section class="am-panel"><h2>Resumo do equipamento</h2>${fields2([["Uptime", uptime(d.uptime_seconds)], ["Firmware", d.firmware], ["Temperatura", d.temperature_c == null ? null : d.temperature_c + " °C"], ["CPU", d.cpu_percent == null ? null : d.cpu_percent + " %"], ["Memória", d.memory_percent == null ? null : d.memory_percent + " %"], ["Modelo", d.model], ["Serial", d.serial]])}</section></div><div class="am-three-columns"><section class="am-panel"><h2>WAN</h2>${fields2([["Interface", w.name], ["Gateway", w.gateway], ["VLAN", w.vlan], ["Link", linkStatus(w.status)], ["Conexão", w.connection_type]])}</section><section class="am-panel"><h2>Wi-Fi</h2>${fields2([["SSIDs observados", wi.map((s) => s.ssid).filter(Boolean)], ["Bandas", ra.map((r) => r.band ?? r.banda)], ["Clientes Wi-Fi", Array.isArray(clients) ? cl.filter((c) => c.connection_type === "Wi-Fi").length : null], ["Canais", ra.map((r) => r.channel ?? r.canal)]])}</section><section class="am-panel"><h2>Alertas recentes</h2>${alerts.map((item) => `<p class="notice ${severityClass(item.severity)}">${esc(item.title)}</p>`).join("") || '<p class="muted">Nenhum alerta confirmado pelas leituras disponíveis.</p>'}${triage?.partial ? '<p class="muted">Cobertura parcial: dado ausente não é tratado como falha.</p>' : ""}</section></div><div class="am-two-columns"><section class="am-panel"><h2>Utilização de CPU</h2><strong class="tech-value">${esc(d.cpu_percent == null ? "Não disponível" : d.cpu_percent + " %")}</strong>${Number.isFinite(d.cpu_percent) && d.cpu_percent >= 0 && d.cpu_percent <= 100 ? `<div class="resource-track"><div class="resource-fill violet" style="width:${d.cpu_percent}%"></div></div>` : ""}</section><section class="am-panel"><h2>Qualidade do sinal</h2>${fields2([["RSSI médio observado", rssi == null ? null : rssi.toFixed(1) + " dBm"], ["Associações com RSSI", signals.length || null], ["Interferência", null]])}</section></div><section class="am-panel overview-topology"><h2>Topologia da rede</h2>${Array.isArray(clients) ? topology(cl, d.model) : '<p class="muted">Clientes não disponíveis; nenhuma relação inferida.</p>'}</section>`;
   }
   function mount2() {
     document.querySelector("[data-triage-complete]")?.addEventListener("click", () => document.querySelector('[data-view="completeDiagnostics"]')?.click());
@@ -1968,9 +2122,9 @@ ${service.notes || "Sem observações."}`;
   }
 
   // apps/access_manager/static/js/shared/forms.js
-  function editConfig(title, path2, fields2, extra = {}) {
+  function editConfig(title, path2, fields3, extra = {}) {
     const serviceId = service.activeSession, operationRoute = window.__amStore?.view;
-    const supported = fields2.filter((f) => f.value !== void 0 && f.value !== null && f.value !== "—");
+    const supported = fields3.filter((f) => f.value !== void 0 && f.value !== null && f.value !== "—");
     const d = dialog(title, `<form class="form-grid">${supported.map((f) => `<div class="field"><label>${esc(f.label)}</label>${f.options ? `<select name="${esc(f.key)}" ${f.options.length ? "" : "disabled"}><option value="${esc(f.value)}">${esc(f.value)}</option>${f.options.filter((o) => String(o.value) !== String(f.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select>` : f.type === "bool" ? `<select name="${esc(f.key)}"><option value="true" ${f.value === true || f.value === "1" ? "selected" : ""}>Ativo</option><option value="false" ${f.value === false || f.value === "0" ? "selected" : ""}>Inativo</option></select>` : `<input name="${esc(f.key)}" value="${esc(f.value)}" type="${f.type || "text"}">`}</div>`).join("")}<div class="dialog-footer"><button class="button primary">Aplicar alterações</button></div></form>`);
     let oldPassword = "Não disponível neste firmware/login";
     let closed = false;
@@ -1996,7 +2150,7 @@ ${service.notes || "Sem observações."}`;
     }, { once: true });
     const audit = (config, result, previous = oldPassword) => {
       if (serviceId !== service.activeSession) return;
-      addEntry({ route: operationRoute, category: isWifi ? "Wi-Fi" : "Alteração", action: config.password ? "Alteração de senha / SSID" : title, target: isWifi ? `${fields2.find((f) => f.key === "ssid")?.value || "SSID"} (${extra.ssid_id})` : extra.band || path2, before: Object.fromEntries(supported.filter((f) => f.key !== "password" && f.key in config).map((f) => [f.key, f.value])), after: Object.fromEntries(Object.entries(config).filter(([k]) => k !== "password")), result, ...config.password ? { secrets: { old: previous, new: config.password } } : {} });
+      addEntry({ path: path2, route: operationRoute, category: isWifi ? "Wi-Fi" : "Alteração", action: config.password ? "Alteração de senha / SSID" : title, target: isWifi ? `${fields3.find((f) => f.key === "ssid")?.value || "SSID"} (${extra.ssid_id})` : extra.band || path2, before: Object.fromEntries(supported.filter((f) => f.key !== "password" && f.key in config).map((f) => [f.key, f.value])), after: Object.fromEntries(Object.entries(config).filter(([k]) => k !== "password")), result, ...config.password ? { secrets: { old: previous, new: config.password } } : {} });
     };
     const form = d.querySelector("form");
     const original = new FormData(form);
@@ -2045,7 +2199,7 @@ ${service.notes || "Sem observações."}`;
   var networks = [];
   var radios = [];
   function contents() {
-    return `<section class="panel"><h2>Redes Wi-Fi</h2></section>${table([{ label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band", "banda"] }, { label: "Ativo", render: (r) => esc(bool(r.enabled ?? r.ativo)) }, { label: "Broadcast", render: (r) => esc(bool(r.broadcast)) }, { label: "Segurança", keys: ["security", "seguranca"] }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-reveal-wifi="${esc(r.id)}">Ver senha</button><button class="button" data-edit-ssid="${networks.indexOf(r)}" ${cap("wifi").enabled?.write ? "" : "disabled"}>Editar</button></div>` }], networks)}<section class="panel"><h2>Rádios</h2>${radios.map((r, i) => `<article class="panel"><h3>${esc(pick(r, "band", "banda"))}</h3>${fields([["Estado", bool(r.enabled ?? r.radio_ativo)], ["Canal", r.auto_channel === true || r.canal_automatico === true ? "Automático" : r.channel ?? r.canal], ["Canal atual", r.channel ?? r.canal], ["Canais permitidos", (r.available_channels || []).flatMap((g) => g.channels || g.canais || []).join(", ") || null], ["Seleção", (r.auto_channel ?? r.canal_automatico) == null ? null : r.auto_channel ?? r.canal_automatico ? "Automático" : "Manual"], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais], ["SGI", bool(r.sgi)]])}<details><summary>Avançado</summary>${kv(r)}</details><button class="button" data-edit-radio="${i}" ${cap("wifi_radio").enabled?.write ? "" : "disabled"}>Editar rádio</button></article>`).join("") || '<p class="muted">Sem dados de rádio.</p>'}</section>`;
+    return `<section class="panel"><h2>Redes Wi-Fi</h2></section>${table([{ label: "SSID", keys: ["ssid"] }, { label: "Banda", keys: ["band", "banda"] }, { label: "Ativo", render: (r) => esc(bool(r.enabled ?? r.ativo)) }, { label: "Broadcast", render: (r) => esc(bool(r.broadcast)) }, { label: "Segurança", keys: ["security", "seguranca"] }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-reveal-wifi="${esc(r.id)}">Ver senha</button><button class="button" data-edit-ssid="${networks.indexOf(r)}" ${cap("wifi").enabled?.write ? "" : "disabled"}>Editar</button></div>` }], networks)}<section class="panel"><h2>Rádios</h2>${radios.map((r, i) => `<article class="panel"><h3>${esc(pick2(r, "band", "banda"))}</h3>${fields2([["Estado", bool(r.enabled ?? r.radio_ativo)], ["Canal", r.auto_channel === true || r.canal_automatico === true ? "Automático" : r.channel ?? r.canal], ["Canal atual", r.channel ?? r.canal], ["Canais permitidos", (r.available_channels || []).flatMap((g) => g.channels || g.canais || []).join(", ") || null], ["Seleção", (r.auto_channel ?? r.canal_automatico) == null ? null : r.auto_channel ?? r.canal_automatico ? "Automático" : "Manual"], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais], ["SGI", bool(r.sgi)]])}<details><summary>Avançado</summary>${kv(r)}</details><button class="button" data-edit-radio="${i}" ${cap("wifi_radio").enabled?.write ? "" : "disabled"}>Editar rádio</button></article>`).join("") || '<p class="muted">Sem dados de rádio.</p>'}</section>`;
   }
   function wire() {
     document.querySelectorAll("[data-reveal-wifi]").forEach((b) => b.onclick = async () => {
@@ -2120,15 +2274,15 @@ ${service.notes || "Sem observações."}`;
   var dnsData;
   async function wan() {
     const data = await request("/api/device/wan");
-    return data.map((r) => `<section class="panel"><h2>${esc(r.name || "Conexão WAN")}</h2><div class="split"><article><h3>Status da conexão</h3>${fields([["Estado", r.status], ["Tipo", r.connection_type], ["IPv4", r.ipv4], ["IPv6", r.ipv6], ["Gateway", r.gateway], ["VLAN", r.vlan]])}</article><article><h3>Autenticação e rede</h3>${fields([["Usuário PPPoE", r.username], ["Serviço", r.service], ["DNS", r.dns], ["MTU", r.mtu], ["NAT", bool(r.nat)], ["Uptime", r.uptime], ["Prefixo IPv6", r.prefix]])}</article></div>${fields([["Recebido", formatBytes(r.rx_bytes)], ["Enviado", formatBytes(r.tx_bytes)]])}<details><summary>Detalhes técnicos</summary>${kv(r.advanced || {})}</details></section>`).join("");
+    return data.map((r) => `<section class="panel"><h2>${esc(r.name || "Conexão WAN")}</h2><div class="split"><article><h3>Status da conexão</h3>${fields2([["Estado", r.status], ["Tipo", r.connection_type], ["IPv4", r.ipv4], ["IPv6", r.ipv6], ["Gateway", r.gateway], ["VLAN", r.vlan]])}</article><article><h3>Autenticação e rede</h3>${fields2([["Usuário PPPoE", r.username], ["Serviço", r.service], ["DNS", r.dns], ["MTU", r.mtu], ["NAT", bool(r.nat)], ["Uptime", r.uptime], ["Prefixo IPv6", r.prefix]])}</article></div>${fields2([["Recebido", formatBytes(r.rx_bytes)], ["Enviado", formatBytes(r.tx_bytes)]])}<details><summary>Detalhes técnicos</summary>${kv(r.advanced || {})}</details></section>`).join("");
   }
   async function lan() {
     const d = await request("/api/device/lan");
     return table([{ label: "Porta", keys: ["port", "porta", "name"] }, { label: "Habilitada", render: (r) => esc(typeof r.enabled === "boolean" ? r.enabled ? "Sim" : "Não" : linkStatus(r.admin_state)) }, { label: "Link", render: (r) => {
-      const raw = pick(r, "link_state", "status", "state", "estado");
+      const raw = pick2(r, "link_state", "status", "state", "estado");
       const label = linkStatus(raw);
       return badge(label, /^(up|1|connected)$/i.test(String(raw)) ? "ok" : "info");
-    } }, { label: "Velocidade", keys: ["speed", "velocidade"] }, { label: "Duplex", render: (r) => esc({ full: "Full duplex", half: "Half duplex", auto: "Automático" }[String(r.duplex || "").toLowerCase()] || r.duplex || "Não disponível") }, { label: "Negociação", keys: ["autonegotiation", "negotiation"] }, { label: "Cliente / MAC", keys: ["client", "mac"] }, { label: "RX bytes", keys: ["rx_bytes"] }, { label: "TX bytes", keys: ["tx_bytes"] }, { label: "Erros RX/TX", render: (r) => `${esc(pick(r, "rx_errors"))}/${esc(pick(r, "tx_errors"))}` }], Array.isArray(d) ? d : d?.ports || []);
+    } }, { label: "Velocidade", keys: ["speed", "velocidade"] }, { label: "Duplex", render: (r) => esc({ full: "Full duplex", half: "Half duplex", auto: "Automático" }[String(r.duplex || "").toLowerCase()] || r.duplex || "Não disponível") }, { label: "Negociação", keys: ["autonegotiation", "negotiation"] }, { label: "Cliente / MAC", keys: ["client", "mac"] }, { label: "RX bytes", keys: ["rx_bytes"] }, { label: "TX bytes", keys: ["tx_bytes"] }, { label: "Erros RX/TX", render: (r) => `${esc(pick2(r, "rx_errors"))}/${esc(pick2(r, "tx_errors"))}` }], Array.isArray(d) ? d : d?.ports || []);
   }
   async function dhcpdns() {
     const scope = currentScope();
@@ -2136,7 +2290,7 @@ ${service.notes || "Sem observações."}`;
     if (!scopeActive(scope)) throw cancelled();
     dhcpData = results[0].status === "fulfilled" ? results[0].value : null;
     dnsData = results[1].status === "fulfilled" ? results[1].value : null;
-    return `<div class="split">${dhcpData ? `<section class="panel"><h2>DHCP</h2>${fields([["Servidor", bool(dhcpData.enabled)], ["IP da LAN", dhcpData.lan_ip], ["Máscara", dhcpData.mask], ["Início do pool", dhcpData.pool_start], ["Fim do pool", dhcpData.pool_end], ["Lease (segundos)", dhcpData.lease_seconds], ["DNS primário", dhcpData.dns1], ["DNS secundário", dhcpData.dns2]])}</section>` : '<section class="panel">DHCP não disponível nesta sessão.</section>'}${dnsData ? `<section class="panel"><h2>DNS</h2>${fields([["Domínio", dnsData.domain_name], ["DNS IPv4 primário", dnsData.ipv4_1], ["DNS IPv4 secundário", dnsData.ipv4_2], ["DNS IPv6 primário", dnsData.ipv6_1], ["DNS IPv6 secundário", dnsData.ipv6_2]])}</section>` : '<section class="panel">DNS não disponível nesta sessão.</section>'}</div><div class="toolbar"><button class="button" id="edit-dhcp" ${dhcpData && cap("dhcp").enabled?.write ? "" : "disabled"}>Editar DHCP</button><button class="button" id="edit-dns" ${dnsData && cap("dns").enabled?.write ? "" : "disabled"}>Editar DNS</button></div>${table([{ label: "Hostname", keys: ["hostname", "Name", "name"] }, { label: "IP", keys: ["ip", "IPAddr", "IPAddress"] }, { label: "MAC", keys: ["mac", "MACAddr", "MACAddress"] }], dhcpData?.leases || [], "Nenhum lease retornado.")}<section class="panel"><div class="panel-header"><h2>Reservas DHCP</h2><button id="new-reservation" class="button" ${cap("dhcp_reservations").enabled?.write ? "" : "disabled"}>Adicionar</button></div></section>${table([{ label: "Reserva", keys: ["name", "Name"] }, { label: "IP", keys: ["ip", "IPAddr"] }, { label: "MAC", keys: ["mac", "MACAddr"] }, { label: "Ações", render: (r) => cap("dhcp_reservations").enabled?.write ? `<div class="inline-actions"><button class="button" data-edit-reservation="${esc(r.id)}">Editar</button><button class="button danger" data-delete-reservation="${esc(r.id)}">Excluir</button></div>` : "Somente leitura" }], dhcpData?.reservations || [], "Nenhuma reserva retornada.")}${dnsHosts()}`;
+    return `<div class="split">${dhcpData ? `<section class="panel"><h2>DHCP</h2>${fields2([["Servidor", bool(dhcpData.enabled)], ["IP da LAN", dhcpData.lan_ip], ["Máscara", dhcpData.mask], ["Início do pool", dhcpData.pool_start], ["Fim do pool", dhcpData.pool_end], ["Lease (segundos)", dhcpData.lease_seconds], ["DNS primário", dhcpData.dns1], ["DNS secundário", dhcpData.dns2]])}</section>` : '<section class="panel">DHCP não disponível nesta sessão.</section>'}${dnsData ? `<section class="panel"><h2>DNS</h2>${fields2([["Domínio", dnsData.domain_name], ["DNS IPv4 primário", dnsData.ipv4_1], ["DNS IPv4 secundário", dnsData.ipv4_2], ["DNS IPv6 primário", dnsData.ipv6_1], ["DNS IPv6 secundário", dnsData.ipv6_2]])}</section>` : '<section class="panel">DNS não disponível nesta sessão.</section>'}</div><div class="toolbar"><button class="button" id="edit-dhcp" ${dhcpData && cap("dhcp").enabled?.write ? "" : "disabled"}>Editar DHCP</button><button class="button" id="edit-dns" ${dnsData && cap("dns").enabled?.write ? "" : "disabled"}>Editar DNS</button></div>${table([{ label: "Hostname", keys: ["hostname", "Name", "name"] }, { label: "IP", keys: ["ip", "IPAddr", "IPAddress"] }, { label: "MAC", keys: ["mac", "MACAddr", "MACAddress"] }], dhcpData?.leases || [], "Nenhum lease retornado.")}<section class="panel"><div class="panel-header"><h2>Reservas DHCP</h2><button id="new-reservation" class="button" ${cap("dhcp_reservations").enabled?.write ? "" : "disabled"}>Adicionar</button></div></section>${table([{ label: "Reserva", keys: ["name", "Name"] }, { label: "IP", keys: ["ip", "IPAddr"] }, { label: "MAC", keys: ["mac", "MACAddr"] }, { label: "Ações", render: (r) => cap("dhcp_reservations").enabled?.write ? `<div class="inline-actions"><button class="button" data-edit-reservation="${esc(r.id)}">Editar</button><button class="button danger" data-delete-reservation="${esc(r.id)}">Excluir</button></div>` : "Somente leitura" }], dhcpData?.reservations || [], "Nenhuma reserva retornada.")}${dnsHosts()}`;
   }
   function mountDhcpDns() {
     mountReservations();
@@ -2595,12 +2749,12 @@ ${service.notes || "Sem observações."}`;
     const form = d.querySelector("form");
     form.onsubmit = async (event) => {
       event.preventDefault();
-      const changes = {};
-      for (const checkbox2 of form.querySelectorAll("[data-change]:checked")) changes[checkbox2.dataset.change] = form.elements.namedItem(checkbox2.dataset.change).value;
+      const changes2 = {};
+      for (const checkbox2 of form.querySelectorAll("[data-change]:checked")) changes2[checkbox2.dataset.change] = form.elements.namedItem(checkbox2.dataset.change).value;
       const out = d.querySelector("#surface-preview");
       out.innerHTML = '<p class="muted">Preparando prévia…</p>';
       try {
-        const preview = await request("/api/device/configuration/preview", { scope: d._requestScope, method: "POST", body: JSON.stringify({ feature: feature.id, instance: row.id, changes, action: form.elements.namedItem("operation").value }) });
+        const preview = await request("/api/device/configuration/preview", { scope: d._requestScope, method: "POST", body: JSON.stringify({ feature: feature.id, instance: row.id, changes: changes2, action: form.elements.namedItem("operation").value }) });
         if (!d.open) return;
         out.innerHTML = table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["before"] }, { label: "Novo", keys: ["after"] }], preview.changes || []) + `<p class="notice warning">A alteração pode interromper a conexão. A prévia expira em ${esc(preview.expires_in_seconds)} segundos.</p><div class="field"><label>Digite APLICAR para confirmar</label><input id="surface-confirm" autocomplete="off"></div><button type="button" class="button danger" id="surface-apply">Aplicar configuração</button>`;
         out.querySelector("button").onclick = async (e) => {
@@ -2625,7 +2779,7 @@ ${service.notes || "Sem observações."}`;
   var loaded = {};
   function presentation(feature, data) {
     const rows3 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
-    return fields(rows3[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
+    return fields2(rows3[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
   }
   var featureCap = (f) => f === "firewall" && (cap("firewall_level").enabled?.read || cap("firewall_level").enabled?.write) ? cap("firewall_level") : cap(f);
   async function render5() {
@@ -2637,7 +2791,7 @@ ${service.notes || "Sem observações."}`;
     const reboot = cap("reboot");
     const device = await request("/api/device").catch(() => null);
     if (!scopeActive(scope)) throw cancelled();
-    return `<section class="panel"><h2>Telemetria do equipamento</h2>${device ? fields([["Tempo ligado", uptime(device.uptime_seconds)], ["CPU", device.cpu_percent == null ? null : device.cpu_percent + " %"], ["Memória", device.memory_percent == null ? null : device.memory_percent + " %"], ["Temperatura", device.temperature_c == null ? null : device.temperature_c + " °C"]]) : '<p class="muted">Telemetria não disponível.</p>'}</section><section class="panel"><h2>Manutenção</h2><div class="capability-row"><strong>Reiniciar equipamento</strong>${capBadge(reboot.read)}${capBadge(reboot.write)}<button id="reboot-button" class="button danger" ${reboot.enabled?.write ? "" : "disabled"}>Reiniciar</button></div>${resetHost()}</section><div class="split">${definitions.map((d, i) => {
+    return `<section class="panel"><h2>Telemetria do equipamento</h2>${device ? fields2([["Tempo ligado", uptime(device.uptime_seconds)], ["CPU", device.cpu_percent == null ? null : device.cpu_percent + " %"], ["Memória", device.memory_percent == null ? null : device.memory_percent + " %"], ["Temperatura", device.temperature_c == null ? null : device.temperature_c + " °C"]]) : '<p class="muted">Telemetria não disponível.</p>'}</section><section class="panel"><h2>Manutenção</h2><div class="capability-row"><strong>Reiniciar equipamento</strong>${capBadge(reboot.read)}${capBadge(reboot.write)}<button id="reboot-button" class="button danger" ${reboot.enabled?.write ? "" : "disabled"}>Reiniciar</button></div>${resetHost()}</section><div class="split">${definitions.map((d, i) => {
       const result = results[i];
       const value2 = result.status === "fulfilled" ? result.value : null;
       if (value2) loaded[d.feature] = value2;
@@ -2757,7 +2911,7 @@ ${service.notes || "Sem observações."}`;
     let timer = null, running = false;
     scope?.controller.signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
     const show = (d) => {
-      if (scopeActive(scope)) out.innerHTML = fields([["Estado", { running: "Em andamento", finished: "Finalizado", timeout: "Tempo excedido", uncertain: "Sem confirmação" }[d.status] || d.status], ["Estado informado pelo firmware", d.native_state], ["Download (Mbps)", d.download_mbps], ["Upload (Mbps)", d.upload_mbps], ["Progresso (%)", d.progress], ["Latência (ms)", d.latency_ms]]);
+      if (scopeActive(scope)) out.innerHTML = fields2([["Estado", { running: "Em andamento", finished: "Finalizado", timeout: "Tempo excedido", uncertain: "Sem confirmação" }[d.status] || d.status], ["Estado informado pelo firmware", d.native_state], ["Download (Mbps)", d.download_mbps], ["Upload (Mbps)", d.upload_mbps], ["Progresso (%)", d.progress], ["Latência (ms)", d.latency_ms]]);
     };
     const poll = async () => {
       if (!saved || !scopeActive(scope)) return;
@@ -2832,20 +2986,20 @@ ${service.notes || "Sem observações."}`;
     return `<div class="diagnostic-route">${rows3.map((h, i) => `${i ? '<span class="route-line"></span>' : ""}<span class="route-node ${h.status === "timeout" ? "route-timeout" : ""}" title="${esc(h.address || "Sem resposta")}">${esc(h.hop)}</span>`).join("")}</div>` + table([{ label: "Salto", keys: ["hop"] }, { label: "Host", keys: ["host"] }, { label: "Endereço", render: (h) => `<span class="mono tech-value">${esc(h.address || "—")}</span>` }, { label: "Latência", render: (h) => fmt(h.latency_ms, " ms") }, { label: "Perda", render: (h) => fmt(h.loss_percent, " %") }, { label: "Status", render: (h) => badge2(h.status) }], rows3, "Traceroute não disponível ou não solicitado.");
   }
   function resourcesView(r) {
-    return `<div class="resource-grid">${[["cpu_percent", "CPU", "violet"], ["memory_percent", "Memória", "blue"], ["storage_percent", "Armazenamento", "green"]].map(([k, label, color]) => `<div><span>${label}</span><strong class="tech-value">${fmt(r[k], " %")}</strong>${r[k] != null && r[k] >= 0 && r[k] <= 100 ? `<div class="resource-track"><div class="resource-fill ${color}" style="width:${r[k]}%"></div></div>` : ""}</div>`).join("")}</div>` + fields([["Temperatura", r.temperature_c == null ? null : fmt(r.temperature_c, " °C")], ["Uptime", uptime(r.uptime_seconds)], ["Sessões ativas", r.active_sessions], ["Firmware", r.firmware]]);
+    return `<div class="resource-grid">${[["cpu_percent", "CPU", "violet"], ["memory_percent", "Memória", "blue"], ["storage_percent", "Armazenamento", "green"]].map(([k, label, color]) => `<div><span>${label}</span><strong class="tech-value">${fmt(r[k], " %")}</strong>${r[k] != null && r[k] >= 0 && r[k] <= 100 ? `<div class="resource-track"><div class="resource-fill ${color}" style="width:${r[k]}%"></div></div>` : ""}</div>`).join("")}</div>` + fields2([["Temperatura", r.temperature_c == null ? null : fmt(r.temperature_c, " °C")], ["Uptime", uptime(r.uptime_seconds)], ["Sessões ativas", r.active_sessions], ["Firmware", r.firmware]]);
   }
   function wifiView(w, mesh) {
-    return (w.bands || []).map((b) => `<details class="wifi-diagnostic-card"><summary><strong>${esc(b.band || "Rádio")}</strong><span class="tech-value">${fmt(b.avg_rssi, " dBm")}</span><span>${b.clients} associações observadas</span></summary>${fields([["SSID", b.ssids], ["RSSI médio", fmt(b.avg_rssi, " dBm")], ["SNR médio", fmt(b.avg_snr, " dB")], ["Canal", b.radio.channel ?? b.radio.canal], ["Largura", b.radio.bandwidth ?? b.radio.largura], ["Padrão", b.radio.standard ?? b.radio.padrao], ["Potência", b.radio.tx_power ?? b.radio.potencia], ["Estado", b.radio.enabled === true || b.radio.radio_ativo === true ? "Ativo" : b.radio.enabled === false || b.radio.radio_ativo === false ? "Inativo" : null], ["Interferência", null]])}</details>`).join("") + (mesh?.nodes?.length || mesh?.enabled === true ? `<details class="wifi-diagnostic-card"><summary>Mesh · ${mesh.nodes.length} nós observados</summary>${table([{ label: "Nó", keys: ["id"] }, { label: "Pai", keys: ["parent"] }, { label: "Backhaul", keys: ["backhaul"] }], mesh.nodes)}</details>` : "") || '<p class="muted">Não disponível neste equipamento ou nesta execução.</p>';
+    return (w.bands || []).map((b) => `<details class="wifi-diagnostic-card"><summary><strong>${esc(b.band || "Rádio")}</strong><span class="tech-value">${fmt(b.avg_rssi, " dBm")}</span><span>${b.clients} associações observadas</span></summary>${fields2([["SSID", b.ssids], ["RSSI médio", fmt(b.avg_rssi, " dBm")], ["SNR médio", fmt(b.avg_snr, " dB")], ["Canal", b.radio.channel ?? b.radio.canal], ["Largura", b.radio.bandwidth ?? b.radio.largura], ["Padrão", b.radio.standard ?? b.radio.padrao], ["Potência", b.radio.tx_power ?? b.radio.potencia], ["Estado", b.radio.enabled === true || b.radio.radio_ativo === true ? "Ativo" : b.radio.enabled === false || b.radio.radio_ativo === false ? "Inativo" : null], ["Interferência", null]])}</details>`).join("") + (mesh?.nodes?.length || mesh?.enabled === true ? `<details class="wifi-diagnostic-card"><summary>Mesh · ${mesh.nodes.length} nós observados</summary>${table([{ label: "Nó", keys: ["id"] }, { label: "Pai", keys: ["parent"] }, { label: "Backhaul", keys: ["backhaul"] }], mesh.nodes)}</details>` : "") || '<p class="muted">Não disponível neste equipamento ou nesta execução.</p>';
   }
   function runtimeView(data) {
     const scan = data.bootstrap_probes?.compatibility_scan;
     if (!scan) return table([{ label: "Seção", keys: ["title"] }, { label: "Disponível", render: (r) => r.available ? "Dados retornados" : "Não disponível" }, { label: "Registros", keys: ["count"] }], Object.entries(data.sections || {}).map(([title, row]) => ({ title, available: row.available, count: row.record_count ?? (Array.isArray(row.data) ? row.data.length : null) })));
-    return fields([["Modelo informado", data.identity?.model], ["Firmware informado", data.identity?.firmware], ["Perfil de protocolo", data.profile_selection?.name], ["Melhor correspondência", scan.best_matching_profile], ["Perfis empatados", scan.tied_profiles], ["Scores", Object.entries(scan.profile_scores || {}).map(([name, score]) => `${name}: ${score}`).join(" · ")]]) + table([{ label: "Recurso", keys: ["feature"] }, { label: "Endpoint", keys: ["tag"] }, { label: "Resultado", keys: ["status"] }, { label: "Registros", keys: ["records"] }, { label: "Formato", keys: ["format"] }, { label: "Objetos observados", render: (r) => esc(Object.keys(r.nodes_seen || {}).join(", ")) }, { label: "Objetos não reconhecidos", render: (r) => esc((r.unknown_nodes || []).join(", ")) }], Object.entries(scan.endpoints || {}).map(([feature, entry]) => ({ feature, ...entry })));
+    return fields2([["Modelo informado", data.identity?.model], ["Firmware informado", data.identity?.firmware], ["Perfil de protocolo", data.profile_selection?.name], ["Melhor correspondência", scan.best_matching_profile], ["Perfis empatados", scan.tied_profiles], ["Scores", Object.entries(scan.profile_scores || {}).map(([name, score]) => `${name}: ${score}`).join(" · ")]]) + table([{ label: "Recurso", keys: ["feature"] }, { label: "Endpoint", keys: ["tag"] }, { label: "Resultado", keys: ["status"] }, { label: "Registros", keys: ["records"] }, { label: "Formato", keys: ["format"] }, { label: "Objetos observados", render: (r) => esc(Object.keys(r.nodes_seen || {}).join(", ")) }, { label: "Objetos não reconhecidos", render: (r) => esc((r.unknown_nodes || []).join(", ")) }], Object.entries(scan.endpoints || {}).map(([feature, entry]) => ({ feature, ...entry })));
   }
   function channelsView(result) {
     return (result.wifi_environment || []).map((entry) => {
       const a = entry.channel_analysis || {}, b = (result.wifi_quality?.bands || []).find((b2) => b2.band === entry.band) || {}, r = b.radio || {};
-      return `<article class="wifi-diagnostic-card"><h3>${esc(entry.band)}</h3>${fields([["Canal atual", a.current_channel], ["Seleção", a.auto_channel == null ? null : a.auto_channel ? "Automático" : "Manual"], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais], ["Canais permitidos", (entry.available_channels || []).flatMap((g) => g.channels || g.canais || []).join(", ") || null], ["Clientes", b.clients], ["RSSI médio", fmt(b.avg_rssi, " dBm")], ["SNR médio", fmt(b.avg_snr, " dB")], ["Redes vizinhas", a.neighbor_scan_confirmed ? a.neighbor_count : null], ["Score atual", a.current_score], ["Melhor canal observado", a.best_channel], ["Score do melhor canal", a.best_score]])}<p class="muted">${esc(a.recommendation?.message || entry.message || "Sem indicação de troca nesta medição.")}</p></article>`;
+      return `<article class="wifi-diagnostic-card"><h3>${esc(entry.band)}</h3>${fields2([["Canal atual", a.current_channel], ["Seleção", a.auto_channel == null ? null : a.auto_channel ? "Automático" : "Manual"], ["Largura", r.bandwidth ?? r.largura], ["Padrão", r.standard ?? r.padrao], ["Potência", r.tx_power ?? r.potencia], ["País", r.country ?? r.pais], ["Canais permitidos", (entry.available_channels || []).flatMap((g) => g.channels || g.canais || []).join(", ") || null], ["Clientes", b.clients], ["RSSI médio", fmt(b.avg_rssi, " dBm")], ["SNR médio", fmt(b.avg_snr, " dB")], ["Redes vizinhas", a.neighbor_scan_confirmed ? a.neighbor_count : null], ["Score atual", a.current_score], ["Melhor canal observado", a.best_channel], ["Score do melhor canal", a.best_score]])}<p class="muted">${esc(a.recommendation?.message || entry.message || "Sem indicação de troca nesta medição.")}</p></article>`;
     }).join("") || '<p class="muted">Leitura dos rádios não disponível nesta execução.</p>';
   }
   function mount7() {
@@ -3011,7 +3165,7 @@ ${service.notes || "Sem observações."}`;
           }
         }
         const data = await request(path2, { scope, ...id === "workstation" ? { method: "POST", body: "{}" } : { forceRefresh: true } });
-        if (scopeActive(scope)) put(id + "-result", id === "runtime" ? runtimeView(data) : fields([["DNS do PC", data.dns?.ok ? "Resolvido" : "Sem resposta"], ["TCP 443 — respostas", data.tcp?.successful], ["Tempo médio TCP (ms)", data.tcp?.mean_connect_ms], ["Limitações", data.limitations]]));
+        if (scopeActive(scope)) put(id + "-result", id === "runtime" ? runtimeView(data) : fields2([["DNS do PC", data.dns?.ok ? "Resolvido" : "Sem resposta"], ["TCP 443 — respostas", data.tcp?.successful], ["Tempo médio TCP (ms)", data.tcp?.mean_connect_ms], ["Limitações", data.limitations]]));
       } catch (e2) {
         if (!isCancelled(e2)) put(id + "-result", esc(e2.message));
       } finally {

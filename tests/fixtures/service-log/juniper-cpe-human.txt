@@ -1,0 +1,62 @@
+Atendimento iniciado às 06:44.
+
+Conectado ao equipamento JUNIPER · MX204 · 192.0.2.201.
+
+Verificações realizadas:
+
+Equipamento identificado: JUNIPER MX204.
+Nome do equipamento: bng-qa.
+Firmware: Junos OS 23.4R2-S5.6.
+
+Recursos do equipamento — slot 0:
+CPU livre: 73%.
+Memória em uso: 18%.
+Temperatura: 41 °C.
+Load average: 0.96 / 0.6 / 0.51.
+
+Interfaces consultadas: 14.
+Ativas: 5; inativas: 9.
+et-0/0/0: ativa / 100 Gbps.
+et-0/0/1: ativa / 100 Gbps.
+
+Consultado o contrato ou identificador 61571.
+Assinante encontrado: brd_61571.
+Contrato: 61571.
+IP do assinante: 192.0.2.5.
+MAC: 02:00:00:00:00:05.
+VLAN: 2000.
+Interface: demux0.3221515710.
+Estado do assinante: ativo.
+
+Realizado acesso ao CPE do assinante 61571.
+IP do CPE: 192.0.2.5.
+Porta: 6080.
+
+Verificações realizadas:
+
+Equipamento identificado: ZTE F6600P.
+Firmware: V9.0.10P6N34.
+
+WAN Internet_TR069 conectada via PPPoE.
+IP WAN: 192.0.2.5.
+Gateway: 192.0.2.1.
+VLAN: 2000.
+DNS: 192.0.2.53 / 192.0.2.54.
+
+Sinal óptico RX: -22.84 dBm.
+Sinal óptico TX: 1.95 dBm.
+
+Nenhum cliente conectado foi identificado no momento da consulta.
+
+Diagnósticos e consultas:
+
+Ping para 192.0.2.53 realizado.
+4 pacotes enviados, 4 recebidos.
+Perda: 0%.
+Latência média: 30.5 ms.
+
+Traceroute para 192.0.2.53 realizado.
+Destino alcançado em 2 saltos.
+Latência final aproximada: 30.6 ms.
+
+Atendimento permanece em andamento.

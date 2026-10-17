@@ -1,0 +1,12 @@
+{
+  "checks": [
+    "aero-1366: clipboard modes, TXT download, explicit technical JSON",
+    "terminal-1366: clipboard modes, TXT download, explicit technical JSON",
+    "aero-1600: clipboard modes, TXT download, explicit technical JSON",
+    "terminal-1600: clipboard modes, TXT download, explicit technical JSON",
+    "aero-1920: clipboard modes, TXT download, explicit technical JSON",
+    "terminal-1920: clipboard modes, TXT download, explicit technical JSON"
+  ],
+  "errors": [],
+  "fixtureData": true
+}
