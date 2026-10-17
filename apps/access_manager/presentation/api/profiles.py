@@ -8,6 +8,11 @@ def profile_list(context=None):
     return safe(profiles.list)
 
 
+@api.get("/profiles/state")
+def profile_state(context=None):
+    return safe(profiles.state)
+
+
 @api.post("/profiles")
 def profile_save(context=None):
     return safe(lambda: profiles.save(body(context)))
@@ -17,6 +22,18 @@ def profile_save(context=None):
 def profile_delete(context=None):
     data = body(context)
     return safe(lambda: profiles.delete(str(data.get("name") or "")))
+
+
+@api.post("/profiles/active")
+def profile_activate(context=None):
+    data = body(context)
+    return safe(lambda: profiles.activate(str(data.get("name") or "")))
+
+
+@api.post("/profiles/capture")
+def profile_capture(context=None):
+    data = body(context)
+    return safe(lambda: redact_sensitive(profiles.capture(str(data.get("name") or ""))))
 
 
 @api.post("/profiles/preview")

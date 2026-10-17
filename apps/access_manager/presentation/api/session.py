@@ -11,8 +11,12 @@ def connect(context=None):
             options={'vendor':'juniper','transport':d.get('transport') or settings['preferred_transport'],
                      'port':d.get('port'), 'ssh_port':d.get('ssh_port') or settings['ssh_port'],
                      'netconf_port':d.get('netconf_port') or settings['netconf_port']}
+        # There is no separate AM2 login provider yet. The authenticated device/
+        # infrastructure username is therefore the current attendant identity;
+        # passwords are still discarded and never persisted.
+        attendant=str(d.get('attendant') or d.get('username') or '').strip() or None
         result=sessions.connect(d.get('host') or d.get('ip'),d.get('username',''),d.get('password',''),
-                                https=bool(d.get('https')),model_hint=d.get('model_hint'),attendant=d.get('attendant'),**options)
+                                https=bool(d.get('https')),model_hint=d.get('model_hint'),attendant=attendant,**options)
         if options and result.get('connected'):
             try:juniper_settings.save({'ssh_port':options['ssh_port'],'netconf_port':options['netconf_port'],
                                       'preferred_transport':options['transport']},successful_host=result['session']['host'])

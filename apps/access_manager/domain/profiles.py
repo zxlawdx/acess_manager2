@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -9,8 +10,8 @@ class NetworkProfile:
     """Provider-neutral configuration intent.
 
     A profile stores desired state, never device endpoints or protocol payloads.
-    Vendor translators are responsible for turning this intent into application
-    commands supported by the active provider.
+    Unknown top-level fields are retained in ``extensions`` and flattened again
+    by ``to_dict`` so migrations/model-specific metadata survive round trips.
     """
 
     name: str
@@ -18,23 +19,41 @@ class NetworkProfile:
     wifi: dict[str, Any] = field(default_factory=dict)
     dns: dict[str, Any] = field(default_factory=dict)
     dhcp: dict[str, Any] = field(default_factory=dict)
+    extensions: dict[str, Any] = field(default_factory=dict, repr=False)
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "NetworkProfile":
-        wifi=dict(value.get('wifi') or {})
-        if not isinstance(wifi.get('radios'),list) and not isinstance(wifi.get('radio'),dict):
-            legacy=[{**config,'band':band} for band,config in wifi.items() if band in {'2.4GHz','5GHz'} and isinstance(config,dict)]
-            if legacy:wifi['radios']=legacy
+        value = dict(value or {})
+        wifi = deepcopy(value.get('wifi') or {})
+        if not isinstance(wifi.get('radios'), list) and not isinstance(wifi.get('radio'), dict):
+            legacy = [
+                {**deepcopy(config), 'band': band}
+                for band, config in wifi.items()
+                if band in {'2.4GHz', '5GHz'} and isinstance(config, dict)
+            ]
+            if legacy:
+                wifi['radios'] = legacy
+        known = {'name', 'description', 'wifi', 'dns', 'dhcp', 'extensions'}
+        extensions = deepcopy(value.get('extensions') or {})
+        extensions.update({key: deepcopy(item) for key, item in value.items() if key not in known})
         return cls(
             name=str(value.get("name") or "").strip(),
             description=str(value.get("description") or "").strip(),
             wifi=wifi,
-            dns=dict(value.get("dns") or {}),
-            dhcp=dict(value.get("dhcp") or {}),
+            dns=deepcopy(value.get("dns") or {}),
+            dhcp=deepcopy(value.get("dhcp") or {}),
+            extensions=extensions,
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        return {
+            **deepcopy(self.extensions),
+            "name": self.name,
+            "description": self.description,
+            "wifi": deepcopy(self.wifi),
+            "dns": deepcopy(self.dns),
+            "dhcp": deepcopy(self.dhcp),
+        }
 
 
 @dataclass(frozen=True)

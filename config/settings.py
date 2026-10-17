@@ -1,4 +1,9 @@
+import os
+
 APP_TITLE="Access Manager"
+APP_VERSION=os.environ.get("ACCESS_MANAGER_VERSION", "0.0.0-dev")
+APP_AUTHOR="zxlawdx"
+APP_DESCRIPTION="Gerenciamento técnico multi-vendor de acesso e CPE"
 ENTRY_ROUTE="/"
 WINDOW_WIDTH=1480
 WINDOW_HEIGHT=920

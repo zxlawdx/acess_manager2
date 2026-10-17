@@ -5,7 +5,7 @@ from apps.access_manager.application.queries.device import DeviceQueryBus
 from apps.access_manager.infrastructure.providers.huawei import HuaweiProvider
 from apps.access_manager.infrastructure.providers.zte import ZTEProvider
 from apps.access_manager.infrastructure.providers.deployment import DeploymentProvider
-from apps.access_manager.application.services.profiles import JsonProfileRepository, ProfileService
+from apps.access_manager.application.services.profiles import AttendantProfileRepository, ProfileService
 from apps.access_manager.infrastructure.profiles import HuaweiProfileTranslator, ZTEProfileTranslator
 from apps.access_manager.runtime import data_dir
 from apps.access_manager.infrastructure.history import HistoryRepository
@@ -25,7 +25,7 @@ profiles=ProfileService(
     sessions=sessions,
     commands=commands,
     queries=queries,
-    repository=JsonProfileRepository(data_dir()/"profiles.json"),
+    repository=AttendantProfileRepository(data_dir()/"profiles.json", sessions),
     translators={"huawei": HuaweiProfileTranslator(), "zte": ZTEProfileTranslator()},
 )
 
