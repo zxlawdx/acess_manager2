@@ -1,31 +1,110 @@
 /* Regression fixes for native WebView rendering and infrastructure login.
-   Loaded last so Windows native form controls cannot inherit terminal-green
-   text on a light system surface. */
+   Loaded last so Windows native form controls follow the terminal theme. */
 
-/* Native <select> rendering on Windows may ignore the authored dark popup.
-   Keep the control intentionally light with dark text so both the collapsed
-   value and the OS-owned option list remain legible. */
-select:not([multiple]){
-  color-scheme:light!important;
-  background:#fff!important;
-  color:#050805!important;
-  border:1px solid #8d998d!important;
-  text-shadow:none!important;
+/* -------------------------------------------------------------------------- */
+/* Terminal controls: inputs/selects realmente escuros                        */
+/* -------------------------------------------------------------------------- */
+
+:root{
+  --terminal-bg-0:#050805;
+  --terminal-bg-1:#071007;
+  --terminal-bg-2:#0a140a;
+  --terminal-border:#1f521f;
+  --terminal-border-strong:#2d792d;
+  --terminal-text:#b8ffad;
+  --terminal-text-soft:#82ba7b;
+  --terminal-accent:#33ff00;
 }
-select:not([multiple]) option{
-  background:#fff!important;
-  color:#050805!important;
+
+.app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.app-shell textarea,
+.app-shell select,
+#login-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+#login-page textarea,
+#login-page select{
+  background:var(--terminal-bg-1)!important;
+  color:var(--terminal-text)!important;
+  border:1px solid var(--terminal-border)!important;
+  box-shadow:none!important;
   text-shadow:none!important;
+  color-scheme:dark!important;
 }
-select:not([multiple]):disabled{
-  background:#d7d9d7!important;
-  color:#454945!important;
+
+.app-shell input::placeholder,
+.app-shell textarea::placeholder,
+#login-page input::placeholder,
+#login-page textarea::placeholder{
+  color:var(--terminal-text-soft)!important;
+  opacity:.72!important;
+}
+
+.app-shell input:focus,
+.app-shell textarea:focus,
+.app-shell select:focus,
+#login-page input:focus,
+#login-page textarea:focus,
+#login-page select:focus{
+  border-color:var(--terminal-accent)!important;
+  outline:1px solid var(--terminal-accent)!important;
+  outline-offset:0!important;
+  background:#081308!important;
+}
+
+.app-shell input:disabled,
+.app-shell textarea:disabled,
+.app-shell select:disabled,
+#login-page input:disabled,
+#login-page textarea:disabled,
+#login-page select:disabled{
+  background:#0b0f0b!important;
+  color:#5f8f5f!important;
+  border-color:#173517!important;
   opacity:1!important;
 }
-select:not([multiple]):focus-visible{
-  outline:2px solid var(--accent)!important;
-  outline-offset:1px!important;
-  border-color:#050805!important;
+
+.app-shell select,
+#login-page select{
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  -moz-appearance:none!important;
+  background-color:var(--terminal-bg-1)!important;
+  color:var(--terminal-text)!important;
+  border:1px solid var(--terminal-border)!important;
+  padding-right:34px!important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--terminal-accent) 50%),
+    linear-gradient(135deg, var(--terminal-accent) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size:6px 6px, 6px 6px;
+  background-repeat:no-repeat;
+}
+
+.app-shell select option,
+#login-page select option{
+  background:#071007!important;
+  color:var(--terminal-text)!important;
+}
+
+#login-page.infrastructure-login .field input,
+#login-page.infrastructure-login .field select,
+#login-page.infrastructure-login .password-field input{
+  background:var(--terminal-bg-1)!important;
+  color:var(--terminal-text)!important;
+  border:1px solid var(--terminal-border)!important;
+}
+
+#login-page.infrastructure-login .password-field .button{
+  background:#0a140a!important;
+  color:var(--terminal-accent)!important;
+  border:1px solid var(--terminal-border)!important;
+}
+
+#login-page.infrastructure-login .password-field .button:hover{
+  background:var(--terminal-accent)!important;
+  color:#050805!important;
+  border-color:var(--terminal-accent)!important;
 }
 
 /* The terminal theme forces the generic login back to two columns with
@@ -139,4 +218,77 @@ select:not([multiple]):focus-visible{
 
 @media (max-width:980px){
   .diagnostic-tools-three{grid-template-columns:minmax(0,1fr)!important}
+}
+
+/* -------------------------------------------------------------------------- */
+/* Mesh port-forwarding card                                                  */
+/* -------------------------------------------------------------------------- */
+.mesh-forward-card{
+  display:grid;
+  gap:12px;
+  margin-top:16px;
+  padding:16px!important;
+  border-color:var(--terminal-border-strong)!important;
+  background:rgba(5,8,5,.92)!important;
+}
+.mesh-forward-card .mesh-forward-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.4fr) minmax(180px,.6fr);
+  gap:12px;
+}
+.mesh-forward-card label{display:grid;gap:6px;color:var(--terminal-text-soft)}
+.mesh-forward-card select,
+.mesh-forward-card input[type="text"]{width:100%;min-width:0}
+.mesh-effective-destination{
+  display:flex;
+  align-items:center;
+  min-height:44px;
+  padding:10px 12px;
+  border:1px solid var(--terminal-border);
+  background:#050805;
+  color:var(--terminal-accent);
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  word-break:break-all;
+}
+.mesh-forward-actions{display:flex;gap:8px;flex-wrap:wrap}
+.mesh-forward-confirm{display:flex!important;grid-template-columns:auto 1fr!important;align-items:start;gap:8px!important}
+.mesh-forward-status{min-height:1.4em;color:var(--terminal-text-soft)}
+@media (max-width:760px){
+  .mesh-forward-card .mesh-forward-grid{grid-template-columns:minmax(0,1fr)}
+}
+
+/* -------------------------------------------------------------------------- */
+/* Matrix background discreto                                                 */
+/* -------------------------------------------------------------------------- */
+#login-page,
+.connection-card,
+.app-wrapper{
+  position:relative;
+}
+
+#matrix-bg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:0!important;
+  opacity:.12;
+  mix-blend-mode:screen;
+}
+
+#login-page > *,
+.connection-card > *,
+.app-wrapper > *{
+  position:relative;
+  z-index:1;
+}
+
+#login-page.infrastructure-login #matrix-bg{
+  opacity:.08;
+  filter:blur(.15px);
+}
+
+@media (max-width:780px){
+  #matrix-bg{opacity:.05}
 }

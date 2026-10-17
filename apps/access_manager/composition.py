@@ -34,3 +34,6 @@ artifacts=ManagementArtifacts(sessions,commands)
 
 from apps.access_manager.application.services.full_diagnostic import FullDiagnosticService
 full_diagnostics=FullDiagnosticService(sessions,queries,commands,history)
+
+from apps.access_manager.application.services.mesh_port_forwarding import MeshPortForwardingService
+mesh_port_forwarding=MeshPortForwardingService(sessions)
