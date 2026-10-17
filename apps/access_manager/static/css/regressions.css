@@ -28,16 +28,59 @@ select:not([multiple]):focus-visible{
   border-color:#050805!important;
 }
 
-/* Juniper adds transport, AD credentials and advanced ports, so the generic
-   two-column device login becomes cramped well before the mobile breakpoint.
-   Collapse that variant sooner and remove the decorative console first. */
-@media (max-width:1100px), (max-height:760px){
+/* The terminal theme forces the generic login back to two columns with
+   !important. The Juniper variant previously kept app.css' 540px max-width,
+   which produced a ~540px two-column card and clipped fields/buttons on wide
+   desktop WebViews. Reset both width and grid here, after every theme layer. */
+#login-page.infrastructure-login{
+  place-items:center!important;
+  padding:clamp(18px,2.5vw,32px)!important;
+}
+#login-page.infrastructure-login .connection-card{
+  width:min(100%,1080px)!important;
+  max-width:1080px!important;
+  grid-template-columns:minmax(420px,1.08fr) minmax(320px,.92fr)!important;
+}
+#login-page.infrastructure-login .connection-content{
+  min-width:0!important;
+  padding:clamp(24px,3vw,36px)!important;
+}
+#login-page.infrastructure-login .connection-visual{
+  display:flex!important;
+  min-width:0!important;
+  padding:clamp(24px,3vw,36px)!important;
+}
+#login-page.infrastructure-login #connect-form,
+#login-page.infrastructure-login #juniper-connection,
+#login-page.infrastructure-login .field,
+#login-page.infrastructure-login .password-field{
+  min-width:0!important;
+  width:100%!important;
+}
+#login-page.infrastructure-login .field input,
+#login-page.infrastructure-login .field select{
+  max-width:100%!important;
+}
+#login-page.infrastructure-login .password-field input{
+  min-width:0!important;
+  width:auto!important;
+  flex:1 1 auto!important;
+}
+#login-page.infrastructure-login .password-field .button{
+  flex:0 0 auto!important;
+  white-space:nowrap;
+}
+
+/* Juniper adds transport, AD credentials and advanced ports. Collapse the
+   decorative console before the form gets narrow or vertically cramped. */
+@media (max-width:1100px), (max-height:820px){
   #login-page.infrastructure-login{
     place-items:start center!important;
     padding:18px 14px!important;
   }
   #login-page.infrastructure-login .connection-card{
-    width:min(100%,720px)!important;
+    width:min(100%,760px)!important;
+    max-width:760px!important;
     grid-template-columns:minmax(0,1fr)!important;
   }
   #login-page.infrastructure-login .connection-visual{
@@ -47,11 +90,6 @@ select:not([multiple]):focus-visible{
     min-width:0!important;
     padding:22px 28px!important;
   }
-  #login-page.infrastructure-login #connect-form,
-  #login-page.infrastructure-login #juniper-connection{
-    min-width:0!important;
-    width:100%!important;
-  }
 }
 
 @media (max-width:620px){
@@ -60,15 +98,22 @@ select:not([multiple]):focus-visible{
   }
   #login-page.infrastructure-login .connection-card{
     width:100%!important;
+    max-width:none!important;
     min-height:100dvh!important;
     border-inline:0!important;
   }
   #login-page.infrastructure-login .connection-content{
     padding:18px 14px 28px!important;
   }
-  #login-page.infrastructure-login #juniper-connection .form-grid,
-  #login-page.infrastructure-login .password-field{
+  #login-page.infrastructure-login #juniper-connection .form-grid{
     grid-template-columns:minmax(0,1fr)!important;
+  }
+  #login-page.infrastructure-login .password-field{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  #login-page.infrastructure-login .password-field .button{
+    width:100%!important;
   }
 }
 
