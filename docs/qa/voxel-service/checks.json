@@ -1,0 +1,27 @@
+{
+  "checks": [
+    "login-voxel-1366",
+    "voxel-router-1366",
+    "voxel-scanner-1366",
+    "client-diagnostic-1366",
+    "service-masked-1366",
+    "voxel-juniper-1366",
+    "service-juniper-1366",
+    "login-voxel-1600",
+    "voxel-router-1600",
+    "voxel-scanner-1600",
+    "client-diagnostic-1600",
+    "service-masked-1600",
+    "voxel-juniper-1600",
+    "service-juniper-1600",
+    "login-voxel-1920",
+    "voxel-router-1920",
+    "voxel-scanner-1920",
+    "client-diagnostic-1920",
+    "service-masked-1920",
+    "voxel-juniper-1920",
+    "service-juniper-1920"
+  ],
+  "errors": [],
+  "fixtureData": true
+}

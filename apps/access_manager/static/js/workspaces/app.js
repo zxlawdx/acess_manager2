@@ -1,3 +1,4 @@
+import {mountServicePanel} from '../service/panel.js';
 import {mountThemeProvider} from '../ui/theme.js';
 import {mountLoginExperience} from '../ui/login.js';
 import {createRouteRegistry,routerNavigation} from '../core/routes.js';
@@ -184,7 +185,7 @@ export async function mountApp() {
   workspace = document.querySelector('#workspace');
   if (!workspace) throw new Error('Workspace do Access Manager não foi encontrado.');
 
-  const theme=mountThemeProvider();loginExperience=mountLoginExperience(theme);
+  mountServicePanel(store);const theme=mountThemeProvider();loginExperience=mountLoginExperience(theme);
   const routeRegistry=createRouteRegistry(views,juniper.navigation,juniper.worldActions);
   worldBridge=mountWorldBridge({store,theme,registry:routeRegistry,navigate:name=>render(name),suspend:()=>{views[store.view]?.unmount?.();beginView('world')},resume:()=>render(store.view)});
 

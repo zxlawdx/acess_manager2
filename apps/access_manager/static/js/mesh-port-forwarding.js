@@ -7,6 +7,8 @@
   const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
   async function api(path,{method='GET',body}={}){
+    const operationRoute=window.__amStore?.view;
+    const operationSession=window.__amStore?.session?.session?.session_id;
     const response=await fetch(path,{
       method,
       headers:body===undefined?{}:{'Content-Type':'application/json'},
@@ -15,6 +17,7 @@
     const text=await response.text();
     let data={};
     try{data=text?JSON.parse(text):{}}catch{throw new Error(`Resposta inválida da API (${response.status}).`)}
+    if(operationSession===window.__amStore?.session?.session?.session_id)window.__amObserveOperation?.(path,method,body,data,response.ok&&data?.success!==false,operationRoute);
     if(!response.ok||data?.success===false){
       throw new Error(data?.error?.message||data?.message||`Falha HTTP ${response.status}`);
     }
