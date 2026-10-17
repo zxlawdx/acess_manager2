@@ -17,7 +17,12 @@ def test_release_uses_vela_native_builds_for_every_tag_and_self_tests():
     assert 'windows-latest' in text and 'ubuntu-24.04' in text
     assert text.count('python manage.py buildapp --gui qt6 --installer') >= 2
     assert text.count('python manage.py buildapp --dry-run') >= 3
-    assert text.count('--self-test') >= 2
+    # Linux executes the frozen binary explicitly. On Windows, Vela buildapp
+    # already performs the frozen self-test internally; running the GUI EXE a
+    # second time in Actions caused the false-negative fixed by PR #23.
+    assert text.count('--self-test') >= 1
+    assert 'buildapp --gui qt6 --installer already performs the frozen runtime' in text
+    assert 'Locate validated Windows bundle' in text
     assert '.vela-app.json' in text
     assert 'actions/upload-artifact@v4' in text
     assert 'actions/download-artifact@v4' in text
