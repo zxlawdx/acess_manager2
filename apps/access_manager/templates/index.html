@@ -4,6 +4,7 @@
 <link rel="stylesheet" href="{{ static('access_manager/css/juniper.css') }}">
 <link rel="stylesheet" href="{{ static('access_manager/css/professional.css') }}">
 <link rel="stylesheet" href="{{ static('access_manager/css/vela-integration.css') }}">
+<link rel="stylesheet" href="{{ static('access_manager/css/regressions.css') }}">
 
 <section id="login-page" class="app-wrapper" aria-label="Conectar ao equipamento">
   <div class="connection-card">
@@ -110,6 +111,7 @@
 <dialog id="action-dialog" aria-labelledby="dialog-title"><div id="dialog-body"></div></dialog>
 <div id="toast-region" aria-live="polite" aria-atomic="true"></div>
 
-<!-- Runtime gerado dos módulos; o controlador abaixo atua somente no chrome do shell. -->
+<!-- Runtime gerado dos módulos; controladores abaixo refinam o chrome e a paridade operacional. -->
 <script src="{{ static('access_manager/js/runtime.js') }}"></script>
 <script src="{{ static('access_manager/js/shell-ui.js') }}"></script>
+<script src="{{ static('access_manager/js/operational-parity.js') }}"></script>
