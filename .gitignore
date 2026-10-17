@@ -162,3 +162,5 @@ apps/access_manager/static/audio/user/*.wav
 # QA PNGs are working captures; reviewed lossless WebP evidence is versioned.
 docs/qa/aero-patch/*.png
 docs/qa/voxel-service/*.png
+
+docs/qa/human-service/*.png
