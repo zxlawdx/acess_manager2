@@ -3,6 +3,36 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const exitPolicyKey='accessManager.serviceLog.exitPolicy';
 const readExitPolicy=()=>{try{const value=localStorage.getItem(exitPolicyKey);return ['ask','keep','clear'].includes(value)?value:'ask'}catch{return 'ask'}};
 const writeExitPolicy=value=>{try{localStorage.setItem(exitPolicyKey,value)}catch{}};
+
+// Qt WebEngine / pywebview builds must not depend on the asynchronous browser
+// clipboard path here. In the frozen Windows app that API can cross a native
+// permission/renderer boundary instead of delivering a catchable JavaScript
+// rejection. Keep copying synchronous and inside the user's click gesture.
+function safeCopyText(value){
+ const text=String(value??'');
+ const active=document.activeElement;
+ const textarea=document.createElement('textarea');
+ textarea.value=text;
+ textarea.setAttribute('readonly','');
+ textarea.setAttribute('aria-hidden','true');
+ textarea.style.position='fixed';textarea.style.left='-10000px';textarea.style.top='0';textarea.style.width='1px';textarea.style.height='1px';textarea.style.opacity='0';textarea.style.pointerEvents='none';
+ document.body.append(textarea);
+ let copied=false;
+ try{
+  textarea.focus({preventScroll:true});textarea.select();textarea.setSelectionRange(0,text.length);
+  copied=document.execCommand('copy')===true;
+ }catch{copied=false}
+ textarea.remove();
+ try{active?.focus?.({preventScroll:true})}catch{try{active?.focus?.()}catch{}}
+ return copied;
+}
+function selectRecordForManualCopy(panel){
+ const record=panel.querySelector('[data-record]');if(!record)return;
+ try{record.focus({preventScroll:true})}catch{record.focus?.()}
+ const selection=window.getSelection?.();if(!selection||!document.createRange)return;
+ const range=document.createRange();range.selectNodeContents(record);selection.removeAllRanges();selection.addRange(range);
+}
+
 export function mountServicePanel(store){
  const button=document.querySelector('#service-current');if(!button)return;
  const panel=document.createElement('dialog');panel.id='service-dialog';panel.className='service-dialog';panel.setAttribute('aria-label','Atendimento atual');
@@ -18,7 +48,11 @@ export function mountServicePanel(store){
  panel.querySelector('[data-exit-policy]').onchange=e=>{writeExitPolicy(e.target.value);status(e.target.value==='clear'?'O atendimento será limpo ao sair do roteador.':e.target.value==='keep'?'O atendimento será mantido ao sair do roteador.':'Você será perguntado ao sair do roteador.')};
  panel.querySelector('[data-clear-notes]').onclick=()=>{setServiceNotes('');panel.querySelector('[data-notes]').value='';status('Observações limpas.')};
  panel.querySelector('[data-clear-service]').onclick=()=>{if(!service.id&&!service.entries.length){status('O atendimento já está vazio.');return}if(!window.confirm('Limpar todo o atendimento atual? Esta ação apaga a linha do tempo e as observações desta sessão.'))return;clearService({keepSession:Boolean(store.session?.connected)});panel.querySelector('[data-notes]').value='';status(store.session?.connected?'Atendimento limpo. O novo registro continuará nesta conexão.':'Atendimento limpo.');paint()};
- panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{try{await navigator.clipboard.writeText(formatService({secrets,mode:b.dataset.copy==='technical'?'technical':panel.querySelector('[data-mode]').value,markdown:b.dataset.copy==='markdown'}));status('Registro copiado.')}catch{status('Cópia indisponível. Selecione o texto do registro.')}});
+ panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{
+  const text=formatService({secrets,mode:b.dataset.copy==='technical'?'technical':panel.querySelector('[data-mode]').value,markdown:b.dataset.copy==='markdown'});
+  if(safeCopyText(text)){status('Registro copiado.');return}
+  selectRecordForManualCopy(panel);status('Cópia automática indisponível. O registro foi selecionado; pressione Ctrl+C.');
+ });
  panel.querySelector('[data-export]').onclick=()=>{const url=URL.createObjectURL(new Blob([formatService({secrets,mode:panel.querySelector('[data-mode]').value})],{type:panel.querySelector('[data-mode]').value==='technical'?'application/json;charset=utf-8':'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=panel.querySelector('[data-mode]').value==='technical'?'atendimento-tecnico.json':'atendimento.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
  const handleDisconnect=()=>{if(!service.id)return;const policy=readExitPolicy();if(policy==='clear'){clearService();return}if(policy==='keep'){detachService();return}if(window.confirm('Você saiu do roteador. Deseja limpar o atendimento atual?\n\nOK = limpar\nCancelar = manter para continuar depois'))clearService();else detachService()};
  document.addEventListener('app-context-ready',()=>{const connected=Boolean(store.session?.connected);if(connected)startService(store.session);else if(wasConnected)handleDisconnect();wasConnected=connected;if(!connected&&panel.open)panel.close()});
