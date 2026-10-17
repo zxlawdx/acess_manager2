@@ -178,21 +178,34 @@
   // apps/access_manager/static/js/service/model.js
   var service = { id: null, activeSession: null, session: null, started: null, entries: [], notes: "" };
   var listeners = /* @__PURE__ */ new Set();
+  var seen = /* @__PURE__ */ new Map();
   var subscribeService = (fn) => {
     listeners.add(fn);
     return () => listeners.delete(fn);
   };
   var notify = () => listeners.forEach((fn) => fn());
-  function startService(session2) {
+  function clearService({ keepSession = false } = {}) {
+    const current = keepSession && service.id ? { id: service.id, activeSession: service.activeSession, session: service.session } : null;
+    service.id = current?.id || null;
+    service.activeSession = current?.activeSession || null;
+    service.session = current?.session || null;
+    service.started = current ? (/* @__PURE__ */ new Date()).toISOString() : null;
+    service.entries = [];
+    service.notes = "";
+    seen.clear();
+    notify();
+  }
+  function detachService() {
+    if (!service.id) return;
+    service.activeSession = null;
+    seen.clear();
+    notify();
+  }
+  function startService(session2, { preserveOnDisconnect = false } = {}) {
     const s = session2?.session;
     if (!session2?.connected) {
-      service.id = null;
-      service.activeSession = null;
-      service.session = null;
-      service.started = null;
-      service.entries = [];
-      service.notes = "";
-      notify();
+      if (preserveOnDisconnect && service.id) detachService();
+      else clearService();
       return;
     }
     const connection2 = { vendor: s?.vendor, model: s?.model, host: s?.host, port: s?.metadata?.port, scheme: s?.metadata?.scheme };
@@ -233,7 +246,6 @@
     }
     return typeof value2 === "string" ? value2.slice(0, 500).replace(/(password|passwd|senha|secret|psk)\s*[=:]\s*\S+/ig, "$1: [omitido]") : value2;
   };
-  var seen = /* @__PURE__ */ new Map();
   function observeOperation(path2, method, body, data, ok, route) {
     if (!service.id || /reveal-password|settings|host-key|operations|history|poll|export|download|preview|traffic/.test(path2)) return;
     const url = path2.split("?")[0];
@@ -266,6 +278,21 @@
   }
 
   // apps/access_manager/static/js/service/panel.js
+  var exitPolicyKey = "accessManager.serviceLog.exitPolicy";
+  var readExitPolicy = () => {
+    try {
+      const value2 = localStorage.getItem(exitPolicyKey);
+      return ["ask", "keep", "clear"].includes(value2) ? value2 : "ask";
+    } catch {
+      return "ask";
+    }
+  };
+  var writeExitPolicy = (value2) => {
+    try {
+      localStorage.setItem(exitPolicyKey, value2);
+    } catch {
+    }
+  };
   function mountServicePanel(store2) {
     const button2 = document.querySelector("#service-current");
     if (!button2) return;
@@ -273,9 +300,12 @@
     panel3.id = "service-dialog";
     panel3.className = "service-dialog";
     panel3.setAttribute("aria-label", "Atendimento atual");
-    panel3.innerHTML = '<div class="dialog-inner"><div class="dialog-header"><h2>Atendimento atual</h2><button class="button" data-dismiss>Fechar</button></div><p>Registro em memória desta sessão. Ao desconectar, o conteúdo é descartado.</p><label><input type="checkbox" data-secrets> Incluir senhas na visualização, cópia e exportação</label><label class="field">Observações do técnico<textarea data-notes rows="3"></textarea></label><div class="inline-actions"><button class="button primary" data-copy="selected">Copiar atendimento</button><button class="button" data-copy="technical">Copiar detalhes técnicos</button><button class="button" data-copy="markdown">Copiar markdown</button><button class="button" data-export>Exportar TXT</button><button class="button" data-clear>Limpar observações</button></div><label>Formato da cópia <select data-mode><option value="summary">Resumo operacional</option><option value="timeline">Linha do tempo</option><option value="prose">Texto corrido</option><option value="technical">Detalhes técnicos / JSON</option></select></label><p role="status" data-status></p><pre data-record tabindex="0"></pre></div>';
+    panel3.innerHTML = '<div class="dialog-inner"><div class="dialog-header"><h2>Atendimento atual</h2><button class="button" data-dismiss>Fechar</button></div><p>Registro em memória do atendimento atual. Você pode manter o registro ao sair do roteador ou limpar automaticamente.</p><label class="field">Ao sair do roteador<select data-exit-policy><option value="ask">Perguntar se deseja limpar</option><option value="keep">Manter atendimento</option><option value="clear">Limpar automaticamente</option></select></label><label><input type="checkbox" data-secrets> Incluir senhas na visualização, cópia e exportação</label><label class="field">Observações do técnico<textarea data-notes rows="3"></textarea></label><div class="inline-actions"><button class="button primary" data-copy="selected">Copiar atendimento</button><button class="button" data-copy="technical">Copiar detalhes técnicos</button><button class="button" data-copy="markdown">Copiar markdown</button><button class="button" data-export>Exportar TXT</button><button class="button" data-clear-service>Limpar atendimento</button><button class="button" data-clear-notes>Limpar observações</button></div><label>Formato da cópia <select data-mode><option value="summary">Resumo operacional</option><option value="timeline">Linha do tempo</option><option value="prose">Texto corrido</option><option value="technical">Detalhes técnicos / JSON</option></select></label><p role="status" data-status></p><pre data-record tabindex="0"></pre></div>';
     document.body.append(panel3);
-    let secrets = false;
+    let secrets = false, wasConnected = Boolean(store2.session?.connected);
+    const status3 = (message) => {
+      panel3.querySelector("[data-status]").textContent = message;
+    };
     const paint = () => {
       panel3.querySelector("[data-export]").textContent = panel3.querySelector("[data-mode]").value === "technical" ? "Exportar JSON técnico" : "Exportar TXT";
       button2.textContent = `Atendimento atual (${service.entries.length})`;
@@ -288,6 +318,7 @@
       panel3.querySelector("[data-mode]").value = "summary";
       panel3.querySelector("[data-secrets]").checked = false;
       panel3.querySelector("[data-notes]").value = service.notes;
+      panel3.querySelector("[data-exit-policy]").value = readExitPolicy();
       panel3.classList.toggle("aero-theme", document.documentElement.dataset.experienceTheme === "aero");
       panel3.showModal();
       paint();
@@ -306,16 +337,32 @@
       paint();
     };
     panel3.querySelector("[data-notes]").oninput = (e) => setServiceNotes(e.target.value);
-    panel3.querySelector("[data-clear]").onclick = () => {
+    panel3.querySelector("[data-exit-policy]").onchange = (e) => {
+      writeExitPolicy(e.target.value);
+      status3(e.target.value === "clear" ? "O atendimento será limpo ao sair do roteador." : e.target.value === "keep" ? "O atendimento será mantido ao sair do roteador." : "Você será perguntado ao sair do roteador.");
+    };
+    panel3.querySelector("[data-clear-notes]").onclick = () => {
       setServiceNotes("");
       panel3.querySelector("[data-notes]").value = "";
+      status3("Observações limpas.");
+    };
+    panel3.querySelector("[data-clear-service]").onclick = () => {
+      if (!service.id && !service.entries.length) {
+        status3("O atendimento já está vazio.");
+        return;
+      }
+      if (!window.confirm("Limpar todo o atendimento atual? Esta ação apaga a linha do tempo e as observações desta sessão.")) return;
+      clearService({ keepSession: Boolean(store2.session?.connected) });
+      panel3.querySelector("[data-notes]").value = "";
+      status3(store2.session?.connected ? "Atendimento limpo. O novo registro continuará nesta conexão." : "Atendimento limpo.");
+      paint();
     };
     panel3.querySelectorAll("[data-copy]").forEach((b) => b.onclick = async () => {
       try {
         await navigator.clipboard.writeText(formatService({ secrets, mode: b.dataset.copy === "technical" ? "technical" : panel3.querySelector("[data-mode]").value, markdown: b.dataset.copy === "markdown" }));
-        panel3.querySelector("[data-status]").textContent = "Registro copiado.";
+        status3("Registro copiado.");
       } catch {
-        panel3.querySelector("[data-status]").textContent = "Cópia indisponível. Selecione o texto do registro.";
+        status3("Cópia indisponível. Selecione o texto do registro.");
       }
     });
     panel3.querySelector("[data-export]").onclick = () => {
@@ -326,12 +373,30 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1e3);
     };
+    const handleDisconnect = () => {
+      if (!service.id) return;
+      const policy = readExitPolicy();
+      if (policy === "clear") {
+        clearService();
+        return;
+      }
+      if (policy === "keep") {
+        detachService();
+        return;
+      }
+      if (window.confirm("Você saiu do roteador. Deseja limpar o atendimento atual?\n\nOK = limpar\nCancelar = manter para continuar depois")) clearService();
+      else detachService();
+    };
     document.addEventListener("app-context-ready", () => {
-      startService(store2.session);
-      if (!store2.session?.connected && panel3.open) panel3.close();
+      const connected = Boolean(store2.session?.connected);
+      if (connected) startService(store2.session);
+      else if (wasConnected) handleDisconnect();
+      wasConnected = connected;
+      if (!connected && panel3.open) panel3.close();
     });
+    if (store2.session?.connected) startService(store2.session);
     window.__amObserveOperation = observeOperation;
-    window.addEventListener("pagehide", () => startService(null));
+    window.addEventListener("pagehide", () => clearService());
   }
 
   // apps/access_manager/static/js/ui/theme.js

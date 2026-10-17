@@ -2,11 +2,17 @@ import {formatHumanService,opticalFacts} from './human-formatter.js';
 // Current call only. Never serialize this model to storage, telemetry or backend.
 export const service={id:null,activeSession:null,session:null,started:null,entries:[],notes:''};
 const listeners=new Set();
+const seen=new Map();
 export const subscribeService=fn=>{listeners.add(fn);return()=>listeners.delete(fn)};
 const notify=()=>listeners.forEach(fn=>fn());
-export function startService(session){
+export function clearService({keepSession=false}={}){
+ const current=keepSession&&service.id?{id:service.id,activeSession:service.activeSession,session:service.session}:null;
+ service.id=current?.id||null;service.activeSession=current?.activeSession||null;service.session=current?.session||null;service.started=current?new Date().toISOString():null;service.entries=[];service.notes='';seen.clear();notify();
+}
+export function detachService(){if(!service.id)return;service.activeSession=null;seen.clear();notify()}
+export function startService(session,{preserveOnDisconnect=false}={}){
  const s=session?.session;
- if(!session?.connected){service.id=null;service.activeSession=null;service.session=null;service.started=null;service.entries=[];service.notes='';notify();return}
+ if(!session?.connected){if(preserveOnDisconnect&&service.id)detachService();else clearService();return}
  const connection={vendor:s?.vendor,model:s?.model,host:s?.host,port:s?.metadata?.port,scheme:s?.metadata?.scheme};
  const id=s?.session_id||`${s?.vendor}:${s?.host}`;
  if(service.activeSession===id)return;
@@ -30,7 +36,6 @@ const redact=value=>{
  }
  return typeof value==='string'?value.slice(0,500).replace(/(password|passwd|senha|secret|psk)\s*[=:]\s*\S+/ig,'$1: [omitido]'):value;
 };
-const seen=new Map();
 export function observeOperation(path,method,body,data,ok,route){
  if(!service.id||/reveal-password|settings|host-key|operations|history|poll|export|download|preview|traffic/.test(path))return;
  const url=path.split('?')[0];
