@@ -1,0 +1,37 @@
+name: Sync generated frontend (clipboard fix)
+
+on:
+  push:
+    branches:
+      - fix/vela-copy-crash
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: python tools/sync_frontend.py
+      - name: Commit generated bundles when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- apps/access_manager/static/js/runtime.js apps/access_manager/static/js/world-runtime.js apps/access_manager/static/js/voxel-runtime.js; then
+            echo 'Generated bundles already synchronized.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/access_manager/static/js/runtime.js apps/access_manager/static/js/world-runtime.js apps/access_manager/static/js/voxel-runtime.js
+          git commit -m 'build: sync generated frontend bundles'
+          git push origin HEAD:fix/vela-copy-crash
