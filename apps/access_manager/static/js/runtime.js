@@ -293,41 +293,6 @@
     } catch {
     }
   };
-  function safeCopyText(value2) {
-    const text2 = String(value2 ?? "");
-    const active2 = document.activeElement;
-    const textarea = document.createElement("textarea");
-    textarea.value = text2;
-    textarea.setAttribute("readonly", "");
-    textarea.setAttribute("aria-hidden", "true");
-    textarea.style.position = "fixed";
-    textarea.style.left = "-10000px";
-    textarea.style.top = "0";
-    textarea.style.width = "1px";
-    textarea.style.height = "1px";
-    textarea.style.opacity = "0";
-    textarea.style.pointerEvents = "none";
-    document.body.append(textarea);
-    let copied = false;
-    try {
-      textarea.focus({ preventScroll: true });
-      textarea.select();
-      textarea.setSelectionRange(0, text2.length);
-      copied = document.execCommand("copy") === true;
-    } catch {
-      copied = false;
-    }
-    textarea.remove();
-    try {
-      active2?.focus?.({ preventScroll: true });
-    } catch {
-      try {
-        active2?.focus?.();
-      } catch {
-      }
-    }
-    return copied;
-  }
   function selectRecordForManualCopy(panel3) {
     const record = panel3.querySelector("[data-record]");
     if (!record) return;
@@ -407,14 +372,15 @@
       status3(store2.session?.connected ? "Atendimento limpo. O novo registro continuará nesta conexão." : "Atendimento limpo.");
       paint();
     };
-    panel3.querySelectorAll("[data-copy]").forEach((b) => b.onclick = () => {
+    panel3.querySelectorAll("[data-copy]").forEach((b) => b.onclick = async () => {
       const text2 = formatService({ secrets, mode: b.dataset.copy === "technical" ? "technical" : panel3.querySelector("[data-mode]").value, markdown: b.dataset.copy === "markdown" });
-      if (safeCopyText(text2)) {
+      try {
+        await navigator.clipboard.writeText(text2);
         status3("Registro copiado.");
-        return;
+      } catch {
+        selectRecordForManualCopy(panel3);
+        status3("Não foi possível copiar automaticamente. O registro foi selecionado; pressione Ctrl+C.");
       }
-      selectRecordForManualCopy(panel3);
-      status3("Cópia automática indisponível. O registro foi selecionado; pressione Ctrl+C.");
     });
     panel3.querySelector("[data-export]").onclick = () => {
       const url = URL.createObjectURL(new Blob([formatService({ secrets, mode: panel3.querySelector("[data-mode]").value })], { type: panel3.querySelector("[data-mode]").value === "technical" ? "application/json;charset=utf-8" : "text/plain;charset=utf-8" }));
