@@ -5,32 +5,79 @@
 <link rel="stylesheet" href="{{ static('access_manager/css/professional.css') }}">
 <link rel="stylesheet" href="{{ static('access_manager/css/vela-integration.css') }}">
 
-<section id="login-page" class="app-wrapper" aria-label="Conectar ao equipamento"><div class="connection-card"><section class="connection-content"><div class="brand"><span class="brand-icon">⌘</span><strong>Access Manager</strong></div><p class="connection-eyebrow">ACESSO AO EQUIPAMENTO</p><h1>Conectar ao equipamento</h1><p class="connection-intro">Informe o endereço e as credenciais para iniciar uma sessão no equipamento.</p><form id="connect-form"><div class="field"><label for="connection-vendor">Equipamento</label><select id="connection-vendor" name="vendor"><option value="auto">Huawei / ZTE (automático)</option><option value="juniper">Juniper / Junos — infraestrutura</option></select></div><div id="juniper-connection" hidden><div class="field"><label for="connection-transport">Transporte</label><select id="connection-transport" name="transport"><option value="ssh">SSH / XML</option><option value="auto">Automático (NETCONF → SSH)</option><option value="netconf">NETCONF</option></select></div><details><summary>Configurações avançadas</summary><div class="form-grid"><div class="field"><label>Porta SSH</label><input name="ssh_port" type="number" min="1" max="65535" value="22"></div><div class="field"><label>Porta NETCONF</label><input name="netconf_port" type="number" min="1" max="65535" value="830"></div></div><small>Valide a identidade do servidor por um canal independente.</small><button class="button" type="button" id="inspect-host-key">Verificar chave SSH</button></details><input name="port" type="hidden"></div><div class="field"><label for="connection-host">IP ou IP:porta</label><input id="connection-host" name="host" autocomplete="off" placeholder="192.168.1.1" required></div><div class="field"><label for="connection-user">Usuário</label><input id="connection-user" name="username" autocomplete="username" required></div><div class="field"><label for="connection-password">Senha</label><div class="password-field"><input id="connection-password" name="password" type="password" autocomplete="current-password" required><button class="button" type="button" data-toggle-password aria-label="Mostrar senha">Mostrar</button></div></div><label class="https-toggle"><input name="https" type="checkbox"> HTTPS</label><div class="connection-status" id="connection-status" role="status">Pronto para conectar</div><button class="button primary" id="connect-button" type="submit">Conectar ao equipamento</button><p id="connection-feedback" role="alert"></p></form><p class="connection-security">As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.</p></section><aside class="connection-visual" aria-label="Ilustração de rede"><svg class="network-art" viewBox="0 0 350 310" role="img" aria-labelledby="art-title">
-      <title id="art-title">Nós conectados em uma rede abstrata suave</title><defs>
-       <linearGradient id="art-bg" x1="0" x2="1" y1="0" y2="1">
-        <stop stop-color="#faf9fd"></stop>
-        <stop offset="1" stop-color="#e8e5f4"></stop>
-       </linearGradient>
-       <linearGradient id="art-line" x1="0" x2="1">
-        <stop stop-color="#b5a2d8"></stop>
-        <stop offset="1" stop-color="#a5bfdf"></stop>
-       </linearGradient>
-      </defs> <rect x="16" y="14" width="318" height="282" rx="32" fill="url(#art-bg)"></rect> <circle cx="175" cy="151" r="105" fill="#ede9f7" opacity=".8"></circle> <path d="M82 92 174 151 269 82M174 151l-79 77m79-77 100 71M82 92l13 136m174-146 5 140" fill="none" stroke="url(#art-line)" stroke-width="2.5" stroke-linecap="round"></path> <circle cx="82" cy="92" r="20" fill="#fff" stroke="#cabce3" stroke-width="3"></circle> <circle cx="269" cy="82" r="16" fill="#fff" stroke="#b5c9e5" stroke-width="3"></circle> <circle cx="95" cy="228" r="17" fill="#fff" stroke="#b5c9e5" stroke-width="3"></circle> <circle cx="274" cy="222" r="22" fill="#fff" stroke="#cabce3" stroke-width="3"></circle> <circle cx="175" cy="151" r="32" fill="#7053ad"></circle> <circle cx="175" cy="151" r="12" fill="#fff" opacity=".95"></circle> <circle cx="82" cy="92" r="6" fill="#a78bcc"></circle> <circle cx="269" cy="82" r="5" fill="#88a9d0"></circle> <circle cx="95" cy="228" r="5" fill="#88a9d0"></circle> <circle cx="274" cy="222" r="7" fill="#a78bcc"></circle> <circle cx="47" cy="165" r="4" fill="#c6b9dc"></circle> <circle cx="309" cy="153" r="5" fill="#bed0e8"></circle>
-     </svg>
-<p>Um ponto de partida claro para sua rede.</p></aside></div></section>
+<section id="login-page" class="app-wrapper" aria-label="Conectar ao equipamento">
+  <div class="connection-card">
+    <section class="connection-content">
+      <div class="brand"><span class="brand-icon">&gt;_</span><strong>ACCESS_MANAGER</strong></div>
+      <p class="connection-eyebrow">AUTH_GATE // DEVICE_SESSION</p>
+      <h1>Conectar ao equipamento</h1>
+      <p class="connection-intro">Inicialize uma sessão informando o alvo e as credenciais do equipamento.</p>
+      <form id="connect-form">
+        <div class="field">
+          <label for="connection-vendor">Equipamento</label>
+          <select id="connection-vendor" name="vendor">
+            <option value="auto">Huawei / ZTE (automático)</option>
+            <option value="juniper">Juniper / Junos — infraestrutura</option>
+          </select>
+        </div>
+        <div id="juniper-connection" hidden>
+          <div class="field">
+            <label for="connection-transport">Transporte</label>
+            <select id="connection-transport" name="transport">
+              <option value="ssh">SSH / XML</option>
+              <option value="auto">Automático (NETCONF → SSH)</option>
+              <option value="netconf">NETCONF</option>
+            </select>
+          </div>
+          <details>
+            <summary>Configurações avançadas</summary>
+            <div class="form-grid">
+              <div class="field"><label>Porta SSH</label><input name="ssh_port" type="number" min="1" max="65535" value="22"></div>
+              <div class="field"><label>Porta NETCONF</label><input name="netconf_port" type="number" min="1" max="65535" value="830"></div>
+            </div>
+            <small>Valide a identidade do servidor por um canal independente.</small>
+            <button class="button" type="button" id="inspect-host-key">Verificar chave SSH</button>
+          </details>
+          <input name="port" type="hidden">
+        </div>
+        <div class="field"><label for="connection-host">IP ou IP:porta</label><input id="connection-host" name="host" autocomplete="off" placeholder="192.168.1.1" required></div>
+        <div class="field"><label for="connection-user">Usuário</label><input id="connection-user" name="username" autocomplete="username" required></div>
+        <div class="field"><label for="connection-password">Senha</label><div class="password-field"><input id="connection-password" name="password" type="password" autocomplete="current-password" required><button class="button" type="button" data-toggle-password aria-label="Mostrar senha">Mostrar</button></div></div>
+        <label class="https-toggle"><input name="https" type="checkbox"> HTTPS</label>
+        <div class="connection-status" id="connection-status" role="status">Pronto para conectar</div>
+        <button class="button primary" id="connect-button" type="submit">Conectar ao equipamento</button>
+        <p id="connection-feedback" role="alert"></p>
+      </form>
+      <p class="connection-security">As credenciais existem somente no contexto da sessão com o equipamento.</p>
+    </section>
+    <aside class="connection-visual" aria-label="Console de inicialização">
+      <p>Interface técnica para leitura, diagnóstico e operação de rede.</p>
+    </aside>
+  </div>
+</section>
+
 <div class="app-shell" hidden>
   <header class="app-topbar context-bar" aria-label="Contexto do equipamento">
     <button id="mobile-nav" class="icon-button mobile-only" aria-label="Abrir navegação">☰</button>
-    <div class="brand">Access <b>Manager</b></div>
-    <span id="ctx-module">/ Juniper / Junos BNG</span><button class="button" id="juniper-help" type="button">Ajuda</button><span class="vendor-badge" id="ctx-vendor">—</span>
+    <div class="brand">ACCESS_<b>MANAGER</b></div>
+    <span id="ctx-module">/ Juniper / Junos BNG</span>
+    <button class="button" id="juniper-help" type="button">Ajuda</button>
+    <span class="vendor-badge" id="ctx-vendor">—</span>
     <div class="device-title"><strong id="ctx-model">Sem equipamento</strong><small id="ctx-host">—</small></div>
     <span class="status-badge" id="ctx-status">○ Desconectado</span>
-    <small class="context-meta" id="ctx-updated">—</small><button class="button secondary" id="disconnect-button" disabled>Desconectar</button>
+    <small class="context-meta" id="ctx-updated">—</small>
+    <button class="button secondary" id="disconnect-button" disabled>Desconectar</button>
   </header>
 
   <div class="layout">
     <aside class="app-sidebar" id="sidebar" aria-label="Navegação principal">
-      <div class="nav-group" data-juniper-nav hidden>INFRAESTRUTURA JUNIPER</div><button class="nav" data-juniper-nav data-view="juniperOverview" hidden>01 <span>Visão geral</span></button><button class="nav" data-juniper-nav data-view="subscribers" hidden>02 <span>Assinantes PPPoE</span></button><button class="nav" data-juniper-nav data-view="juniperInterfaces" hidden>03 <span>Interfaces</span></button><button class="nav" data-juniper-nav data-view="juniperSystem" hidden>04 <span>Sistema</span></button><button class="nav" data-juniper-nav data-view="juniperDiagnostics" hidden>05 <span>Diagnóstico</span></button><div class="nav-group">VISÃO OPERACIONAL</div>
+      <div class="nav-group" data-juniper-nav hidden>INFRAESTRUTURA JUNIPER</div>
+      <button class="nav" data-juniper-nav data-view="juniperOverview" hidden>01 <span>Visão geral</span></button>
+      <button class="nav" data-juniper-nav data-view="subscribers" hidden>02 <span>Assinantes PPPoE</span></button>
+      <button class="nav" data-juniper-nav data-view="juniperInterfaces" hidden>03 <span>Interfaces</span></button>
+      <button class="nav" data-juniper-nav data-view="juniperSystem" hidden>04 <span>Sistema</span></button>
+      <button class="nav" data-juniper-nav data-view="juniperDiagnostics" hidden>05 <span>Diagnóstico</span></button>
+      <div class="nav-group">VISÃO OPERACIONAL</div>
       <button class="nav active" data-view="overview">01 <span>Visão geral</span></button>
       <button class="nav" data-view="clients">02 <span>Clientes</span></button>
       <button class="nav" data-view="traffic">03 <span>Tráfego</span></button>
@@ -48,17 +95,18 @@
 
     <main class="app-main">
       <div class="page-content">
-      <div class="page-heading">
-        <div><small id="page-kicker">VISÃO OPERACIONAL</small><h1 id="page-title">Visão geral</h1></div>
-        <div id="page-actions"></div>
-      </div>
-      <section id="workspace" aria-live="polite">
-        <div class="empty-state"><strong>Nenhum equipamento conectado</strong><span>Informe IP, usuário e senha para iniciar uma sessão.</span></div>
-      </section>
+        <div class="page-heading">
+          <div><small id="page-kicker">VISÃO OPERACIONAL</small><h1 id="page-title">Visão geral</h1></div>
+          <div id="page-actions"></div>
+        </div>
+        <section id="workspace" aria-live="polite">
+          <div class="empty-state"><strong>Nenhum equipamento conectado</strong><span>Informe IP, usuário e senha para iniciar uma sessão.</span></div>
+        </section>
       </div>
     </main>
   </div>
 </div>
+
 <dialog id="action-dialog" aria-labelledby="dialog-title"><div id="dialog-body"></div></dialog>
 <div id="toast-region" aria-live="polite" aria-atomic="true"></div>
 

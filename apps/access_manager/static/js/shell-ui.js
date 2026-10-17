@@ -5,13 +5,18 @@
   const shell = document.querySelector('.app-shell');
   const sidebar = document.querySelector('#sidebar');
   const navToggle = document.querySelector('#mobile-nav');
-  const disconnect = document.querySelector('#disconnect-button');
   if (!shell || !sidebar || !navToggle) return;
 
+  /* The terminal design system is intentionally dark-only. Remove ambiguity
+     from previously persisted light/dark preferences without touching any
+     application/session state. */
+  root.dataset.theme = 'terminal';
+  root.style.colorScheme = 'dark';
+  try { window.localStorage.removeItem('access-manager.theme'); } catch (_) {}
+  document.querySelector('.shell-theme-toggle')?.remove();
+
   const desktop = window.matchMedia('(min-width: 781px)');
-  const darkPreference = window.matchMedia('(prefers-color-scheme: dark)');
   const SIDEBAR_KEY = 'access-manager.sidebar-collapsed';
-  const THEME_KEY = 'access-manager.theme';
 
   function safeRead(key) {
     try { return window.localStorage.getItem(key); } catch (_) { return null; }
@@ -59,8 +64,8 @@
     syncNavigationToggle();
   }
 
-  /* app.js already owns the mobile drawer through onclick. This listener adds
-     the desktop compact state without replacing that existing handler. */
+  /* app.js still owns the mobile drawer click. This additional listener only
+     manages the persistent compact desktop state. */
   navToggle.addEventListener('click', () => {
     if (desktop.matches) {
       shell.classList.toggle('sidebar-collapsed');
@@ -86,38 +91,6 @@
 
   desktop.addEventListener?.('change', applyStoredSidebarState);
 
-  const themeButton = document.createElement('button');
-  themeButton.type = 'button';
-  themeButton.className = 'button secondary shell-theme-toggle';
-  themeButton.setAttribute('aria-label', 'Alternar tema claro e escuro');
-  themeButton.title = 'Alternar tema claro e escuro';
-
-  function requestedTheme() {
-    const stored = safeRead(THEME_KEY);
-    if (stored === 'light' || stored === 'dark') return stored;
-    return darkPreference.matches ? 'dark' : 'light';
-  }
-
-  function applyTheme(theme, persist) {
-    const next = theme === 'dark' ? 'dark' : 'light';
-    root.dataset.theme = next;
-    root.style.colorScheme = next;
-    themeButton.textContent = next === 'dark' ? 'Tema: escuro' : 'Tema: claro';
-    themeButton.setAttribute('aria-pressed', String(next === 'dark'));
-    if (persist) safeWrite(THEME_KEY, next);
-  }
-
-  themeButton.addEventListener('click', () => {
-    applyTheme(root.dataset.theme === 'dark' ? 'light' : 'dark', true);
-  });
-
-  if (disconnect?.parentNode) disconnect.parentNode.insertBefore(themeButton, disconnect);
-  applyTheme(requestedTheme(), false);
-
-  darkPreference.addEventListener?.('change', (event) => {
-    if (!safeRead(THEME_KEY)) applyTheme(event.matches ? 'dark' : 'light', false);
-  });
-
   function syncConnectionA11y() {
     const status = document.querySelector('#ctx-status');
     if (!status) return;
@@ -136,6 +109,8 @@
     });
   }
 
+  /* Juniper navigation is inserted dynamically after mountApp(); re-decorate it
+     without coupling this shell controller to the infrastructure module. */
   new MutationObserver(() => {
     decorateNavigation();
     syncNavigationToggle();
