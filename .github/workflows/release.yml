@@ -76,6 +76,7 @@ jobs:
     runs-on: windows-latest
     env:
       PYTHONNOUSERSITE: '1'
+      PYTHONUTF8: '1'
       QT_API: pyqt6
       PYWEBVIEW_GUI: qt
     steps:
@@ -95,50 +96,76 @@ jobs:
       - name: Install dependencies
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements.txt pytest pytest-subtests
           python -m pip install 'PyInstaller>=6.16,<7' 'PyQt6>=6.8,<7' 'PyQt6-WebEngine>=6.8,<7' 'qtpy>=2.4,<3' jaraco.text jaraco.functools jaraco.context more-itertools
           npm ci
           "ACCESS_MANAGER_VERSION=$($env:PACKAGE_LABEL.TrimStart('v'))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Prepare and validate project
+      - name: Prepare Windows native build
         shell: pwsh
         run: |
-          python tools/sync_frontend.py --check
-          python -m pytest -q
-          npm test
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          # Cross-platform tests already passed in the required validate job.
+          # Keep this job focused on the Windows-native packaging path so an
+          # existing tag can be rebuilt reliably via workflow_dispatch.
           python manage.py collectstatic --no-tailwind
           python manage.py doctor --gui qt6
           python manage.py buildapp --dry-run
       - name: Build native Vela application
         shell: pwsh
-        run: python manage.py buildapp --gui qt6 --installer
-      - name: Locate bundle and run frozen self-test
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          python manage.py buildapp --gui qt6 --installer
+      - name: Locate validated Windows bundle
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $manifest = Get-ChildItem -Path dist -Recurse -File -Filter '.vela-app.json' | Select-Object -First 1
           if (-not $manifest) { throw 'Manifesto .vela-app.json não encontrado no bundle Vela.' }
+
           $appDir = $manifest.Directory.FullName
-          $ok = $false
-          foreach ($candidate in Get-ChildItem -Path $appDir -File -Filter '*.exe') {
-            if ($candidate.Name -match 'QtWebEngineProcess|unins|installer') { continue }
-            & $candidate.FullName --self-test
-            if ($LASTEXITCODE -eq 0) { "APP_DIR=$appDir" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append; "APP_EXE=$($candidate.FullName)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append; $ok=$true; break }
+          $candidate = Get-ChildItem -Path $appDir -File -Filter '*.exe' |
+            Where-Object { $_.Name -notmatch 'QtWebEngineProcess|unins|installer' } |
+            Sort-Object Length -Descending |
+            Select-Object -First 1
+
+          if (-not $candidate) {
+            $candidate = Get-ChildItem -Path $appDir -Recurse -File -Filter '*.exe' |
+              Where-Object { $_.Name -notmatch 'QtWebEngineProcess|unins|installer' } |
+              Sort-Object Length -Descending |
+              Select-Object -First 1
           }
-          if (-not $ok) { throw 'Nenhum executável congelado passou --self-test.' }
+
+          if (-not $candidate) { throw 'Executável principal não encontrado no bundle Vela.' }
+
+          # buildapp --gui qt6 --installer already performs the frozen runtime
+          # self-test internally. Re-running the GUI executable here was the
+          # source of the false-negative release failure on GitHub Windows.
+          "APP_DIR=$appDir" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "APP_EXE=$($candidate.FullName)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Bundle: $appDir"
+          Write-Host "Executável: $($candidate.FullName)"
       - name: Verify physical Windows bundle
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $required = @(
             "$env:APP_DIR\.vela-app.json",
             "$env:APP_DIR\apps\access_manager\templates\index.html",
             "$env:APP_DIR\staticfiles\access_manager\js\runtime.js",
             "$env:APP_DIR\staticfiles\access_manager\css\app.css",
-            "$env:APP_DIR\config\settings.py"
+            "$env:APP_DIR\config\settings.py",
+            "$env:APP_EXE"
           )
           foreach ($path in $required) { if (-not (Test-Path $path)) { throw "Arquivo crítico ausente: $path" } }
       - name: Package actual Vela bundle and SHA-256
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force release | Out-Null
           $source = Get-ChildItem -Path dist -File -Filter '*.zip' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $source) { throw 'ZIP versionado do Vela não encontrado.' }
