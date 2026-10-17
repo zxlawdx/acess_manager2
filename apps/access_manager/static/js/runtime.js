@@ -42,7 +42,7 @@
       const url = new URL(path2, window.location.origin);
       const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read2 ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
       const text2 = await res.text(), data = parseResponseBody(text2);
-      if (!read2 && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/diagnostics/full/run", "/api/device/diagnostics/full/history", "/api/device/diagnostics/full/export", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path2)) clearSnapshots();
+      if (!read2 && !["/api/device/wifi/reveal-password", "/api/device/traffic/history", "/api/profiles/preview", "/api/profiles/capture", "/api/triage", "/api/device/diagnostics/ping", "/api/device/diagnostics/traceroute", "/api/device/diagnostics/dns-lookup", "/api/device/diagnostics/speedtest-discovery", "/api/device/configuration/read", "/api/device/configuration/preview", "/api/device/factory-reset/preview", "/api/device/diagnostics/speedtest/poll", "/api/device/diagnostics/workstation", "/api/device/diagnostics/full/run", "/api/device/diagnostics/full/history", "/api/device/diagnostics/full/export", "/api/device/traffic/device-history", "/api/management/artifacts/download"].includes(path2)) clearSnapshots();
       if (!scopeActive(scope) || canCache && epoch !== revision) throw cancelled();
       if (!res.ok || data?.success === false) {
         const details = data?.error || {};
@@ -141,12 +141,16 @@
   }
 
   // apps/access_manager/static/js/core/store.js
-  var store = { session: null, capabilities: {}, view: "overview", setSession(v) {
+  var store = { session: null, capabilities: {}, snapshot: null, view: "overview", setSession(v) {
     this.session = v;
+    if (!v?.connected) this.snapshot = null;
     renderContext();
   }, setCapabilities(v) {
     this.capabilities = v || {};
     document.dispatchEvent(new CustomEvent("capabilities"));
+  }, setSnapshot(v) {
+    this.snapshot = v || null;
+    document.dispatchEvent(new CustomEvent("device-snapshot", { detail: this.snapshot }));
   } };
   function renderContext() {
     const s = store.session?.session;
@@ -218,9 +222,9 @@
   function cap(feature) {
     return window.__amStore?.capabilities?.[feature] || { read: "UNKNOWN", write: "UNKNOWN", enabled: { read: false, write: false }, evidence: "UNKNOWN" };
   }
-  function capBadge(state) {
-    const kind = state === "SUPPORTED" ? "ok" : state === "PARTIAL" || state === "UNKNOWN" ? "warn" : "bad";
-    return badge(state, kind);
+  function capBadge(state2) {
+    const kind = state2 === "SUPPORTED" ? "ok" : state2 === "PARTIAL" || state2 === "UNKNOWN" ? "warn" : "bad";
+    return badge(state2, kind);
   }
   function toast(message) {
     if (!message) return;
@@ -819,26 +823,26 @@
     const scope = currentScope(), host = document.querySelector(".traffic-main");
     if (!host) return;
     const id = window.__amStore?.session?.session?.session_id;
-    let state = sessions.get(id);
-    if (!state) {
+    let state2 = sessions.get(id);
+    if (!state2) {
       sessions.clear();
-      state = { histories: /* @__PURE__ */ new Map(), sources: [] };
-      sessions.set(id, state);
+      state2 = { histories: /* @__PURE__ */ new Map(), sources: [] };
+      sessions.set(id, state2);
     }
     let selected2 = "", seconds = 300, timer, busy = false, historyStamp = 0;
     const remember = (r) => {
-      const key = streamKey(r), h = state.histories.get(key) || [], timestamp = r.timestamp || Date.now() / 1e3;
+      const key = streamKey(r), h = state2.histories.get(key) || [], timestamp = r.timestamp || Date.now() / 1e3;
       if (!h.some((v) => v.timestamp === timestamp)) h.push({ ...r, timestamp });
       h.sort((a, b) => a.timestamp - b.timestamp);
-      state.histories.set(key, h.slice(-2e3));
+      state2.histories.set(key, h.slice(-2e3));
     };
     function plot() {
-      const source = state.sources.find((s) => streamKey(s) === selected2);
+      const source = state2.sources.find((s) => streamKey(s) === selected2);
       if (!source) return;
       host.dataset.stream = selected2;
       text(host.querySelector("[data-counter-identity]"), source.identity || "Não disponível");
       for (const key of ["rx_mbps", "tx_mbps", "rx_bytes", "tx_bytes", "rx_packets", "tx_packets", "rx_errors", "tx_errors", "rx_discard", "tx_discard"]) text(host.querySelector(`[data-value="${key}"]`), key.endsWith("mbps") ? rate(source[key]) : key.endsWith("bytes") ? formatBytes(source.counters?.[key]) : String(source.counters?.[key] ?? "Não disponível"));
-      const h = (state.histories.get(selected2) || []).filter((r) => r.timestamp >= Date.now() / 1e3 - seconds), max = Math.max(1, ...h.flatMap((r) => [r.rx_mbps, r.tx_mbps]).filter(Number.isFinite)), min = h[0]?.timestamp, last = h.at(-1)?.timestamp;
+      const h = (state2.histories.get(selected2) || []).filter((r) => r.timestamp >= Date.now() / 1e3 - seconds), max = Math.max(1, ...h.flatMap((r) => [r.rx_mbps, r.tx_mbps]).filter(Number.isFinite)), min = h[0]?.timestamp, last = h.at(-1)?.timestamp;
       host._chartHistory = h;
       text(host.querySelector("[data-axis-max]"), max.toFixed(1));
       for (const [direction, key] of [["rx", "rx_mbps"], ["tx", "tx_mbps"]]) {
@@ -868,7 +872,7 @@
         text(host.querySelector("[data-sample-status]"), "Nenhum contador ativo observado nesta sessão; valores anteriores, se existentes.");
         return;
       }
-      state.sources = sources;
+      state2.sources = sources;
       sources.forEach(remember);
       const select = host.querySelector("[data-stream-select]");
       for (const source of sources) {
@@ -959,18 +963,41 @@
   // apps/access_manager/static/js/workspaces/views/overview.js
   var initial = null;
   var metric2 = (title, value2, key) => `<article class="am-metric"><span>${title}</span><strong class="${key === "status" ? ["Conectado", "Ativo"].includes(value2) ? "value-success" : ["Desconectado", "Sem link"].includes(value2) ? "value-danger" : "muted" : "tech-value"}" ${key ? `data-overview-${key}` : ""}>${esc(value2 ?? "Não disponível")}</strong></article>`;
+  var statusLabel = { OK: "[ OK ]", INFO: "[ INFO ]", WARNING: "[ ATENÇÃO ]", CRITICAL: "[ CRÍTICO ]", UNKNOWN: "[ PARCIAL ]", UNSUPPORTED: "[ N/D ]" };
+  var severityClass = (status3) => status3 === "CRITICAL" ? "danger" : status3 === "WARNING" ? "warning" : status3 === "OK" ? "success" : "info";
+  function triageMarkup(triage) {
+    const issues = Array.isArray(triage?.issues) ? triage.issues : [], status3 = triage?.status || "UNKNOWN";
+    const checked = triage?.checked_at ? new Date(triage.checked_at).toLocaleTimeString("pt-BR") : "—";
+    const content = issues.length ? issues.slice(0, 6).map((issue) => `<article class="notice ${severityClass(issue.severity)}"><strong>${esc(statusLabel[issue.severity] || `[ ${issue.severity} ]`)} ${esc(issue.title)}</strong><p>${esc(issue.description)}</p>${issue.suggested_action ? `<small>${esc(issue.suggested_action)}</small>` : ""}</article>`).join("") : `<p class="${status3 === "OK" ? "value-success" : "muted"}">${status3 === "OK" ? "[ OK ] Nenhuma anomalia foi confirmada nas leituras disponíveis." : "Nenhuma falha foi confirmada; a triagem está parcial porque existem métricas indisponíveis ou não suportadas."}</p>`;
+    const coverage = Object.entries(triage?.coverage || {}).map(([key, value2]) => `<span class="status-badge">${esc(key.toUpperCase())}:${esc(value2)}</span>`).join(" ");
+    return `<section class="am-panel overview-triage" aria-labelledby="triage-title"><div class="panel-header"><div><small>[ SAÚDE DA CONEXÃO ]</small><h2 id="triage-title">TRIAGEM AUTOMÁTICA</h2></div><span class="status-badge" data-triage-status="${esc(status3)}">${esc(statusLabel[status3] || status3)}</span></div><div class="triage-issues">${content}</div><div class="toolbar"><small class="muted">Atualizado ${esc(checked)}${triage?.source_revision ? ` · snapshot ${esc(String(triage.source_revision))}` : ""}</small><div class="inline-actions">${coverage}<button class="button" type="button" data-triage-complete>DIAGNÓSTICO COMPLETO</button></div></div></section>`;
+  }
   async function render2() {
-    const opticalApplicable = cap("optical").read !== "UNSUPPORTED", scope = currentScope(), paths = ["/api/device", "/api/device/wan", "/api/device/optical", "/api/device/clients", "/api/device/traffic", "/api/device/wifi/ssids", "/api/device/wifi/radios"];
+    const opticalApplicable = cap("optical").read !== "UNSUPPORTED", scope = currentScope();
+    const paths = ["/api/device", "/api/device/wan", "/api/device/optical", "/api/device/clients", "/api/device/traffic", "/api/device/wifi/ssids", "/api/device/wifi/radios", "/api/device/lan", "/api/device/dns"];
     const results = await Promise.allSettled(paths.map((p) => p === "/api/device/optical" && !opticalApplicable ? Promise.resolve(null) : request(p, { scope })));
     if (!scopeActive(scope)) throw cancelled();
-    const [device, wan2, optical, clients, traffic, wifi, radios2] = results.map((r) => r.status === "fulfilled" ? r.value : null), d = device || {}, w = (Array.isArray(wan2) ? wan2[0] : wan2) || {}, o = optical || {};
+    const values = Object.fromEntries(paths.map((path2, index) => [path2, results[index].status === "fulfilled" ? results[index].value : null]));
+    const errors = Object.fromEntries(paths.flatMap((path2, index) => results[index].status === "rejected" ? [[path2, results[index].reason?.message || "Leitura indisponível"]] : []));
+    const device = values["/api/device"], wan2 = values["/api/device/wan"], optical = values["/api/device/optical"], clients = values["/api/device/clients"], traffic = values["/api/device/traffic"], wifi = values["/api/device/wifi/ssids"], radios2 = values["/api/device/wifi/radios"], lan2 = values["/api/device/lan"], dns = values["/api/device/dns"];
+    const d = device || {}, w = (Array.isArray(wan2) ? wan2[0] : wan2) || {}, o = optical || {};
     initial = traffic;
-    const source = traffic?.sources?.find((s) => s.source === "wan"), rx = o.rx_dbm ?? o.rx ?? o.rx_power, wi = Array.isArray(wifi) ? wifi : [], ra = Array.isArray(radios2) ? radios2 : [], cl = Array.isArray(clients) ? clients : [], signals = cl.map((c) => c.rssi).filter(Number.isFinite), rssi = signals.length ? signals.reduce((a, b) => a + b, 0) / signals.length : null, alerts = [];
-    if (["down", "disconnected"].includes(String(w.status).toLowerCase())) alerts.push("WAN informou estado desconectado.");
-    if (rssi != null && rssi < -75) alerts.push("RSSI médio das associações abaixo de −75 dBm.");
-    return `<header class="am-page-header"><small>PAINEL DO EQUIPAMENTO</small><h2>${esc(d.model || window.__amStore?.session?.session?.model || "Equipamento")}</h2><p class="muted">${esc(d.manufacturer || window.__amStore?.session?.session?.vendor || "")} · equipamento da sessão atual</p></header><div class="overview-metrics">${metric2("Status da internet", linkStatus(w.status), "status")}${metric2("IP WAN", w.ipv4, "wan-ip")}${metric2("Clientes conectados", Array.isArray(clients) ? cl.length : null, "clients")}${opticalApplicable ? metric2("RX óptico", rx == null ? null : rx + " dBm", "optical") : ""}${metric2("Consumo atual", rate(source?.rx_mbps), "throughput")}</div><div class="am-dashboard-split">${trafficChart("Fluxo de tráfego")}<section class="am-panel"><h2>Resumo do equipamento</h2>${fields([["Uptime", uptime(d.uptime_seconds)], ["Firmware", d.firmware], ["Temperatura", d.temperature_c == null ? null : d.temperature_c + " °C"], ["CPU", d.cpu_percent == null ? null : d.cpu_percent + " %"], ["Memória", d.memory_percent == null ? null : d.memory_percent + " %"], ["Modelo", d.model], ["Serial", d.serial]])}</section></div><div class="am-three-columns"><section class="am-panel"><h2>WAN</h2>${fields([["Interface", w.name], ["Gateway", w.gateway], ["VLAN", w.vlan], ["Link", linkStatus(w.status)], ["Conexão", w.connection_type]])}</section><section class="am-panel"><h2>Wi-Fi</h2>${fields([["SSIDs observados", wi.map((s) => s.ssid).filter(Boolean)], ["Bandas", ra.map((r) => r.band ?? r.banda)], ["Clientes Wi-Fi", Array.isArray(clients) ? cl.filter((c) => c.connection_type === "Wi-Fi").length : null], ["Canais", ra.map((r) => r.channel ?? r.canal)]])}</section><section class="am-panel"><h2>Alertas recentes</h2>${alerts.map((a) => `<p class="notice warning">${esc(a)}</p>`).join("") || '<p class="muted">Nenhum alerta derivado das leituras disponíveis.</p>'}${results.some((r) => r.status === "rejected") ? '<p class="muted">Leituras parciais; informações ausentes não indicam saúde.</p>' : ""}</section></div><div class="am-two-columns"><section class="am-panel"><h2>Utilização de CPU</h2><strong class="tech-value">${esc(d.cpu_percent == null ? "Não disponível" : d.cpu_percent + " %")}</strong>${Number.isFinite(d.cpu_percent) && d.cpu_percent >= 0 && d.cpu_percent <= 100 ? `<div class="resource-track"><div class="resource-fill violet" style="width:${d.cpu_percent}%"></div></div>` : ""}</section><section class="am-panel"><h2>Qualidade do sinal</h2>${fields([["RSSI médio observado", rssi == null ? null : rssi.toFixed(1) + " dBm"], ["Associações com RSSI", signals.length || null], ["Interferência", null]])}</section></div><section class="am-panel overview-topology"><h2>Topologia da rede</h2>${Array.isArray(clients) ? topology(cl, d.model) : '<p class="muted">Clientes não disponíveis; nenhuma relação inferida.</p>'}</section>`;
+    const source = traffic?.sources?.find((s) => s.source === "wan"), rx = o.rx_dbm ?? o.rx ?? o.rx_power, wi = Array.isArray(wifi) ? wifi : [], ra = Array.isArray(radios2) ? radios2 : [], cl = Array.isArray(clients) ? clients : [], signals = cl.map((c) => c.rssi).filter(Number.isFinite), rssi = signals.length ? signals.reduce((a, b) => a + b, 0) / signals.length : null;
+    const session2 = store.session?.session || {};
+    const snapshot = { session_id: session2.session_id, source_revision: `${session2.session_id || "session"}:${scope.generation}`, device: d, wan: wan2, wan_primary: w, optical: o, clients: cl, traffic, wifi: wi, radios: ra, lan: lan2, dns, capabilities: store.capabilities, errors };
+    store.setSnapshot(snapshot);
+    let triage;
+    try {
+      triage = await request("/api/triage", { method: "POST", scope, body: JSON.stringify(snapshot) });
+    } catch (error) {
+      triage = { status: "UNKNOWN", issues: [], partial: true, coverage: { triage: "UNKNOWN" }, checked_at: (/* @__PURE__ */ new Date()).toISOString(), source_revision: snapshot.source_revision, error: error.message };
+    }
+    if (!scopeActive(scope)) throw cancelled();
+    const alerts = (triage?.issues || []).filter((item) => ["WARNING", "CRITICAL"].includes(item.severity));
+    return `<header class="am-page-header"><small>PAINEL DO EQUIPAMENTO</small><h2>${esc(d.model || session2.model || "Equipamento")}</h2><p class="muted">${esc(d.manufacturer || session2.vendor || "")} · equipamento da sessão atual</p></header><div class="overview-metrics">${metric2("Status da internet", linkStatus(w.status), "status")}${metric2("IP WAN", w.ipv4, "wan-ip")}${metric2("Clientes conectados", Array.isArray(clients) ? cl.length : null, "clients")}${opticalApplicable ? metric2("RX óptico", rx == null ? null : rx + " dBm", "optical") : ""}${metric2("Consumo atual", rate(source?.rx_mbps), "throughput")}</div>${triageMarkup(triage)}<div class="am-dashboard-split">${trafficChart("Fluxo de tráfego")}<section class="am-panel"><h2>Resumo do equipamento</h2>${fields([["Uptime", uptime(d.uptime_seconds)], ["Firmware", d.firmware], ["Temperatura", d.temperature_c == null ? null : d.temperature_c + " °C"], ["CPU", d.cpu_percent == null ? null : d.cpu_percent + " %"], ["Memória", d.memory_percent == null ? null : d.memory_percent + " %"], ["Modelo", d.model], ["Serial", d.serial]])}</section></div><div class="am-three-columns"><section class="am-panel"><h2>WAN</h2>${fields([["Interface", w.name], ["Gateway", w.gateway], ["VLAN", w.vlan], ["Link", linkStatus(w.status)], ["Conexão", w.connection_type]])}</section><section class="am-panel"><h2>Wi-Fi</h2>${fields([["SSIDs observados", wi.map((s) => s.ssid).filter(Boolean)], ["Bandas", ra.map((r) => r.band ?? r.banda)], ["Clientes Wi-Fi", Array.isArray(clients) ? cl.filter((c) => c.connection_type === "Wi-Fi").length : null], ["Canais", ra.map((r) => r.channel ?? r.canal)]])}</section><section class="am-panel"><h2>Alertas recentes</h2>${alerts.map((item) => `<p class="notice ${severityClass(item.severity)}">${esc(item.title)}</p>`).join("") || '<p class="muted">Nenhum alerta confirmado pelas leituras disponíveis.</p>'}${triage?.partial ? '<p class="muted">Cobertura parcial: dado ausente não é tratado como falha.</p>' : ""}</section></div><div class="am-two-columns"><section class="am-panel"><h2>Utilização de CPU</h2><strong class="tech-value">${esc(d.cpu_percent == null ? "Não disponível" : d.cpu_percent + " %")}</strong>${Number.isFinite(d.cpu_percent) && d.cpu_percent >= 0 && d.cpu_percent <= 100 ? `<div class="resource-track"><div class="resource-fill violet" style="width:${d.cpu_percent}%"></div></div>` : ""}</section><section class="am-panel"><h2>Qualidade do sinal</h2>${fields([["RSSI médio observado", rssi == null ? null : rssi.toFixed(1) + " dBm"], ["Associações com RSSI", signals.length || null], ["Interferência", null]])}</section></div><section class="am-panel overview-topology"><h2>Topologia da rede</h2>${Array.isArray(clients) ? topology(cl, d.model) : '<p class="muted">Clientes não disponíveis; nenhuma relação inferida.</p>'}</section>`;
   }
   function mount2() {
+    document.querySelector("[data-triage-complete]")?.addEventListener("click", () => document.querySelector('[data-view="completeDiagnostics"]')?.click());
     mountDetails();
     mountTrafficChart({ initial, onSample: (d) => {
       const source = d.sources?.find((s) => s.source === "wan"), el = document.querySelector("[data-overview-throughput]");
@@ -1239,51 +1266,63 @@
     mount: () => mount4,
     render: () => render4
   });
-  var profiles = [];
-  function contents2() {
-    return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section>${table([{ label: "Nome", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Rádios", render: (r) => esc((r.wifi?.radios || (r.wifi?.radio ? [r.wifi.radio] : [])).map((r2) => `${r2.band}: ${r2.auto_channel === true ? "Auto" : r2.channel ?? "—"} · ${r2.bandwidth ?? "—"} · ${r2.standard ?? "—"} · ${r2.tx_power ?? "—"}`).join(" / ") || "—") }, { label: "DNS", render: (r) => Object.keys(r.dns || {}).length ? "Configurado" : "—" }, { label: "Ações", render: (r) => `<div class="inline-actions"><button class="button" data-edit-profile="${esc(r.name)}">Editar</button><button class="button" data-preview-profile="${esc(r.name)}">Preview / aplicar</button><button class="button danger" data-delete-profile="${esc(r.name)}">Excluir</button></div>` }], profiles, "Nenhum perfil salvo.")}`;
+  var state = { attendant: null, active: null, profiles: [] };
+  var profiles = () => state.profiles || [];
+  var field = (label, name, value2 = "", type = "text", extra = "") => `<div class="field"><label>${esc(label)}</label><input name="${esc(name)}" type="${esc(type)}" value="${esc(value2 ?? "")}" ${extra}></div>`;
+  var checkbox = (label, name, value2 = false) => `<label class="profile-include"><input type="checkbox" name="${esc(name)}" ${value2 ? "checked" : ""}> ${esc(label)}</label>`;
+  function choice(label, name, value2, options = []) {
+    const normalized = options.map((o) => typeof o === "object" ? o : { value: o, label: o });
+    if (!normalized.length) return field(label, name, value2);
+    return `<div class="field"><label>${esc(label)}</label><select name="${esc(name)}">${normalized.some((o) => String(o.value) === String(value2)) ? "" : `<option value="${esc(value2 ?? "")}">${esc(value2 ?? "Não disponível")}</option>`}${normalized.map((o) => `<option value="${esc(o.value)}" ${String(o.value) === String(value2) ? "selected" : ""}>${esc(o.label ?? o.value)}</option>`).join("")}</select></div>`;
   }
-  var field = (label, name, value2 = "") => `<div class="field"><label>${label}</label><input name="${name}" value="${esc(value2 ?? "")}"></div>`;
-  function choice(label, name, value2, options) {
-    return `<div class="field"><label>${label}</label><select name="${name}" ${options?.length ? "" : "disabled"}><option value="${esc(value2 ?? "")}">${esc((options || []).find((o) => String(o.value) === String(value2))?.label ?? value2 ?? "Não disponível")}</option>${(options || []).filter((o) => String(o.value) !== String(value2)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select></div>`;
+  function listMarkup() {
+    const active2 = state.active || "Nenhum perfil ativo";
+    return `<section class="panel"><div class="panel-header"><div><small>CONFIGURAÇÃO PADRÃO</small><h2>Perfis do atendente</h2><p class="muted">Atendente: ${esc(state.attendant || "sessão local")} · perfil ativo: <strong>${esc(active2)}</strong></p></div><div class="inline-actions"><button class="button" id="capture-profile">CAPTURAR ATUAL</button><button class="button primary" id="new-profile">NOVA CONFIGURAÇÃO</button></div></div></section>${table([{ label: "Ativo", render: (r) => r.name === state.active ? "[ ATIVO ]" : "—" }, { label: "Nome", keys: ["name"] }, { label: "Descrição", keys: ["description"] }, { label: "Rádios", render: (r) => esc((r.wifi?.radios || (r.wifi?.radio ? [r.wifi.radio] : [])).map((x) => `${x.band ?? "—"}: ${x.auto_channel === true ? "Auto" : x.channel ?? "—"} · ${x.bandwidth ?? "—"} · ${x.standard ?? "—"} · ${x.tx_power ?? "—"}`).join(" / ") || "—") }, { label: "DNS", render: (r) => Object.keys(r.dns || {}).length ? "Configurado" : "—" }, { label: "Ações", render: (r) => `<div class="inline-actions">${r.name === state.active ? "" : `<button class="button" data-activate-profile="${esc(r.name)}">Ativar</button>`}<button class="button" data-edit-profile="${esc(r.name)}">Editar</button><button class="button" data-preview-profile="${esc(r.name)}">Preview / aplicar</button><button class="button danger" data-delete-profile="${esc(r.name)}">Excluir</button></div>` }], profiles(), "Nenhuma configuração salva para este atendente.")}`;
+  }
+  function radioEditor(r, index, stored = {}) {
+    const band2 = r.band ?? r.banda ?? stored.band ?? `Rádio ${index + 1}`;
+    const options = r.options || {};
+    const current = {
+      channel: r.channel ?? r.canal,
+      bandwidth: r.bandwidth ?? r.largura,
+      standard: r.standard ?? r.padrao,
+      tx_power: r.tx_power ?? r.potencia,
+      country: r.country ?? r.pais,
+      auto_channel: r.auto_channel ?? r.canal_automatico,
+      sgi: r.sgi,
+      beacon_interval: r.beacon_interval,
+      rts_cts: r.rts_cts,
+      dtim: r.dtim,
+      airtime_fairness: r.airtime_fairness,
+      band_steering: r.band_steering,
+      bandwidth_code: r.bandwidth_code
+    };
+    const value2 = (key) => stored[key] ?? current[key];
+    const extras = ["rts_cts", "dtim", "airtime_fairness", "band_steering", "bandwidth_code"].filter((key) => value2(key) !== void 0 && value2(key) !== null);
+    return `<section class="profile-section" data-radio-index="${index}"><div class="panel-header"><h3>Wi-Fi ${esc(band2)}</h3>${checkbox("Incluir no perfil", `include-radio-${index}`, Object.keys(stored).length > 0)}</div><input type="hidden" name="band-${index}" value="${esc(band2)}"><div class="form-grid">${choice("Canal", `channel-${index}`, value2("channel"), options.channel || [])}${choice("Largura", `bandwidth-${index}`, value2("bandwidth"), options.bandwidth || [])}${choice("Modo / standard", `standard-${index}`, value2("standard"), options.standard || [])}${choice("País", `country-${index}`, value2("country"), options.country || [])}${choice("Potência", `tx_power-${index}`, value2("tx_power"), options.tx_power || [])}${field("Beacon interval", `beacon_interval-${index}`, value2("beacon_interval") ?? "", "number", 'min="1"')}${choice("Canal automático", `auto_channel-${index}`, String(value2("auto_channel") ?? ""), [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}${choice("SGI", `sgi-${index}`, String(value2("sgi") ?? ""), [{ value: "true", label: "Ativo" }, { value: "false", label: "Inativo" }])}${extras.map((key) => key === "airtime_fairness" || key === "band_steering" ? choice(key.replaceAll("_", " "), `${key}-${index}`, String(value2(key)), [{ value: "true", label: "Ativo" }, { value: "false", label: "Inativo" }]) : field(key.replaceAll("_", " "), `${key}-${index}`, value2(key))).join("")}</div></section>`;
   }
   async function edit(profile = {}) {
-    const opened = performance.now();
-    let radiosReady = false;
-    const savedRadios = profile.wifi?.radios || (profile.wifi?.radio ? [profile.wifi.radio] : []);
-    let radios2 = [];
-    const dns = profile.dns || {}, servers = dns.servers || [dns.ipv4_1 || dns.primary, dns.ipv4_2 || dns.secondary, dns.ipv6_1, dns.ipv6_2].filter(Boolean);
-    const hosts = dns.hosts || [];
+    const opened = performance.now(), savedRadios = profile.wifi?.radios || (profile.wifi?.radio ? [profile.wifi.radio] : []), dns = profile.dns || {}, hosts = dns.hosts || [];
+    let radios2 = [], radiosReady = false;
     const dhcpWritable = Boolean(cap("dhcp").enabled?.write);
-    const d = dialog(profile.name ? "Editar perfil" : "Novo perfil", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><div id="profile-radios"><section class="profile-section" role="status"><h3>Rádios</h3><p class="muted">Carregando canal, largura, padrão, potência e país…</p><div class="skeleton"></div></section></div><section class="profile-section"><h3>DNS estáticos</h3><p class="muted">Até dois endereços IPv4 e dois IPv6, conforme o contrato do provider.</p><div id="profile-dns-list">${(servers.length ? servers : [""]).map((s) => `<div class="toolbar"><input name="dns-server" value="${esc(s)}" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>`).join("")}</div><button class="button" type="button" id="add-profile-dns">Adicionar DNS</button></section><section class="profile-section"><h3>Hosts DNS estáticos</h3><div id="profile-host-list">${hosts.map((h) => `<div class="toolbar"><input name="host-name" aria-label="Nome do host" value="${esc(h.name)}"><input name="host-ip" aria-label="IP do host" value="${esc(h.ip)}"><button type="button" class="button" data-remove-host>Remover</button></div>`).join("")}</div><button type="button" class="button" id="add-profile-host">Adicionar host DNS</button></section>${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time)}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">Salvar perfil</button>`);
+    const d = dialog(profile.name ? "Editar configuração" : "Nova configuração", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome da configuração", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><div id="profile-radios"><section class="profile-section" role="status"><h3>Wi-Fi</h3><p class="muted">Carregando capabilities e opções do equipamento…</p><div class="skeleton"></div></section></div><section class="profile-section"><h3>DNS</h3><div class="form-grid">${field("Domínio", "domain_name", dns.domain_name)}${field("DNS IPv4 1", "ipv4_1", dns.ipv4_1 ?? dns.primary)}${field("DNS IPv4 2", "ipv4_2", dns.ipv4_2 ?? dns.secondary)}${field("DNS IPv6 1", "ipv6_1", dns.ipv6_1)}${field("DNS IPv6 2", "ipv6_2", dns.ipv6_2)}</div></section><section class="profile-section"><div class="panel-header"><h3>Nomes de servidor / Static DNS Hosts</h3><button type="button" class="button" id="add-profile-host">+ ADICIONAR</button></div><div id="profile-host-list">${hosts.map((h) => `<div class="toolbar"><input name="host-name" aria-label="Nome do host" value="${esc(h.name ?? h.nome ?? "")}"><input name="host-ip" aria-label="IP do host" value="${esc(h.ip ?? "")}"><button type="button" class="button" data-remove-host>Remover</button></div>`).join("")}</div></section>${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time, "number")}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">SALVAR PERFIL</button>`);
     d.classList.add("profile-dialog");
-    d.addEventListener("close", () => {
-      if (!d.open) d.classList.remove("profile-dialog");
-    }, { once: true });
+    d.addEventListener("close", () => d.classList.remove("profile-dialog"), { once: true });
     d.querySelector("[data-cancel-profile]").onclick = () => d.close();
     const form = d.querySelector("form");
     if (profile.name) form.querySelector('[name="name"]').readOnly = true;
     timing("profiles.modal.open", opened);
-    const paintRadios = (value2) => {
+    const paint = (value2) => {
       if (!d.open) return;
-      const host = d.querySelector("#profile-radios");
-      if (host.querySelector('[data-dirty="true"]')) return;
       radios2 = Array.isArray(value2) ? [...value2] : value2?.radios || [];
       for (const saved2 of savedRadios) if (!radios2.some((r) => (r.band ?? r.banda) === saved2.band)) radios2.push({ ...saved2, options: {} });
       radiosReady = true;
-      patchHTML(host, ` ${radios2.map((r, i) => {
-        const band2 = r.band ?? r.banda, stored = savedRadios.find((s) => s.band === band2);
-        return `<section class="profile-section"><h3>Rádio ${esc(band2)}</h3><label class="profile-include"><input type="checkbox" name="include-radio-${i}" ${stored ? "checked" : ""}> Incluir no perfil</label><div class="form-grid">${[["Canal", "channel", r.channel ?? r.canal], ["Largura", "bandwidth", r.bandwidth ?? r.largura], ["Padrão", "standard", r.standard ?? r.padrao], ["Potência", "tx_power", r.tx_power ?? r.potencia], ["País", "country", r.country ?? r.pais]].map(([label, key, current]) => choice(label, `${key}-${i}`, stored?.[key] ?? current, r.options?.[key] || [])).join("")}${choice("Canal automático", `auto_channel-${i}`, stored?.auto_channel ?? r.auto_channel ?? r.canal_automatico, [{ value: "true", label: "Automático" }, { value: "false", label: "Manual" }])}</div></section>`;
-      }).join("") || '<section class="profile-section"><p class="muted">Conecte um equipamento para carregar os rádios e suas opções.</p></section>'}`);
+      patchHTML(d.querySelector("#profile-radios"), radios2.map((r, i) => radioEditor(r, i, savedRadios.find((s) => s.band === (r.band ?? r.banda)) || {})).join("") || '<section class="profile-section"><p class="muted">O equipamento não expôs configuração de rádio nesta sessão. Os demais campos continuam editáveis.</p></section>');
       timing("profiles.options.ready", opened);
     };
-    loadResource("/api/device/wifi/radios", { scope: d._requestScope, data: paintRadios, error: (e) => {
-      if (!d.open) return;
-      paintRadios(savedRadios);
-      const note = document.createElement("p");
-      note.className = "notice warning";
-      note.textContent = e.message;
-      d.querySelector("#profile-radios").prepend(note);
+    loadResource("/api/device/wifi/radios", { scope: d._requestScope, data: paint, error: (e) => {
+      paint(savedRadios);
+      if (d.open) d.querySelector("#profile-radios").insertAdjacentHTML("afterbegin", `<p class="notice warning">${esc(e.message)}</p>`);
     } });
     const wireHosts = () => d.querySelectorAll("[data-remove-host]").forEach((b) => b.onclick = () => b.parentElement.remove());
     wireHosts();
@@ -1291,115 +1330,139 @@
       d.querySelector("#profile-host-list").insertAdjacentHTML("beforeend", '<div class="toolbar"><input name="host-name" aria-label="Nome do host"><input name="host-ip" aria-label="IP do host"><button type="button" class="button" data-remove-host>Remover</button></div>');
       wireHosts();
     };
-    const wireRemove = () => d.querySelectorAll("[data-remove-dns]").forEach((b) => b.onclick = () => b.parentElement.remove());
-    wireRemove();
-    d.querySelector("#add-profile-dns").onclick = () => {
-      if (d.querySelectorAll('[name="dns-server"]').length >= 4) {
-        toast("O provider suporta até dois DNS por família de IP.");
-        return;
-      }
-      d.querySelector("#profile-dns-list").insertAdjacentHTML("beforeend", '<div class="toolbar"><input name="dns-server" aria-label="Servidor DNS"><button type="button" class="button" data-remove-dns>Remover</button></div>');
-      wireRemove();
-    };
-    form.onsubmit = async (e) => {
-      e.preventDefault();
+    form.onsubmit = async (event) => {
+      event.preventDefault();
       const fd = new FormData(form), wifi = { ...profile.wifi }, dhcp = { ...profile.dhcp };
       if (radiosReady) {
         wifi.radios = radios2.flatMap((r, i) => {
           if (!fd.get(`include-radio-${i}`)) return [];
-          const band2 = r.band ?? r.banda, out = { ...savedRadios.find((s) => s.band === band2) || {}, band: band2 };
-          for (const k of ["channel", "bandwidth", "standard", "tx_power", "country"]) {
-            const v = fd.get(`${k}-${i}`);
-            if (v != null && v !== "") out[k] = String(v);
+          const band2 = String(fd.get(`band-${i}`) || r.band || r.banda || ""), out = { ...savedRadios.find((s) => s.band === band2) || {}, band: band2 };
+          for (const key of ["channel", "bandwidth", "standard", "tx_power", "country", "beacon_interval", "rts_cts", "dtim", "bandwidth_code"]) {
+            const input = fd.get(`${key}-${i}`);
+            if (input != null && String(input).trim() !== "") out[key] = String(input).trim();
+            else delete out[key];
           }
-          const auto = fd.get(`auto_channel-${i}`);
-          if (auto === "true" || auto === "false") out.auto_channel = auto === "true";
+          for (const key of ["auto_channel", "sgi", "airtime_fairness", "band_steering"]) {
+            const input = fd.get(`${key}-${i}`);
+            if (input === "true" || input === "false") out[key] = input === "true";
+          }
           return [out];
         });
         delete wifi.radio;
       }
       if (dhcpWritable) for (const [input, key] of [["pool-start", "min_address"], ["pool-end", "max_address"], ["lease", "lease_time"], ["dhcp-dns1", "dns1"], ["dhcp-dns2", "dns2"]]) {
-        const v = String(fd.get(input) || "").trim();
-        if (v) dhcp[key] = v;
+        const value2 = String(fd.get(input) || "").trim();
+        if (value2) dhcp[key] = value2;
         else delete dhcp[key];
       }
-      const names = fd.getAll("host-name"), ips = fd.getAll("host-ip");
-      const nextHosts = names.map((name, i) => ({ name: String(name).trim(), ip: String(ips[i] || "").trim() })).filter((h) => h.name || h.ip);
-      const nextDns = { ...dns, hosts: nextHosts, servers: fd.getAll("dns-server").map((v) => String(v).trim()).filter(Boolean) };
-      if (nextDns.servers.filter((v) => v.includes(":")).length > 2 || nextDns.servers.filter((v) => !v.includes(":")).length > 2) {
-        toast("Limite do provider: dois DNS IPv4 e dois IPv6.");
-        return;
-      }
-      for (const k of ["primary", "secondary", "ipv4_1", "ipv4_2", "ipv6_1", "ipv6_2"]) delete nextDns[k];
-      const payload = { ...profile, name: String(fd.get("name") || "").trim(), description: fd.get("description"), wifi, dns: nextDns, dhcp }, b = d.querySelector("#save-profile");
-      b.disabled = true;
+      const names = fd.getAll("host-name"), ips = fd.getAll("host-ip"), nextHosts = names.map((name, i) => ({ name: String(name).trim(), ip: String(ips[i] || "").trim() })).filter((h) => h.name || h.ip);
+      const nextDns = { ...dns, domain_name: String(fd.get("domain_name") || "").trim(), ipv4_1: String(fd.get("ipv4_1") || "").trim(), ipv4_2: String(fd.get("ipv4_2") || "").trim(), ipv6_1: String(fd.get("ipv6_1") || "").trim(), ipv6_2: String(fd.get("ipv6_2") || "").trim(), hosts: nextHosts };
+      delete nextDns.servers;
+      delete nextDns.primary;
+      delete nextDns.secondary;
+      const payload = { ...profile, name: String(fd.get("name") || "").trim(), description: String(fd.get("description") || ""), wifi, dns: nextDns, dhcp }, button2 = d.querySelector("#save-profile");
+      button2.disabled = true;
       try {
         await request("/api/profiles", { method: "POST", scope: d._requestScope, body: JSON.stringify(payload) });
         d.close();
-        toast("Perfil salvo.");
+        toast("Configuração salva para o atendente atual.");
         document.dispatchEvent(new CustomEvent("refresh-view"));
-      } catch (err) {
-        toast(err.message);
+      } catch (error) {
+        toast(error.message);
       } finally {
-        b.disabled = false;
+        button2.disabled = false;
       }
     };
   }
-  function wire2() {
-    document.querySelector("#new-profile").onclick = () => edit();
-    document.querySelectorAll("[data-edit-profile]").forEach((b) => b.onclick = () => edit(profiles.find((p) => p.name === b.dataset.editProfile)));
-    document.querySelectorAll("[data-delete-profile]").forEach((b) => b.onclick = () => {
-      const d = dialog("Excluir perfil?", `<p>${esc(b.dataset.deleteProfile)}</p>`, `<button class="button danger" data-confirm>Excluir</button>`);
-      d.querySelector("[data-confirm]").onclick = async (e) => {
-        e.currentTarget.disabled = true;
+  function resultDialog(result) {
+    const rows3 = result.steps || [];
+    dialog("Resultado da aplicação", `<p>${result.applied} enviada(s), ${result.verified || 0} verificada(s), ${result.skipped} não suportada(s), ${result.failed} falha(s), ${result.uncertain || 0} incerta(s).</p>${table([{ label: "Etapa", keys: ["label"] }, { label: "Capability", keys: ["feature"] }, { label: "Status", keys: ["status"] }, { label: "Detalhe", render: (r) => esc(r.message || r.reason || r.result?.detail || r.result?.message || "—") }], rows3, "Nenhuma etapa foi executada.")}`);
+  }
+  async function previewAndApply(name) {
+    try {
+      const preview = await request("/api/profiles/preview", { method: "POST", body: JSON.stringify({ name }) });
+      const d = dialog("Preview da configuração", `<p>${preview.applicable} operação(ões) aplicáveis; ${preview.skipped} serão ignoradas por capability.</p>${table([{ label: "Operação", keys: ["label"] }, { label: "Suporte", keys: ["support"] }, { label: "Ação", render: (o) => o.will_apply ? "APLICAR" : "PULAR" }], preview.operations)}${preview.operations.map((op) => `<section class="panel"><h3>${esc(op.label)}</h3>${table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["current"] }, { label: "Novo", keys: ["desired"] }], op.changes || [])}</section>`).join("")}${(preview.profile?.wifi?.ssids || []).map((s) => `<div class="field"><label>Nova senha de ${esc(s.ssid || s.id)} (opcional; não é persistida)</label><input type="password" data-transient-ssid="${esc(s.id)}" autocomplete="new-password" minlength="8"></div>`).join("")}`, `<button class="button primary" data-apply ${preview.applicable ? "" : "disabled"}>APLICAR PERFIL</button>`);
+      d.querySelector("[data-apply]").onclick = async (event) => {
+        event.currentTarget.disabled = true;
         try {
-          await request("/api/profiles", { method: "DELETE", body: JSON.stringify({ name: b.dataset.deleteProfile }) });
+          const secrets = {};
+          for (const input of d.querySelectorAll("[data-transient-ssid]")) if (input.value) secrets[input.dataset.transientSsid] = input.value;
+          const result = await request("/api/profiles/apply", { method: "POST", body: JSON.stringify({ name, secrets }) });
+          d.close();
+          resultDialog(result);
+        } catch (error) {
+          toast(error.message);
+          event.currentTarget.disabled = false;
+        }
+      };
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+  function wire2() {
+    document.querySelector("#new-profile")?.addEventListener("click", () => edit());
+    document.querySelector("#capture-profile")?.addEventListener("click", async (event) => {
+      event.currentTarget.disabled = true;
+      try {
+        const draft = await request("/api/profiles/capture", { method: "POST", body: "{}" });
+        await edit(draft);
+        toast("Configuração atual capturada como rascunho. Revise e salve quando estiver correta.");
+      } catch (error) {
+        toast(error.message);
+      } finally {
+        event.currentTarget.disabled = false;
+      }
+    });
+    document.querySelectorAll("[data-edit-profile]").forEach((button2) => button2.onclick = () => edit(profiles().find((p) => p.name === button2.dataset.editProfile)));
+    document.querySelectorAll("[data-activate-profile]").forEach((button2) => button2.onclick = async () => {
+      try {
+        await request("/api/profiles/active", { method: "POST", body: JSON.stringify({ name: button2.dataset.activateProfile }) });
+        toast("Perfil ativo atualizado.");
+        document.dispatchEvent(new CustomEvent("refresh-view"));
+      } catch (error) {
+        toast(error.message);
+      }
+    });
+    document.querySelectorAll("[data-preview-profile]").forEach((button2) => button2.onclick = () => previewAndApply(button2.dataset.previewProfile));
+    document.querySelectorAll("[data-delete-profile]").forEach((button2) => button2.onclick = () => {
+      const d = dialog("Excluir configuração?", `<p>${esc(button2.dataset.deleteProfile)}</p><p class="muted">A exclusão afeta somente o atendente atual.</p>`, `<button class="button danger" data-confirm>EXCLUIR</button>`);
+      d.querySelector("[data-confirm]").onclick = async (event) => {
+        event.currentTarget.disabled = true;
+        try {
+          await request("/api/profiles", { method: "DELETE", body: JSON.stringify({ name: button2.dataset.deleteProfile }) });
           d.close();
           document.dispatchEvent(new CustomEvent("refresh-view"));
-        } catch (err) {
-          toast(err.message);
+        } catch (error) {
+          toast(error.message);
         }
       };
     });
-    document.querySelectorAll("[data-preview-profile]").forEach((b) => b.onclick = async () => {
-      try {
-        const p = await request("/api/profiles/preview", { method: "POST", body: JSON.stringify({ name: b.dataset.previewProfile }) });
-        const d = dialog("Preview do perfil", `<p>${p.applicable} operação(ões) serão aplicadas; ${p.skipped} serão ignoradas por suporte.</p>${table([{ label: "Operação", keys: ["label"] }, { label: "Suporte", keys: ["support"] }, { label: "Resultado", render: (o) => o.will_apply ? "Aplicar" : "Pular" }], p.operations)}${p.operations.map((o) => `<section class="panel"><h3>${esc(o.label)}</h3>${table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["current"] }, { label: "Novo", keys: ["desired"] }], o.changes || [])}</section>`).join("")}${(p.profile?.wifi?.ssids || []).map((s) => `<div class="field"><label>Nova senha de ${esc(s.ssid || s.id)} (opcional, não salva)</label><input type="password" data-transient-ssid="${esc(s.id)}" autocomplete="new-password" minlength="8"></div>`).join("")}`, `<button class="button primary" data-apply ${p.applicable ? "" : "disabled"}>Aplicar perfil</button>`);
-        d.querySelector("[data-apply]").onclick = async (e) => {
-          e.currentTarget.disabled = true;
-          try {
-            const secrets = {};
-            for (const input of d.querySelectorAll("[data-transient-ssid]")) if (input.value) secrets[input.dataset.transientSsid] = input.value;
-            const r = await request("/api/profiles/apply", { method: "POST", body: JSON.stringify({ name: b.dataset.previewProfile, secrets }) });
-            toast(`Perfil: ${r.applied} comando(s) enviado(s), ${r.verified || 0} verificado(s), ${r.skipped} pulado(s), ${r.failed} falha(s), ${r.uncertain || 0} incerto(s).`);
-            d.close();
-          } catch (err) {
-            toast(err.message);
-            e.currentTarget.disabled = false;
-          }
-        };
-      } catch (err) {
-        toast(err.message);
-      }
-    });
   }
   function render4() {
-    profiles = [];
-    return `<section class="panel"><div class="panel-header"><h2>Perfis</h2><button class="button primary" id="new-profile">Novo perfil</button></div></section><div id="profile-list" role="status"><div class="panel"><p class="muted">Carregando perfis…</p><div class="skeleton"></div></div></div>`;
+    state = { attendant: null, active: null, profiles: [] };
+    return `<section class="panel"><div class="panel-header"><div><small>CONFIGURAÇÃO PADRÃO</small><h2>Perfis do atendente</h2></div></div></section><div id="profile-list" role="status"><div class="panel"><p class="muted">Carregando configurações…</p><div class="skeleton"></div></div></div>`;
   }
   function mount4() {
-    wire2();
-    loadResource("/api/profiles", { data: (value2) => {
-      profiles = Array.isArray(value2) ? value2 : [];
+    const paint = () => {
       const host = document.querySelector("#profile-list");
       if (!host) return;
-      const html = contents2();
-      patchHTML(host, html.slice(html.indexOf("</section>") + 10));
+      patchHTML(host, listMarkup());
       host.removeAttribute("role");
       wire2();
-    }, error: (e) => {
+    };
+    loadResource("/api/profiles", { data: (value2) => {
+      state = { ...state, profiles: Array.isArray(value2) ? value2 : [] };
+      paint();
+      request("/api/profiles/state").then((meta2) => {
+        if (meta2 && Array.isArray(meta2.profiles)) {
+          state = { ...state, ...meta2 };
+          paint();
+        }
+      }).catch(() => {
+      });
+    }, error: (error) => {
       const host = document.querySelector("#profile-list");
-      if (host) host.innerHTML = `<div class="notice warning">${esc(e.message)}</div>`;
+      if (host) host.innerHTML = `<div class="notice warning">${esc(error.message)}</div>`;
     } });
   }
 
@@ -1559,7 +1622,7 @@
     form.onsubmit = async (event) => {
       event.preventDefault();
       const changes = {};
-      for (const checkbox of form.querySelectorAll("[data-change]:checked")) changes[checkbox.dataset.change] = form.elements.namedItem(checkbox.dataset.change).value;
+      for (const checkbox2 of form.querySelectorAll("[data-change]:checked")) changes[checkbox2.dataset.change] = form.elements.namedItem(checkbox2.dataset.change).value;
       const out = d.querySelector("#surface-preview");
       out.innerHTML = '<p class="muted">Preparando prévia…</p>';
       try {
@@ -2073,10 +2136,10 @@
       const d = document.querySelector("#action-dialog");
       if (d?.open) d.close();
     }
-    const state = { generation: scope.generation, loading: true, error: null };
-    viewStates.set(name, state);
+    const state2 = { generation: scope.generation, loading: true, error: null };
+    viewStates.set(name, state2);
     scope.controller.signal.addEventListener("abort", () => {
-      state.loading = false;
+      state2.loading = false;
     }, { once: true });
     store.view = name;
     document.querySelectorAll(".nav").forEach((b) => {
@@ -2098,7 +2161,7 @@
     if (titleEl) titleEl.textContent = title;
     document.querySelector(".page-heading").hidden = ["overview", "traffic", "completeDiagnostics"].includes(name);
     if (!store.session?.connected && name !== "profiles") {
-      state.loading = false;
+      state2.loading = false;
       workspace.innerHTML = '<div class="empty-state"><strong>Nenhum equipamento conectado</strong><span>Conecte-se para carregar este workspace.</span></div>';
       return;
     }
@@ -2109,7 +2172,7 @@
       const cancel = workspace.querySelector("[data-cancel-wait]");
       if (cancel) {
         waitTimer = setTimeout(() => {
-          if (scopeActive(scope) && state.loading) {
+          if (scopeActive(scope) && state2.loading) {
             const label = workspace.querySelector("[data-wait-label]");
             if (label) label.textContent = "A consulta ainda está em andamento…";
           }
@@ -2126,7 +2189,7 @@
       const view = views[name] || views.overview;
       const html = await view.render();
       if (!scopeActive(scope)) return;
-      state.loading = false;
+      state2.loading = false;
       clearTimeout(waitTimer);
       if (background) patchHTML(workspace, html);
       else workspace.innerHTML = html;
@@ -2134,8 +2197,8 @@
     } catch (e) {
       clearTimeout(waitTimer);
       if (!scopeActive(scope) || isCancelled(e)) return;
-      state.loading = false;
-      state.error = e.message;
+      state2.loading = false;
+      state2.error = e.message;
       clearTimeout(waitTimer);
       if (Object.hasOwn(juniperRoutes, name)) {
         workspace.innerHTML = errorMarkup(e);
