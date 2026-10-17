@@ -18,10 +18,10 @@
 
 .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .app-shell textarea,
-.app-shell select,
+.app-shell select:not([multiple]),
 #login-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 #login-page textarea,
-#login-page select{
+#login-page select:not([multiple]){
   background:var(--terminal-bg-1)!important;
   color:var(--terminal-text)!important;
   border:1px solid var(--terminal-border)!important;
@@ -266,20 +266,24 @@
   position:relative;
 }
 
+/* Keep the Matrix canvas out of document/grid flow. A later generic child
+   positioning rule used to win the cascade and turn this canvas into a
+   relative grid item with height:100%, creating an entire extra viewport and
+   the phantom scrollbar visible on the login screen. */
 #matrix-bg{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
   pointer-events:none;
   z-index:0!important;
   opacity:.12;
   mix-blend-mode:screen;
 }
 
-#login-page > *,
-.connection-card > *,
-.app-wrapper > *{
+#login-page > :not(#matrix-bg),
+.connection-card > :not(#matrix-bg),
+.app-wrapper > :not(#matrix-bg){
   position:relative;
   z-index:1;
 }
