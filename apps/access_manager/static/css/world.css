@@ -1,42 +1,22 @@
-/* Opt-in Aero surface; technical content remains in the original Vela workspace. */
 #aero-world[hidden],#world-close-panel[hidden],#world-notice[hidden]{display:none!important}
-#world-notice{padding:12px;border:1px solid #ba7823;background:#fff4d1;color:#472e07;grid-column:1/-1}
 .app-shell.world-mode{position:relative;isolation:isolate}
-#aero-world{position:absolute;inset:64px 0 0;overflow:hidden;background:#74ccf6;color:#12384c;font-family:Arial,sans-serif;min-height:250px}
+#aero-world{position:absolute;inset:56px 0 0;overflow:hidden;background:#74ccf6;color:#12384c;font-family:"Segoe UI",Tahoma,sans-serif;min-height:250px}
 #aero-world>canvas:first-child{display:block;width:100%;height:100%;outline-offset:-4px;touch-action:none}
 .world-mode>.layout{visibility:hidden;pointer-events:none}
-.world-mode.world-panel-open>.layout{visibility:visible;pointer-events:auto;position:absolute;z-index:4;inset:125px 24px 20px;display:block;border:1px solid #effcff;border-radius:18px!important;background:#e2f5f5f2;box-shadow:0 14px 50px #18486577!important;overflow:hidden}
-.world-panel-open #sidebar{display:none!important}
-.world-panel-open .app-main{height:100%;overflow:auto}
-#world-close-panel{position:absolute;z-index:5;right:28px;top:84px;color:#103d56;background:#e7faff;border:1px solid #2087a5;border-radius:12px!important;padding:8px 16px}
-.world-hud{position:absolute;left:22px;top:20px;right:22px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;pointer-events:none}
-.world-hud>*{pointer-events:auto}
-.world-glass{border:1px solid #ffffffd0!important;border-radius:16px!important;background:linear-gradient(#ffffffe8,#c8eeefd9)!important;box-shadow:0 5px 24px #17628830!important;color:#12384c!important;padding:12px 16px;backdrop-filter:blur(12px)}
-.world-hud strong{font-size:18px}.world-hud small{display:block;font-size:12px;margin-top:4px}
-.world-hud button,.world-hud select{font:inherit;color:#12384c!important;background:#f1fbff!important;border:1px solid #63a5ba!important;border-radius:10px!important;padding:7px;cursor:pointer}
-.world-hud label{font-size:12px;display:flex;gap:6px;align-items:center}.world-hud input[type=range]{width:70px}
-#world-prompt{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);text-align:center;width:max-content;max-width:calc(100% - 40px);font-size:14px;pointer-events:none}
-#world-map{position:absolute;right:22px;bottom:25px;width:150px;height:150px;padding:5px;border:2px solid white;border-radius:50%!important;box-shadow:0 4px 20px #17628850!important}
-#world-debug{position:absolute;left:22px;bottom:12px;font-size:11px;color:#12384c;background:#eeffffd9;padding:4px 8px;border-radius:8px}
-.app-shell.aero-theme{--background:#e8f5f6;--surface:#f5fdff;--surface-raised:#fff;--border:#80b9c9;--text:#12384c;--muted:#456574;--accent:#0573a6;--success:#176d3e;--danger:#a51c2c;--warning:#895209;--am-bg:#e8f5f6;--am-panel:#f5fdff;--am-text:#12384c;--am-muted:#456574;--am-border:#80b9c9;--am-primary:#0573a6;--am-primary-soft:#cceafa;--font-sans:Arial,sans-serif;color:#12384c;background:#e8f5f6}
-.app-shell.aero-theme .app-topbar,.app-shell.aero-theme .app-sidebar{background:linear-gradient(#eaffff,#c9e9ef)!important;color:#12384c!important;border-color:#90bdcc!important}
-.app-shell.aero-theme .app-main,.app-shell.aero-theme .page-content{background:#e8f5f6!important;color:#12384c!important}
-.app-shell.aero-theme :is(.panel,.am-panel,.metric-card,.notice,.nav,.button,input,select,textarea){background:#f6fdff!important;color:#12384c!important;border-color:#80b9c9!important;border-radius:10px!important}
-.app-shell.aero-theme :is(h1,h2,h3,h4,strong,.tech-value,.muted,small,label,th,td){color:inherit}
-.app-shell.aero-theme .nav.active{background:#c2e8f5!important;color:#084b6d!important}
-.app-shell.aero-theme :is(.value-danger,.notice.danger){color:#a51c2c!important}
-.app-shell.aero-theme .value-success{color:#176d3e!important}
-@media(max-width:900px){#aero-world{inset:110px 0 0}.world-hud{left:10px;right:10px;top:10px;gap:5px}.world-glass{padding:8px}.world-hud strong{font-size:14px}#world-map{width:95px;height:95px;right:10px;bottom:85px}#world-debug{font-size:9px;left:8px}#world-prompt{bottom:34px;font-size:12px}.world-mode.world-panel-open>.layout{inset:170px 8px 8px}#world-close-panel{top:130px;right:10px}}
-@media(prefers-reduced-motion:reduce){.aero-theme *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
-
-.world-region-label{position:absolute;transform:translate(-50%,-100%);font:600 12px Arial,sans-serif;color:#103953;background:#f5ffffdc;border:1px solid white;border-radius:12px!important;padding:5px 9px;white-space:nowrap;pointer-events:none;text-shadow:none!important}
-.app-shell.aero-theme{color-scheme:light;--text-primary:#12384c;--text-secondary:#456574;--text-muted:#456574;--technical-value:#056890;--accent-contrast:#fff;--am-surface:#f5fdff;--am-text-secondary:#456574;--am-text-tertiary:#456574;--am-sidebar:#d4edf2;--am-hover:#d9eff7;--am-selected:#c2e8f5;--am-success:#176d3e;--am-danger:#a51c2c;--am-warning:#895209;--terminal-glow:none;--terminal-glow-soft:none}
-.app-shell.aero-theme .app-topbar .button{flex-shrink:0}
-@media(min-width:901px){.app-shell .context-bar #ctx-updated{display:none}.app-shell .context-bar{gap:8px}.app-shell .context-bar .device-title{min-width:90px}}
-
-.app-shell.aero-theme{--secondary:#895209;--terminal-text:#12384c;--terminal-text-soft:#456574;--terminal-bg-1:#f6fdff;--terminal-border:#80b9c9;--terminal-accent:#0573a6}
-#world-notice{position:absolute;left:12px;right:12px;top:56px;z-index:6;margin:0}
-.app-shell.aero-theme input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),.app-shell.aero-theme select,.app-shell.aero-theme textarea{color-scheme:light!important}
-.world-panel-open .world-hud,.world-panel-open .world-region-label{visibility:hidden}
-
-@media(max-width:780px){.app-shell .context-bar{height:auto!important;min-height:90px!important;flex-wrap:wrap!important;align-content:center;gap:6px!important}.app-shell{grid-template-rows:90px minmax(0,1fr)!important}.app-shell .context-bar .device-title{flex:1 1 90px}.app-shell .context-bar .button{font-size:9px!important;padding:5px!important}.app-shell #aero-world{top:96px}.app-shell .context-bar::before{display:none}.app-shell .context-bar #ctx-status{margin-left:0}.app-shell #world-notice{top:94px}}
+.world-mode.world-panel-open>.layout{visibility:visible;pointer-events:auto;position:absolute;z-index:4;inset:112px 22px 18px;display:block;border:1px solid #fff;border-radius:16px!important;background:#e4f3f9f5;box-shadow:0 14px 50px #18486577!important;overflow:hidden}
+.world-panel-open #sidebar{display:none!important}.world-panel-open .app-main{height:100%;overflow:auto}
+#world-close-panel{position:absolute;z-index:5;right:24px;top:70px;border:1px solid #67a8c8;border-radius:10px;padding:8px 16px;background:linear-gradient(#fff,#bee7fa);color:#17455f}
+#world-notice{position:absolute;left:12px;right:12px;top:58px;z-index:6;margin:0;padding:12px;border:1px solid #ba7823;background:#fff4d1;color:#472e07;font:12px "Segoe UI",sans-serif}
+.world-hud{position:absolute;left:20px;top:16px;right:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:start;pointer-events:none}.world-hud>*{pointer-events:auto}
+.world-glass{border:1px solid #ffffffd0!important;border-radius:16px!important;background:linear-gradient(#ffffffe8,#c8eeefd9)!important;box-shadow:0 5px 24px #17628830!important;color:#12384c!important;padding:12px 16px;backdrop-filter:blur(8px)}
+.world-hud strong{font-size:18px}.world-hud small{display:block;font-size:11px;margin-top:4px;max-width:220px;overflow-wrap:anywhere}
+.world-hud button,.world-hud select{font:inherit;color:#12384c!important;background:linear-gradient(#fff,#cdeefa)!important;border:1px solid #72a9c0!important;border-radius:8px!important;padding:6px;cursor:pointer}
+.world-hud label{font-size:12px;display:flex;gap:6px;align-items:center;margin-top:5px}.world-hud input[type=range]{width:100px}
+#world-prompt{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);text-align:center;width:max-content;max-width:calc(100% - 40px);font-size:13px;pointer-events:none}
+#world-map{position:absolute;right:20px;bottom:22px;width:145px;height:145px;padding:5px;border:2px solid white;border-radius:50%!important;box-shadow:0 4px 20px #17628850!important}
+#world-debug{position:absolute;left:20px;bottom:10px;font-size:10px;color:#12384c;background:#eeffffd9;padding:4px 8px;border-radius:8px}
+.world-region-label{position:absolute;transform:translate(-50%,-100%);font:600 12px "Segoe UI",sans-serif;color:#103953;background:#f5ffffe8;border:1px solid white;border-radius:12px!important;padding:5px 9px;max-width:180px;text-align:center;pointer-events:none;text-shadow:none!important}
+.world-panel-open :is(.world-hud,.world-region-label){visibility:hidden}
+@media(prefers-reduced-motion:no-preference){#aero-world{animation:world-enter .24s ease-out}@keyframes world-enter{from{opacity:0}to{opacity:1}}}
+@media(max-width:1080px){.app-shell .context-bar{gap:6px}.app-shell .context-meta{display:none!important}.theme-control{font-size:0}#theme-select{font-size:11px!important}}
+@media(max-width:780px){.app-shell .context-bar{height:auto!important;min-height:96px!important;flex-wrap:wrap!important;align-content:center;gap:6px!important}.app-shell{grid-template-rows:96px minmax(0,1fr)!important}.app-shell .context-bar .device-title{flex:1 1 90px}.app-shell .context-bar .button{font-size:10px!important;padding:5px!important}.app-shell #aero-world{top:98px}.app-shell .context-bar::before{display:none}.app-shell #world-notice{top:98px}.world-hud{left:10px;right:10px;top:10px;gap:5px}.world-glass{padding:8px}.world-hud strong{font-size:14px}#world-map{width:90px;height:90px;right:10px;bottom:75px}#world-prompt{bottom:25px;font-size:12px}.world-mode.world-panel-open>.layout{inset:153px 8px 8px}#world-close-panel{top:112px;right:10px}}

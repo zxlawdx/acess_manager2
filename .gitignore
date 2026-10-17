@@ -153,3 +153,11 @@ yarn-error.log*
 *.old
 *.orig
 !package-lock.json
+
+# User-installed audio is local content, never a release/repository dependency.
+apps/access_manager/static/audio/user/*.mp3
+apps/access_manager/static/audio/user/*.ogg
+apps/access_manager/static/audio/user/*.wav
+
+# QA PNGs are working captures; reviewed lossless WebP evidence is versioned.
+docs/qa/aero-patch/*.png

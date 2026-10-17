@@ -6,7 +6,7 @@
 | --- | --- | --- | --- | --- |
 | Three.js 0.180.0 and GLTFLoader | three.js authors, https://github.com/mrdoob/three.js/tree/r180 | MIT, full notice in THREE_LICENSE.txt and static/licenses/three-MIT.txt | Bundled locally using esbuild; upstream sources unchanged | 2026-10-17 |
 
-Terrain, trees, city props, bubbles and procedural buddy are original primitive-based geometry. Ambient audio is an original synthesized sine chord; no music recordings or third-party models/textures are included.
+Terrain, trees, city props, bubbles and procedural buddy are original primitive-based geometry. SVG navigation icons and the sky environment are original generated assets. No music recordings, synthesized placeholder chord or third-party models/textures are included. User-imported audio stays local and is not committed.
 
 ## Optional GLB
 

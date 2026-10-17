@@ -18,10 +18,3 @@ export class PlayerController {
  }
 }
 export function nearestHotspot(player,hotspots,radius=5){let nearest=null,distance=radius;for(const h of hotspots){const d=Math.hypot(player.x-h.x,player.z-h.z);if(d<distance){nearest=h;distance=d}}return nearest;}
-export const regions=[
- {id:'router',label:'Router Bay',view:'wan',juniper:'juniperInterfaces',x:0,z:-8,color:0x36baff},
- {id:'wifi',label:'Wi-Fi Garden',view:'wifi',juniper:'juniperSystem',x:-17,z:0,color:0x85d948},
- {id:'clients',label:'Client Lagoon',view:'clients',juniper:'subscribers',x:17,z:0,color:0x18dfd0},
- {id:'dns',label:'DNS Spring',view:'dhcpdns',juniper:'juniperOverview',x:-12,z:23,color:0x83a5ff},
- {id:'diagnostics',label:'Diagnostic Dome',view:'diagnostics',juniper:'juniperDiagnostics',x:12,z:23,color:0xffcc54}
-];

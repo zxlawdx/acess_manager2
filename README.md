@@ -34,6 +34,6 @@ A escrita depende da sessão e da capability do provider. Uma leitura comprovada
 
 Limitações e evidências: `docs/NETPULSE_EXECUTION_REPORT.md`.
 
-## Experimental Frutiger Aero
+## Terminal, Frutiger Aero e Access World 3D
 
-Após conectar, use **Mundo 3D** para explorar as cinco regiões e **E** para abrir os painéis técnicos existentes. **Tema Aero** também funciona na interface convencional. A versão mantém o Vela e inclui renderer local, mascote procedural com suporte a GLB opcional e fallback para a interface se WebGL falhar. Controles, arquitetura e limites: [docs/FRUTIGER_WORLD.md](docs/FRUTIGER_WORLD.md).
+Escolha a experiência no login ou altere o tema e o modo após conectar. O Aero inclui variantes próprias para tabelas, controles, modais e drawers. O mundo deriva suas regiões das rotas reais e capabilities de Huawei/ZTE ou Juniper, mantendo os mesmos painéis técnicos. Música é opcional e local; nenhuma faixa é distribuída. Instruções, suporte a GLB, áudio e limites: [docs/FRUTIGER_WORLD.md](docs/FRUTIGER_WORLD.md). Evidências: [docs/AERO_WORLD_PATCH_REPORT.md](docs/AERO_WORLD_PATCH_REPORT.md).

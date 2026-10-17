@@ -39,7 +39,7 @@
   }
 
   function draw() {
-    if (reducedMotion?.matches) {
+    if (host.hidden || document.documentElement.dataset.experienceTheme==='aero' || reducedMotion?.matches) {
       ctx.clearRect(0, 0, width, height);
       return;
     }
@@ -74,7 +74,7 @@
 
   function motionChanged() {
     cancelAnimationFrame(frame);
-    if (reducedMotion?.matches) {
+    if (host.hidden || document.documentElement.dataset.experienceTheme==='aero' || reducedMotion?.matches) {
       ctx.clearRect(0, 0, width, height);
     } else {
       requestAnimationFrame(draw);
@@ -84,5 +84,7 @@
   resize();
   window.addEventListener('resize', resize, { passive: true });
   reducedMotion?.addEventListener?.('change', motionChanged);
+  document.addEventListener('theme-changed',motionChanged);
+  new MutationObserver(motionChanged).observe(host,{attributes:true,attributeFilter:['hidden']});
   requestAnimationFrame(draw);
 })();

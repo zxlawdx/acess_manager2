@@ -1,3 +1,6 @@
+import {mountThemeProvider} from '../ui/theme.js';
+import {mountLoginExperience} from '../ui/login.js';
+import {createRouteRegistry,routerNavigation} from '../core/routes.js';
 import {mountWorldBridge} from '../world/bridge.js';
 import {request,beginView,scopeActive,isCancelled,currentScope} from '../services/api.js';
 import {store} from '../core/store.js';
@@ -18,6 +21,7 @@ import {patchHTML} from '../shared/patch.js';
 let mountedRoot = null;
 let workspace = null;
 let connectionBusy=false;
+let worldBridge,loginExperience;
 let infrastructureSettings={};
 const viewStates=new Map();
 
@@ -53,6 +57,7 @@ function syncContext() {
   const updated = document.querySelector('#ctx-updated');
   if (disconnect) disconnect.disabled = !s;
   if (updated) updated.textContent = s?.updated_at ? `Atualizado ${new Date(s.updated_at).toLocaleTimeString()}` : '—';
+  document.dispatchEvent(new CustomEvent('app-context-ready'));
 }
 
 async function render(name = store.view,background=false) {
@@ -152,6 +157,7 @@ async function connectFromForm(event) {
 
     toast(`Conectado via ${payload.vendor==='juniper'?(s.session.protocol_family||'SSH'):(payload.https ? 'HTTPS' : 'HTTP')} em ${s.session.model || s.session.vendor || payload.host}.`);
     await render('overview');
+    await loginExperience?.afterConnect(worldBridge);
   } catch (err) {
     // Infrastructure credentials are never retained after an attempt.
     document.querySelector('#connection-feedback').textContent=err?.message||'Não foi possível conectar ao equipamento.';
@@ -178,8 +184,12 @@ export async function mountApp() {
   workspace = document.querySelector('#workspace');
   if (!workspace) throw new Error('Workspace do Access Manager não foi encontrado.');
 
-  mountWorldBridge({store,navigate:name=>render(name),suspend:()=>{views[store.view]?.unmount?.();beginView('world')},resume:()=>render(store.view)});
+  const theme=mountThemeProvider();loginExperience=mountLoginExperience(theme);
+  const routeRegistry=createRouteRegistry(views,juniper.navigation,juniper.worldActions);
+  worldBridge=mountWorldBridge({store,theme,registry:routeRegistry,navigate:name=>render(name),suspend:()=>{views[store.view]?.unmount?.();beginView('world')},resume:()=>render(store.view)});
 
+  let ordinal=0;
+  document.querySelector('#sidebar').innerHTML=routerNavigation.map(([group,items])=>`<div class="nav-group">${esc(group)}</div>${items.map(([id,label],index)=>`<button class="nav" data-view="${id}">${String(++ordinal).padStart(2,'0')} <span>${esc(label)}</span></button>`).join('')}`).join('');
   const oldNav=document.querySelectorAll('[data-juniper-nav]');oldNav.forEach(n=>n.remove());
   document.querySelector('#sidebar').insertAdjacentHTML('afterbegin',juniper.navigation.map(([group,items],index)=>`<details class="juniper-nav-group" data-juniper-nav hidden ${index<2?'open':''}><summary>${esc(group)}</summary>${items.map(([route,label])=>`<button class="nav" data-juniper-nav data-view="${route}" hidden><span>${esc(label)}</span></button>`).join('')}</details>`).join(''));
   document.querySelector('#juniper-help').onclick=()=>dialog('Ajuda · Juniper / Junos BNG','<p>Busque o contrato, selecione uma sessão e consulte detalhes sem sair da lista. Leituras avançadas são feitas sob demanda.</p><p>O acesso ao CPE usa credenciais separadas. Voltar ao assinante mantém a sessão Juniper; portas inacessíveis não confirmam assinante offline.</p>');
@@ -245,6 +255,7 @@ export async function mountApp() {
     store.setCapabilities(s.session?.capabilities || {});
     syncContext();
     await render(s.connected?(currentScope()?store.view:'overview'):store.view);
+    if(s.connected&&loginExperience?.selected==='world3d')await worldBridge.enter();
   } catch (error) {
     console.error('[Access Manager] Falha ao consultar sessão inicial:', error);
     await render(store.view);
