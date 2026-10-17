@@ -1,34 +1,47 @@
 @font-face{font-family:"DM Sans";src:url("../fonts/DMSans.ttf") format("truetype");font-weight:100 1000;font-display:swap}
 @font-face{font-family:"Space Mono";src:url("../fonts/SpaceMono.ttf") format("truetype");font-display:swap}
 
-:root{
-  color-scheme:light;
-  --background:#f5f6f8;
-  --sidebar:#25293a;
-  --sidebar-border:#383d52;
-  --sidebar-text:#d9ddea;
-  --sidebar-muted:#9ca4ba;
-  --sidebar-hover:#32384d;
-  --sidebar-active:#3a4057;
-  --sidebar-active-text:#ffffff;
-  --surface:#ffffff;
-  --surface-raised:#f1f3f7;
-  --border:#e1e5ec;
-  --border-strong:#cbd1dc;
-  --text-primary:#252b3b;
-  --text-secondary:#5f687c;
-  --text-muted:#7d8597;
-  --accent:#6750a4;
-  --accent-hover:#58428f;
-  --accent-soft:#8c78bd;
-  --accent-contrast:#ffffff;
-  --chart-rx:#4678b8;
-  --chart-tx:#7658ad;
-  --technical-value:#5e4799;
-  --success:#137a52;
-  --warning:#966316;
-  --danger:#b5384c;
-  --info:#4678b8;
+:root,
+:root[data-theme="dark"],
+:root[data-theme="terminal"]{
+  color-scheme:dark;
+
+  /* Terminal CLI palette */
+  --background:#0a0a0a;
+  --sidebar:#080b08;
+  --sidebar-border:#1f521f;
+  --sidebar-text:#33ff00;
+  --sidebar-muted:#477f47;
+  --sidebar-hover:#0d1c0d;
+  --sidebar-active:#102b10;
+  --sidebar-active-text:#33ff00;
+  --surface:#0d0f0d;
+  --surface-raised:#111611;
+  --border:#1f521f;
+  --border-strong:#2d792d;
+  --text-primary:#c9ffc0;
+  --text-secondary:#82ba7b;
+  --text-muted:#477f47;
+  --accent:#33ff00;
+  --accent-hover:#63ff3f;
+  --accent-soft:#102b10;
+  --accent-contrast:#050805;
+  --secondary:#ffb000;
+  --technical-value:#33ff00;
+  --chart-rx:#33ff00;
+  --chart-tx:#ffb000;
+  --success:#33ff00;
+  --warning:#ffb000;
+  --danger:#ff3333;
+  --info:#7bff66;
+
+  /* Geometry: terminal windows do not round corners or float. */
+  --radius-sm:0px;
+  --radius:0px;
+  --radius-lg:0px;
+  --shadow-card:none;
+  --shadow-float:none;
+
   --space-1:4px;
   --space-2:8px;
   --space-3:12px;
@@ -38,47 +51,15 @@
   --space-7:32px;
   --space-8:40px;
   --space-9:48px;
-  --radius-sm:6px;
-  --radius:10px;
-  --radius-lg:14px;
-  --sidebar-width:228px;
-  --sidebar-collapsed-width:68px;
-  --font-sans:"DM Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-  --font-mono:"Space Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
-  --shadow-card:0 1px 2px rgba(26,31,45,.04),0 4px 14px rgba(26,31,45,.025);
-  --shadow-float:0 18px 50px rgba(26,31,45,.16);
-  --transition-fast:120ms ease;
-  --transition:180ms ease;
-}
+  --sidebar-width:238px;
+  --sidebar-collapsed-width:66px;
 
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --background:#151821;
-  --sidebar:#11141d;
-  --sidebar-border:#2d3343;
-  --sidebar-text:#d9ddea;
-  --sidebar-muted:#8e98af;
-  --sidebar-hover:#202637;
-  --sidebar-active:#2a3145;
-  --sidebar-active-text:#ffffff;
-  --surface:#1d222e;
-  --surface-raised:#252b38;
-  --border:#313847;
-  --border-strong:#465064;
-  --text-primary:#edf0f7;
-  --text-secondary:#b2bacb;
-  --text-muted:#8e98aa;
-  --accent:#a78bdf;
-  --accent-hover:#b79de7;
-  --accent-soft:#8f75c7;
-  --accent-contrast:#17131f;
-  --chart-rx:#79a8df;
-  --chart-tx:#b497e8;
-  --technical-value:#c3acef;
-  --success:#59bd8e;
-  --warning:#e0aa4e;
-  --danger:#eb7889;
-  --info:#79a8df;
-  --shadow-card:0 1px 2px rgba(0,0,0,.18),0 5px 18px rgba(0,0,0,.12);
-  --shadow-float:0 20px 60px rgba(0,0,0,.34);
+  /* Monospace supremacy: use the bundled OFL font everywhere. */
+  --font-sans:"Space Mono",ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --font-mono:"Space Mono",ui-monospace,"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+
+  --terminal-glow:0 0 5px rgba(51,255,0,.34);
+  --terminal-glow-soft:0 0 9px rgba(51,255,0,.14);
+  --transition-fast:90ms steps(2,end);
+  --transition:140ms steps(3,end);
 }

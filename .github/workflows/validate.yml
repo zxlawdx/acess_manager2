@@ -17,4 +17,5 @@ jobs:
       - run: python tools/sync_frontend.py --check
       - run: python -m pytest -q
       - run: npm test
+      - run: node tests/visual/terminal-theme.cjs
       - run: python manage.py collectstatic --no-tailwind

@@ -1,135 +1,260 @@
-/* Final integration layer for specialized workspaces hosted by Vela.
-   Keep vendor-specific surfaces authoritative over the global refinement. */
+/* Access Manager — Vela/Juniper terminal integration.
+   This final layer intentionally outranks both legacy juniper.css and the global
+   terminal theme for infrastructure-only surfaces and dialogs. */
 
-.juniper-shell .app-topbar.context-bar {
-  min-height: 48px;
-  height: 48px;
-  padding: 0 16px;
-  gap: 12px;
-  background: #29263b;
-  color: #fff;
-  border: 0;
-  box-shadow: none;
+/* Complete Juniper token set. The missing --am-primary-soft in the previous
+   dark integration caused the SSH trust warning to remain almost white. */
+:where(.juniper-shell,.juniper-surface){
+  --am-bg:#0a0a0a;
+  --am-sidebar:#080b08;
+  --am-surface:#0d0f0d;
+  --am-text:#c9ffc0;
+  --am-text-secondary:#82ba7b;
+  --am-text-tertiary:#477f47;
+  --am-border:#1f521f;
+  --am-border-soft:#153815;
+  --am-hover:#0d1c0d;
+  --am-selected:#102b10;
+  --am-primary:#33ff00;
+  --am-primary-hover:#63ff3f;
+  --am-primary-soft:#071807;
+  --am-success:#33ff00;
+  --am-warning:#ffb000;
+  --am-danger:#ff3333;
+  --am-info:#7bff66;
+  --accent:var(--am-primary);
+  --background:var(--am-bg);
+  --surface:var(--am-surface);
+  --surface-raised:var(--am-hover);
+  --border:var(--am-border);
+  --border-strong:#2d792d;
+  --text-primary:var(--am-text);
+  --text-secondary:var(--am-text-secondary);
+  --text-muted:var(--am-text-tertiary);
+  --success:var(--am-success);
+  --warning:var(--am-warning);
+  --danger:var(--am-danger);
+  --info:var(--am-info);
+  --technical-value:var(--am-primary);
+  --radius:0px;
+  --radius-sm:0px;
+  --radius-lg:0px;
+  color:var(--am-text)!important;
+  font-family:var(--font-mono)!important;
 }
 
-.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav {
-  min-height: 32px;
-  padding: 6px 10px;
-  margin: 0;
-  border-radius: 4px;
-  border-left: 2px solid transparent;
-  color: #333238;
-  font-size: 12px;
-  box-shadow: none;
+/* --------------------------------------------------------------------------
+   Juniper shell
+   -------------------------------------------------------------------------- */
+.juniper-shell{grid-template-rows:48px minmax(0,1fr)!important;background:var(--am-bg)!important}
+.juniper-shell .app-topbar.context-bar{
+  min-height:48px!important;
+  height:48px!important;
+  padding:0 13px!important;
+  gap:10px!important;
+  background:#070907!important;
+  color:var(--am-text)!important;
+  border:0!important;
+  border-bottom:1px solid var(--am-border)!important;
+  box-shadow:none!important;
 }
+.juniper-shell .app-topbar.context-bar::before{content:"junos@bng:~$";font-size:10px;color:var(--am-primary);text-shadow:var(--terminal-glow-soft)}
+.juniper-shell .app-topbar .brand{font-size:11px!important;color:var(--am-primary)!important;letter-spacing:.06em!important}
+.juniper-shell #ctx-module{color:var(--am-warning)!important;font-size:9px!important}
+.juniper-shell .vendor-badge{display:none!important}
+.juniper-shell .device-title{margin-left:auto;flex-direction:row!important;align-items:center!important;gap:10px!important}
+.juniper-shell .device-title strong{color:var(--am-text)!important;font-size:10px!important}
+.juniper-shell .device-title small,.juniper-shell .context-meta{color:var(--am-text-tertiary)!important;font-size:9px!important}
+.juniper-shell .status-badge{margin-left:0!important;color:var(--am-success)!important;border-color:var(--am-success)!important;background:transparent!important}
+.juniper-shell .app-topbar .button{min-height:27px!important;padding:4px 7px!important;color:var(--am-primary)!important;background:transparent!important;border:1px solid var(--am-border)!important}
+.juniper-shell .app-topbar .button:hover:not(:disabled){background:var(--am-primary)!important;color:#050805!important;border-color:var(--am-primary)!important}
 
-.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav span {
-  color: inherit;
-  font-weight: inherit;
+.juniper-shell .app-sidebar{background:var(--am-sidebar)!important;border-right:1px solid var(--am-border)!important;padding:9px 7px 18px!important;color:var(--am-text-secondary)!important}
+.juniper-shell .app-sidebar::before{content:"[ INFRASTRUCTURE_NAV ]"}
+.juniper-nav-group{margin:0 0 5px!important;border:0!important}
+.juniper-nav-group summary{
+  padding:9px 8px!important;
+  color:var(--am-warning)!important;
+  font-size:8px!important;
+  font-weight:700!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase;
+  border-bottom:1px dashed var(--am-border)!important;
 }
+.juniper-nav-group summary::before{content:"# ";color:var(--am-primary)}
+.juniper-nav-group summary::after{content:"+"!important;color:var(--am-text-tertiary);font-size:11px!important;transform:none!important}
+.juniper-nav-group[open] summary::after{content:"-"!important}
 
-.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav:hover {
-  color: #333238;
-  background: var(--am-hover);
+.juniper-shell .nav{
+  min-height:31px!important;
+  padding:6px 8px!important;
+  margin:1px 0!important;
+  border:1px solid transparent!important;
+  border-left:1px solid transparent!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:var(--am-text-secondary)!important;
+  font-size:10px!important;
+  box-shadow:none!important;
 }
+.juniper-shell .nav::before{content:">"!important;color:var(--am-text-tertiary)!important}
+.juniper-shell .nav span{color:inherit!important;font-weight:400!important}
+.juniper-shell .nav:hover{background:var(--am-hover)!important;border-color:var(--am-border)!important;color:var(--am-primary)!important}
+.juniper-shell .nav:hover::before{color:var(--am-primary)!important}
+.juniper-shell .nav.active{background:var(--am-primary)!important;border-color:var(--am-primary)!important;color:#050805!important;font-weight:700!important}
+.juniper-shell .nav.active::before,.juniper-shell .nav.active span{color:#050805!important;font-weight:700!important}
 
-.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav.active {
-  color: #3a2e63;
-  background: var(--am-selected);
-  border-left-color: var(--am-primary);
-  box-shadow: none;
-}
+.juniper-shell .app-main{background:var(--am-bg)!important}
+.juniper-shell .page-content{width:100%;max-width:none;padding:16px 18px 28px!important}
+.juniper-shell .page-heading{margin:0 0 13px!important;padding-bottom:9px!important;border-bottom:1px dashed var(--am-border)!important}
+.juniper-shell .page-heading small{color:var(--am-warning)!important;font-size:9px!important;text-transform:uppercase!important}
+.juniper-shell .page-heading h1{margin-top:3px!important;color:var(--am-primary)!important;font-size:19px!important;font-weight:700!important;letter-spacing:0!important;text-transform:uppercase!important}
 
-.juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav.active span {
-  color: inherit;
-  font-weight: 600;
+/* Infrastructure panes/tables */
+.juniper-shell .panel,.j-panel,.j-metrics,.j-detail,.juniper-shell .kv,.j-trust-alert,.j-empty{
+  background:var(--am-surface)!important;
+  color:var(--am-text)!important;
+  border-color:var(--am-border)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
 }
+.juniper-shell .panel{border:1px solid var(--am-border)!important;padding:0!important;overflow:hidden!important;margin-top:0!important}
+.j-panel-header{min-height:40px!important;padding:9px 11px!important;border-bottom:1px solid var(--am-border)!important;background:#0a120a!important}
+.j-panel-header h2{color:var(--am-primary)!important;font-size:10px!important;text-transform:uppercase!important}
+.j-panel-header h2::before{content:"[ ";color:var(--am-text-tertiary)}.j-panel-header h2::after{content:" ]";color:var(--am-text-tertiary)}
+.j-panel-header>span,.j-inline-status,.j-intro p{color:var(--am-text-secondary)!important;font-size:9px!important}
+.j-toolbar{padding:8px 10px!important;border-bottom:1px dashed var(--am-border)!important;gap:6px!important}
+.j-toolbar input{min-width:180px}
 
-/* The compact state remains available for Juniper, but uses its own palette. */
-.juniper-shell.sidebar-collapsed .app-sidebar .nav {
-  color: var(--am-text-secondary);
-  background: transparent;
-}
+.juniper-shell .data-table,.juniper-surface .data-table{min-width:620px!important;font-size:10px!important;white-space:nowrap!important}
+.juniper-shell .data-table th,.juniper-surface .data-table th{height:auto!important;padding:7px 9px!important;background:#0a140a!important;color:var(--am-primary)!important;border-bottom:1px solid var(--am-border)!important;font-size:8px!important;text-transform:uppercase!important}
+.juniper-shell .data-table td,.juniper-surface .data-table td{height:32px!important;padding:6px 9px!important;background:transparent!important;color:var(--am-text-secondary)!important;border-bottom:1px solid var(--am-border-soft)!important}
+.juniper-shell .data-table tr:hover td{background:var(--am-hover)!important;color:var(--am-primary)!important}
+.juniper-shell .data-table tr.is-selected td{background:var(--am-selected)!important;color:var(--am-primary)!important}
+.j-text-button{color:var(--am-primary)!important;font-weight:700!important}
+.j-status{color:var(--am-text-secondary)!important}.j-status i{background:var(--am-text-tertiary)!important}.j-status.ok{color:var(--am-success)!important}.j-status.ok i{background:var(--am-success)!important;box-shadow:var(--terminal-glow-soft)}
 
-.juniper-shell.sidebar-collapsed .app-sidebar .nav:hover,
-.juniper-shell.sidebar-collapsed .app-sidebar .nav.active {
-  color: #3a2e63;
-  background: var(--am-selected);
-}
+.j-metrics{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;border:1px solid var(--am-border)!important;margin:12px 0!important}
+.j-metrics>div{min-height:70px!important;padding:10px 12px!important;border-right:1px solid var(--am-border-soft)!important}
+.j-metrics>div:last-child{border-right:0!important}.j-metrics span{color:var(--am-text-tertiary)!important;font-size:8px!important;text-transform:uppercase}.j-metrics strong{margin-top:5px!important;color:var(--am-primary)!important;font-size:16px!important;text-shadow:var(--terminal-glow-soft)}
+.j-kv>div{grid-template-columns:minmax(130px,.8fr) minmax(0,1.2fr)!important;gap:10px!important;padding:8px 0!important;border-bottom:1px dashed var(--am-border-soft)!important;font-size:10px!important}
+.j-kv dt{color:var(--am-text-tertiary)!important;text-transform:uppercase}.j-kv dd{min-width:0;margin:0!important;color:var(--am-primary)!important;font:10px/1.45 var(--font-mono)!important;overflow-wrap:anywhere;word-break:break-word}
+.j-detail .j-kv>div{grid-template-columns:1fr!important;gap:3px!important}
+.j-detail-actions{padding:9px 11px!important;border-top:1px solid var(--am-border)!important}
+.j-tabs{border-bottom:1px solid var(--am-border)!important}.j-tabs button{padding:8px 10px!important;color:var(--am-text-secondary)!important;font-size:9px!important;text-transform:uppercase}.j-tabs button.active{border-bottom:1px solid var(--am-primary)!important;color:var(--am-primary)!important;background:var(--am-selected)!important}
+.j-empty{padding:20px 13px!important;color:var(--am-text-secondary)!important}.j-empty strong{color:var(--am-primary)!important}.j-candidates{border-bottom:1px dashed var(--am-border)!important}.j-candidates summary{color:var(--am-warning)!important}
+.j-intro h2{color:var(--am-primary)!important;font-size:17px!important;text-transform:uppercase}.j-link-list button{text-align:left!important}
+.j-counter-table tbody th{background:transparent!important;color:var(--am-text-secondary)!important;border-bottom:1px solid var(--am-border-soft)!important}
 
-:root[data-theme="dark"] .juniper-shell,
-:root[data-theme="dark"] .juniper-surface {
-  --am-bg: var(--background);
-  --am-sidebar: var(--surface);
-  --am-surface: var(--surface);
-  --am-text: var(--text-primary);
-  --am-text-secondary: var(--text-secondary);
-  --am-text-tertiary: var(--text-muted);
-  --am-border: var(--border);
-  --am-border-soft: var(--border);
-  --am-hover: var(--surface-raised);
-  --am-selected: color-mix(in srgb, var(--accent) 16%, var(--surface));
-  --am-primary: var(--accent);
-  --am-primary-hover: var(--accent-hover);
+/* --------------------------------------------------------------------------
+   SSH host-key modal — isolated from global dialog rules
+   -------------------------------------------------------------------------- */
+.juniper-surface{
+  position:fixed!important;
+  inset:50% auto auto 50%!important;
+  transform:translate(-50%,-50%)!important;
+  width:min(680px,calc(100vw - 32px))!important;
+  max-width:680px!important;
+  max-height:min(82vh,720px)!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid var(--am-primary)!important;
+  border-radius:0!important;
+  background:#070907!important;
+  color:var(--am-text)!important;
+  box-shadow:none!important;
 }
+.juniper-surface::backdrop{background:rgba(0,0,0,.9)!important}
+.juniper-surface .dialog-inner{display:flex!important;flex-direction:column!important;max-height:min(82vh,720px)!important;padding:0!important;background:#070907!important;overflow:hidden!important}
+.juniper-surface .dialog-header{
+  flex:0 0 auto;
+  margin:0!important;
+  padding:10px 12px!important;
+  border:0!important;
+  border-bottom:1px solid var(--am-border)!important;
+  background:#0a120a!important;
+}
+.juniper-surface .dialog-header h2{margin:0!important;color:var(--am-primary)!important;font-size:11px!important;line-height:1.35!important;text-transform:uppercase!important;text-shadow:var(--terminal-glow-soft)}
+.juniper-surface .dialog-header h2::before{content:"+-- ";color:var(--am-text-tertiary)!important}.juniper-surface .dialog-header h2::after{content:" --+";color:var(--am-text-tertiary)!important}
+.juniper-surface .dialog-header .icon-button{width:27px;height:27px;padding:0!important;border:1px solid var(--am-border)!important;background:transparent!important;color:var(--am-primary)!important}
+.juniper-surface .dialog-header .icon-button:hover{background:var(--am-danger)!important;border-color:var(--am-danger)!important;color:#050505!important}
 
-:root[data-theme="dark"] .juniper-shell .app-topbar.context-bar {
-  background: #171a25;
+.juniper-surface .j-trust-body{flex:1 1 auto;min-height:0;overflow:auto;padding:13px 14px!important;background:#070907!important}
+.juniper-surface .j-trust-alert{
+  margin:0 0 12px!important;
+  padding:10px 11px!important;
+  border:1px solid var(--am-border-strong)!important;
+  border-left:3px solid var(--am-primary)!important;
+  border-radius:0!important;
+  background:var(--am-primary-soft)!important;
+  color:var(--am-text)!important;
+  font-size:10px!important;
 }
+.juniper-surface .j-trust-alert::before{content:"[SSH_HOST_KEY] ";display:block;margin-bottom:5px;color:var(--am-warning)!important;font-size:8px;font-weight:700;letter-spacing:.08em}
+.juniper-surface .j-trust-alert strong{display:block;color:var(--am-primary)!important;font-size:10px!important;text-transform:uppercase!important;text-shadow:var(--terminal-glow-soft)}
+.juniper-surface .j-trust-alert p{margin:5px 0 0!important;color:var(--am-text-secondary)!important;line-height:1.55!important}
+.juniper-surface .j-trust-alert.changed{border-color:var(--am-danger)!important;border-left-color:var(--am-danger)!important;background:#180707!important}.juniper-surface .j-trust-alert.changed::before{content:"[SSH_HOST_KEY_CHANGED] ";color:var(--am-danger)!important}.juniper-surface .j-trust-alert.changed strong{color:var(--am-danger)!important;text-shadow:0 0 5px rgba(255,51,51,.3)}
 
-:root[data-theme="dark"] .juniper-shell .app-sidebar {
-  background: var(--am-sidebar);
-  border-right-color: var(--am-border);
+.juniper-surface .j-kv{display:block!important;margin:0!important;background:transparent!important;border:0!important}
+.juniper-surface .j-kv>div{
+  display:grid!important;
+  grid-template-columns:minmax(150px,.72fr) minmax(0,1.28fr)!important;
+  gap:12px!important;
+  align-items:start!important;
+  padding:8px 0!important;
+  border-bottom:1px dashed var(--am-border)!important;
 }
+.juniper-surface .j-kv dt{color:var(--am-text-tertiary)!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important}
+.juniper-surface .j-kv dt::before{content:"$ ";color:var(--am-warning)!important}
+.juniper-surface .j-kv dd{min-width:0;margin:0!important;color:var(--am-primary)!important;font:10px/1.45 var(--font-mono)!important;overflow-wrap:anywhere!important;word-break:break-all!important;user-select:all}
 
-:root[data-theme="dark"] .juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav,
-:root[data-theme="dark"] .juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav span {
-  color: var(--text-secondary);
+.juniper-surface .dialog-footer{
+  flex:0 0 auto;
+  display:flex!important;
+  justify-content:flex-end!important;
+  gap:7px!important;
+  margin:0!important;
+  padding:10px 12px!important;
+  border:0!important;
+  border-top:1px solid var(--am-border)!important;
+  background:#070907!important;
 }
+.juniper-surface .dialog-footer .button.primary{max-width:100%;white-space:normal;text-align:center;background:var(--am-primary)!important;border-color:var(--am-primary)!important;color:#050805!important}
+.juniper-surface .dialog-footer .button.primary:hover:not(:disabled){background:#050805!important;color:var(--am-primary)!important;outline:1px solid var(--am-primary)!important;outline-offset:-2px!important}
 
-:root[data-theme="dark"] .juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav:hover,
-:root[data-theme="dark"] .juniper-shell:not(.sidebar-collapsed) .app-sidebar .nav.active,
-:root[data-theme="dark"] .juniper-shell.sidebar-collapsed .app-sidebar .nav:hover,
-:root[data-theme="dark"] .juniper-shell.sidebar-collapsed .app-sidebar .nav.active {
-  color: var(--text-primary);
-  background: var(--am-selected);
-}
+/* Other Juniper modal content */
+.juniper-surface .dialog-inner>p{margin:0!important;padding:10px 13px!important;color:var(--am-text-secondary)!important;font-size:10px!important;overflow-wrap:anywhere}
+.juniper-surface input,.juniper-surface select{min-height:33px!important;border:0!important;border-bottom:1px solid var(--am-border-strong)!important;border-radius:0!important;background:#080b08!important;color:var(--am-primary)!important}
+.juniper-surface .button{border-radius:0!important;background:transparent!important;color:var(--am-primary)!important;border-color:var(--am-border-strong)!important}
+.juniper-surface .button:hover:not(:disabled){background:var(--am-primary)!important;color:#050805!important;border-color:var(--am-primary)!important}
 
-:root[data-theme="dark"] .juniper-shell .button.primary,
-:root[data-theme="dark"] .juniper-surface .button.primary {
-  color: var(--accent-contrast);
-  background: var(--am-primary);
-  border-color: var(--am-primary);
+/* Drawers are side panes, not centered modals. */
+.juniper-surface.j-drawer{
+  inset:48px 0 0 auto!important;
+  transform:none!important;
+  width:min(460px,100vw)!important;
+  max-width:100vw!important;
+  height:calc(100% - 48px)!important;
+  max-height:none!important;
+  border:0!important;
+  border-left:1px solid var(--am-primary)!important;
 }
+.j-drawer .dialog-inner{height:100%!important;max-height:none!important}.j-drawer-content{background:#070907!important;padding:13px!important}.j-drawer .dialog-footer{flex-wrap:wrap!important}
 
-:root[data-theme="dark"] .juniper-shell .button.primary:hover,
-:root[data-theme="dark"] .juniper-surface .button.primary:hover {
-  background: var(--am-primary-hover);
-  border-color: var(--am-primary-hover);
+/* --------------------------------------------------------------------------
+   Responsive infrastructure workspace
+   -------------------------------------------------------------------------- */
+@media(max-width:1450px){.j-subscriber-grid{grid-template-columns:minmax(0,1fr) 300px!important}.juniper-shell .context-meta{display:none!important}.juniper-shell .page-content{padding:16px!important}.juniper-shell .device-title small{display:none!important}}
+@media(max-width:1000px){.j-subscriber-grid,.j-overview-grid{grid-template-columns:1fr!important}.j-detail{position:static!important}.j-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}.juniper-shell #ctx-module{display:none!important}.juniper-shell #juniper-diagnostic-form{grid-template-columns:1fr 1fr!important}}
+@media(max-width:780px){
+  .juniper-shell .app-sidebar{top:48px!important}
+  .juniper-shell .page-content{padding:12px!important}
+  .j-metrics{grid-template-columns:1fr 1fr!important}
+  .j-intro{flex-direction:column!important}
+  .juniper-shell .data-table{min-width:620px!important}
+  .juniper-shell .device-title{display:none!important}
+  .juniper-surface{width:min(94vw,680px)!important;max-height:88vh!important}
+  .juniper-surface .j-kv>div{grid-template-columns:1fr!important;gap:3px!important}
 }
-
-:root[data-theme="dark"] .juniper-shell .app-topbar .button {
-  color: #fff;
-  background: transparent;
-  border-color: #ffffff55;
-}
-
-:root[data-theme="dark"] .juniper-shell .panel,
-:root[data-theme="dark"] .juniper-shell .kv,
-:root[data-theme="dark"] .juniper-surface,
-:root[data-theme="dark"] .juniper-surface .dialog-footer,
-:root[data-theme="dark"] .juniper-shell input,
-:root[data-theme="dark"] .juniper-shell select,
-:root[data-theme="dark"] .juniper-surface input,
-:root[data-theme="dark"] .juniper-surface select {
-  color: var(--text-primary);
-  background: var(--surface);
-  border-color: var(--border-strong);
-}
-
-@media (max-width: 780px) {
-  .juniper-shell .app-topbar.context-bar {
-    padding-inline: 10px;
-    gap: 7px;
-  }
-}
+@media(max-width:520px){.j-metrics{grid-template-columns:1fr!important}.juniper-surface{width:calc(100vw - 16px)!important}.juniper-surface .dialog-footer{justify-content:stretch!important}.juniper-surface .dialog-footer .button{width:100%!important}}
