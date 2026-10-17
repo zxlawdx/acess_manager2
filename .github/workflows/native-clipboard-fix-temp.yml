@@ -25,6 +25,16 @@ jobs:
           node-version: '24'
           cache: npm
       - run: python tools/apply_clipboard_fix_temp.py
+      - name: Correct Juniper patch syntax
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('apps/access_manager/static/js/workspaces/views/juniper.js')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("else toast('Não foi possível copiar.')}})}", "else toast('Não foi possível copiar.');})}")
+          p.write_text(s,encoding='utf-8')
+          PY
       - run: npm ci
       - run: ./node_modules/.bin/esbuild apps/access_manager/static/js/entry.js --bundle --format=iife --target=es2020 --charset=utf8 --outfile=/tmp/runtime.js
       - run: python tools/sync_frontend.py
