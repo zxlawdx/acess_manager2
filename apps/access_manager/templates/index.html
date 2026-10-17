@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="{{ static('access_manager/css/vela-integration.css') }}">
 <link rel="stylesheet" href="{{ static('access_manager/css/regressions.css') }}">
 
+<link rel="stylesheet" href="{{ static('access_manager/css/world.css') }}">
+
 <section id="login-page" class="app-wrapper" aria-label="Conectar ao equipamento">
   <div class="connection-card">
     <section class="connection-content">
@@ -67,9 +69,24 @@
     <div class="device-title"><strong id="ctx-model">Sem equipamento</strong><small id="ctx-host">—</small></div>
     <span class="status-badge" id="ctx-status">○ Desconectado</span>
     <small class="context-meta" id="ctx-updated">—</small>
+    <button class="button" id="world-theme" type="button" aria-pressed="false">Tema Aero</button>
+    <button class="button" id="world-toggle" type="button" aria-pressed="false">Mundo 3D</button>
     <button class="button secondary" id="disconnect-button" disabled>Desconectar</button>
   </header>
 
+  <p id="world-notice" role="status" hidden></p>
+  <button id="world-close-panel" type="button" hidden>Voltar ao mundo · Esc</button>
+  <section id="aero-world" aria-label="Exploração Frutiger Aero" hidden data-bundle="{{ static('access_manager/js/world-runtime.js') }}" data-model="{{ static('access_manager/models/player/frutiger_buddy.glb') }}">
+    <div class="world-hud">
+      <div class="world-glass"><strong>Access World</strong><small>Natureza, internet e telecom</small><small id="world-inventory">Exploração: 0/5 regiões visitadas</small></div>
+      <div class="world-glass"><label>Qualidade <select id="world-quality"><option value="low">Baixa</option><option value="medium" selected>Média</option><option value="high">Alta</option></select></label></div>
+      <div class="world-glass"><button id="world-music" type="button">♫ Som ambiente</button><label>Volume <input id="world-volume" type="range" min="0" max="0.2" step="0.01" value="0.08"></label></div>
+      <label class="world-glass"><input id="world-gamification" type="checkbox" checked> Exploração opcional</label>
+    </div>
+    <canvas id="world-map" width="180" height="180" aria-label="Minimapa: azul escuro indica jogador; círculos coloridos indicam as cinco regiões"></canvas>
+    <p id="world-prompt" class="world-glass" role="status">WASD para andar · E para inspecionar</p>
+    <output id="world-debug">Iniciando renderer…</output>
+  </section>
   <div class="layout">
     <aside class="app-sidebar" id="sidebar" aria-label="Navegação principal">
       <div class="nav-group" data-juniper-nav hidden>INFRAESTRUTURA JUNIPER</div>

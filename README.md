@@ -33,3 +33,7 @@ python tools/sync_frontend.py --check
 A escrita depende da sessão e da capability do provider. Uma leitura comprovada não habilita escrita desconhecida. O histórico SQLite reutiliza o repository e a redação de segredos do legado. Diagnósticos, taxas e detalhes de clientes usam respostas reais; fixtures só existem em testes.
 
 Limitações e evidências: `docs/NETPULSE_EXECUTION_REPORT.md`.
+
+## Experimental Frutiger Aero
+
+Após conectar, use **Mundo 3D** para explorar as cinco regiões e **E** para abrir os painéis técnicos existentes. **Tema Aero** também funciona na interface convencional. A versão mantém o Vela e inclui renderer local, mascote procedural com suporte a GLB opcional e fallback para a interface se WebGL falhar. Controles, arquitetura e limites: [docs/FRUTIGER_WORLD.md](docs/FRUTIGER_WORLD.md).

@@ -1,3 +1,4 @@
+import {mountWorldBridge} from '../world/bridge.js';
 import {request,beginView,scopeActive,isCancelled,currentScope} from '../services/api.js';
 import {store} from '../core/store.js';
 import * as juniper from './views/juniper.js';
@@ -176,6 +177,8 @@ export async function mountApp() {
   window.__amStore = store;
   workspace = document.querySelector('#workspace');
   if (!workspace) throw new Error('Workspace do Access Manager não foi encontrado.');
+
+  mountWorldBridge({store,navigate:name=>render(name),suspend:()=>{views[store.view]?.unmount?.();beginView('world')},resume:()=>render(store.view)});
 
   const oldNav=document.querySelectorAll('[data-juniper-nav]');oldNav.forEach(n=>n.remove());
   document.querySelector('#sidebar').insertAdjacentHTML('afterbegin',juniper.navigation.map(([group,items],index)=>`<details class="juniper-nav-group" data-juniper-nav hidden ${index<2?'open':''}><summary>${esc(group)}</summary>${items.map(([route,label])=>`<button class="nav" data-juniper-nav data-view="${route}" hidden><span>${esc(label)}</span></button>`).join('')}</details>`).join(''));

@@ -13,5 +13,8 @@
     "test": "node --test tests/frontend/*.test.cjs",
     "test:visual": "node tests/visual/qa.cjs",
     "test:visual:native": "node tests/visual/native.cjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
   }
 }

@@ -5,6 +5,278 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
+  // apps/access_manager/static/js/world/controller.js
+  var regions = [
+    { id: "router", label: "Router Bay", view: "wan", juniper: "juniperInterfaces", x: 0, z: -8, color: 3586815 },
+    { id: "wifi", label: "Wi-Fi Garden", view: "wifi", juniper: "juniperSystem", x: -17, z: 0, color: 8771912 },
+    { id: "clients", label: "Client Lagoon", view: "clients", juniper: "subscribers", x: 17, z: 0, color: 1630160 },
+    { id: "dns", label: "DNS Spring", view: "dhcpdns", juniper: "juniperOverview", x: -12, z: 23, color: 8627711 },
+    { id: "diagnostics", label: "Diagnostic Dome", view: "diagnostics", juniper: "juniperDiagnostics", x: 12, z: 23, color: 16763988 }
+  ];
+
+  // apps/access_manager/static/js/world/audio.js
+  var AudioManager = class {
+    constructor() {
+      this.context = null;
+      this.active = false;
+      this.nodes = [];
+      this.volume = 0.08;
+    }
+    async toggle() {
+      if (!this.context) {
+        const Context = window.AudioContext || window.webkitAudioContext;
+        if (!Context) throw new Error("Áudio indisponível nesta WebView.");
+        this.context = new Context();
+        this.master = this.context.createGain();
+        this.master.gain.value = 0;
+        this.master.connect(this.context.destination);
+        this.music = this.context.createGain();
+        this.music.connect(this.master);
+      }
+      await this.context.resume();
+      this.active = !this.active;
+      if (this.active && !this.nodes.length) {
+        for (const f of [130.81, 196, 261.63, 329.63]) {
+          const o = this.context.createOscillator();
+          o.type = "sine";
+          o.frequency.value = f;
+          o.connect(this.music);
+          o.start();
+          this.nodes.push(o);
+        }
+      }
+      this.master.gain.setTargetAtTime(this.active ? this.volume : 0, this.context.currentTime, 0.4);
+      return this.active;
+    }
+    pause() {
+      this.active = false;
+      if (this.context) this.master.gain.setTargetAtTime(0, this.context.currentTime, 0.1);
+    }
+    dispose() {
+      this.nodes.forEach((n) => n.stop());
+      this.nodes = [];
+      this.context?.close();
+    }
+  };
+
+  // apps/access_manager/static/js/world/bridge.js
+  function mountWorldBridge({ store: store2, navigate, suspend, resume }) {
+    const shell = document.querySelector(".app-shell"), host = document.querySelector("#aero-world");
+    if (!host) return;
+    const button2 = document.querySelector("#world-toggle"), close = document.querySelector("#world-close-panel"), notice = document.querySelector("#world-notice");
+    const audio = new AudioManager();
+    let world = null, loading = null, entering = false, generation3 = 0, active2 = false, panel3 = false, previousTheme = false;
+    const saved2 = (key, fallback) => {
+      try {
+        return localStorage.getItem(key) || fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const save = (key, value2) => {
+      try {
+        localStorage.setItem(key, value2);
+      } catch {
+      }
+    };
+    const setNotice = (message) => {
+      notice.textContent = message;
+      notice.hidden = !message;
+    };
+    const focusWorld = () => world?.renderer.domElement.focus();
+    function closePanel() {
+      if (!active2 || !panel3) return;
+      document.querySelector("#action-dialog")?.close();
+      panel3 = false;
+      shell.classList.remove("world-panel-open");
+      close.hidden = true;
+      suspend();
+      world?.setPaused(false);
+    }
+    function openPanel(region) {
+      if (!active2) return;
+      panel3 = true;
+      shell.classList.add("world-panel-open");
+      close.hidden = false;
+      world.setPaused(true);
+      navigate(store2.session?.session?.vendor === "juniper" ? region.juniper : region.view);
+      close.focus();
+    }
+    function load() {
+      if (window.AccessManagerWorld) return Promise.resolve(window.AccessManagerWorld);
+      if (loading) return loading;
+      loading = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = host.dataset.bundle;
+        script.onload = () => window.AccessManagerWorld ? resolve(window.AccessManagerWorld) : reject(new Error("Renderer indisponível"));
+        script.onerror = () => {
+          script.remove();
+          reject(new Error("Não foi possível carregar o módulo 3D local."));
+        };
+        document.head.append(script);
+      }).catch((error) => {
+        loading = null;
+        throw error;
+      });
+      return loading;
+    }
+    function exit() {
+      generation3++;
+      active2 = false;
+      entering = false;
+      button2.disabled = false;
+      panel3 = false;
+      world?.stop();
+      audio.pause();
+      document.querySelector("#world-music").textContent = "♫ Som ambiente";
+      host.hidden = true;
+      close.hidden = true;
+      shell.classList.remove("world-mode", "world-panel-open");
+      if (!previousTheme) shell.classList.remove("aero-theme");
+      button2.textContent = "Mundo 3D";
+      button2.setAttribute("aria-pressed", "false");
+      if (store2.session?.connected) resume();
+      button2.focus();
+    }
+    async function enter() {
+      if (entering || active2 || !store2.session?.connected) return;
+      entering = true;
+      const token = ++generation3;
+      button2.disabled = true;
+      button2.textContent = "Carregando 3D…";
+      setNotice("");
+      try {
+        const { WorldRenderer } = await load();
+        if (token !== generation3 || !store2.session?.connected) return;
+        host.hidden = false;
+        if (!world) {
+          try {
+            world = new WorldRenderer(host, { interact: openPanel, onError: (message) => {
+              exit();
+              world?.dispose();
+              world = null;
+              setNotice(message);
+            }, modelURL: host.dataset.model });
+          } catch (error) {
+            host.hidden = true;
+            throw error;
+          }
+        }
+        previousTheme = shell.classList.contains("aero-theme");
+        active2 = true;
+        host.hidden = false;
+        shell.classList.add("world-mode", "aero-theme");
+        suspend();
+        world.applyQuality(saved2("am-world-quality", "medium"));
+        document.querySelector("#world-quality").value = world.quality;
+        world.setPaused(false);
+        world.start();
+        button2.textContent = "Voltar à interface";
+        button2.setAttribute("aria-pressed", "true");
+      } catch (error) {
+        world?.dispose();
+        world = null;
+        setNotice(`${error.message} Use a interface convencional.`);
+        button2.textContent = "Mundo 3D";
+        host.hidden = true;
+      } finally {
+        entering = false;
+        button2.disabled = false;
+      }
+    }
+    button2.onclick = () => active2 ? exit() : enter();
+    close.onclick = closePanel;
+    document.querySelector("#world-theme").onclick = (e) => {
+      shell.classList.toggle("aero-theme");
+      e.currentTarget.setAttribute("aria-pressed", String(shell.classList.contains("aero-theme")));
+      save("am-theme", shell.classList.contains("aero-theme") ? "aero" : "terminal");
+    };
+    if (saved2("am-theme", "terminal") === "aero") shell.classList.add("aero-theme");
+    document.querySelector("#world-quality").onchange = (e) => {
+      world?.applyQuality(e.target.value);
+      save("am-world-quality", e.target.value);
+      focusWorld();
+    };
+    document.querySelector("#world-music").onclick = async (e) => {
+      try {
+        const enabled = await audio.toggle();
+        e.target.textContent = enabled ? "♫ Silenciar" : "♫ Som ambiente";
+        focusWorld();
+      } catch (error) {
+        setNotice(error.message);
+      }
+    };
+    document.querySelector("#world-volume").oninput = (e) => {
+      audio.volume = Number(e.target.value);
+      save("am-world-volume", String(audio.volume));
+      if (audio.context && audio.active) audio.master.gain.setTargetAtTime(audio.volume, audio.context.currentTime, 0.1);
+    };
+    audio.volume = Number(saved2("am-world-volume", ".08"));
+    document.querySelector("#world-volume").value = audio.volume;
+    document.querySelector("#world-gamification").onchange = (e) => {
+      document.querySelector("#world-inventory").hidden = !e.target.checked;
+      save("am-world-gamification", String(e.target.checked));
+    };
+    const gamification = saved2("am-world-gamification", "true") === "true";
+    document.querySelector("#world-gamification").checked = gamification;
+    document.querySelector("#world-inventory").hidden = !gamification;
+    const map = document.querySelector("#world-map");
+    let ctx;
+    host.addEventListener("focusin", () => {
+      ctx ?? (ctx = map.getContext?.("2d"));
+    });
+    host.addEventListener("world-frame", (e) => {
+      const { player, hotspot, fps, visited } = e.detail;
+      document.querySelector("#world-prompt").textContent = hotspot ? `[E] Inspecionar ${hotspot.label}` : "WASD · Shift correr · Espaço pular · Arraste para olhar";
+      document.querySelector("#world-debug").textContent = `${fps} FPS · ${world.quality} · ${world.modelStatus || "Mascote procedural"}`;
+      document.querySelector("#world-inventory").textContent = `Exploração: ${visited}/5 regiões visitadas`;
+      if (ctx) {
+        ctx.clearRect(0, 0, 180, 180);
+        ctx.fillStyle = "#e2f4d1";
+        ctx.fillRect(0, 0, 180, 180);
+        for (const h of regions) {
+          ctx.fillStyle = "#" + h.color.toString(16).padStart(6, "0");
+          ctx.beginPath();
+          ctx.arc(90 + h.x * 1.6, 90 + h.z * 1.6, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = "#123c60";
+        ctx.beginPath();
+        ctx.arc(90 + player.x * 1.6, 90 + player.z * 1.6, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && active2) {
+        if (document.querySelector("#action-dialog")?.open) return;
+        if (panel3) closePanel();
+        else exit();
+      }
+    });
+    const observer = new MutationObserver(() => {
+      if (shell.hidden && (active2 || entering)) {
+        exit();
+        world?.dispose();
+        world = null;
+      }
+    });
+    observer.observe(shell, { attributes: true, attributeFilter: ["hidden"] });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        audio.pause();
+        document.querySelector("#world-music").textContent = "♫ Som ambiente";
+      }
+    });
+    window.addEventListener("pagehide", () => {
+      world?.dispose();
+      audio.dispose();
+      observer.disconnect();
+    });
+    return { openPanel, exit, get active() {
+      return active2;
+    } };
+  }
+
   // apps/access_manager/static/js/services/api.js
   var ApiError = class extends Error {
     constructor(message, { code, type, retryable = false, status: status3, request_id, health: health2 } = {}) {
@@ -2274,6 +2546,10 @@
     window.__amStore = store;
     workspace = document.querySelector("#workspace");
     if (!workspace) throw new Error("Workspace do Access Manager não foi encontrado.");
+    mountWorldBridge({ store, navigate: (name) => render9(name), suspend: () => {
+      views[store.view]?.unmount?.();
+      beginView("world");
+    }, resume: () => render9(store.view) });
     const oldNav = document.querySelectorAll("[data-juniper-nav]");
     oldNav.forEach((n) => n.remove());
     document.querySelector("#sidebar").insertAdjacentHTML("afterbegin", navigation.map(([group, items], index) => `<details class="juniper-nav-group" data-juniper-nav hidden ${index < 2 ? "open" : ""}><summary>${esc(group)}</summary>${items.map(([route, label]) => `<button class="nav" data-juniper-nav data-view="${route}" hidden><span>${esc(label)}</span></button>`).join("")}</details>`).join(""));
