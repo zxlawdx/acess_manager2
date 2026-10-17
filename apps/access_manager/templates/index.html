@@ -10,6 +10,7 @@
 
 <link rel="stylesheet" href="{{ static('access_manager/css/aero.css') }}">
 <link rel="stylesheet" href="{{ static('access_manager/css/login-experiences.css') }}">
+<link rel="stylesheet" href="{{ static('access_manager/css/field-ops.css') }}">
 
 <section id="login-page" class="app-wrapper" aria-label="Conectar ao equipamento">
   <div class="connection-card">
@@ -56,6 +57,7 @@
           <button class="experience-card" data-login-experience="aero" role="radio" aria-checked="false" tabindex="-1" type="button"><span class="experience-preview preview-aero" aria-hidden="true">◉</span><strong>Frutiger Aero</strong><small>Windows Vista/7, vidro e Web 2.0 em uma interface clássica.</small></button>
           <button class="experience-card" data-login-experience="world3d" role="radio" aria-checked="false" tabindex="-1" type="button"><span class="experience-preview preview-world" aria-hidden="true">◌</span><strong>Access World 3D</strong><small>Explore as funcionalidades reais da rede em um mundo interativo.</small></button>
           <button class="experience-card" data-login-experience="voxel" role="radio" aria-checked="false" tabindex="-1" type="button"><span class="experience-preview preview-voxel" aria-hidden="true"><i></i><b></b></span><strong>Voxel World</strong><small>Explore sua rede em um mundo de blocos interativo.</small></button>
+          <button class="experience-card" data-login-experience="wasteland" role="radio" aria-checked="false" tabindex="-1" type="button"><span class="experience-preview preview-wasteland" aria-hidden="true"><i></i><b></b></span><strong>Wasteland Ops 3D</strong><small>Explore a rede como um posto operacional em um mundo retrofuturista.</small></button>
         </div><span id="login-3d-status" role="status"></span></fieldset>
         <div class="connection-status" id="connection-status" role="status">Pronto para conectar</div>
         <button class="button primary" id="connect-button" type="submit">Conectar ao equipamento</button>
@@ -64,7 +66,7 @@
       <p class="connection-security">As credenciais existem somente no contexto da sessão com o equipamento.</p>
     </section>
     <aside class="connection-visual" aria-label="Ambiente Access Manager">
-      <div class="aero-login-art" aria-hidden="true"><svg viewBox="0 0 300 270" width="260" height="234"><defs><radialGradient id="login-orb" cx="30%" cy="20%"><stop stop-color="white" stop-opacity=".95"/><stop offset=".45" stop-color="#7ce2f9" stop-opacity=".5"/><stop offset="1" stop-color="#117bb6" stop-opacity=".8"/></radialGradient><linearGradient id="login-leaf" x2=".8" y2="1"><stop stop-color="#d2f893"/><stop offset="1" stop-color="#318946"/></linearGradient></defs><ellipse cx="150" cy="245" rx="100" ry="12" fill="#236980" opacity=".12"/><circle cx="150" cy="125" r="100" fill="url(#login-orb)" stroke="#eaffff" stroke-width="2"/><g fill="none" stroke="white" opacity=".65" stroke-width="1.5"><ellipse cx="150" cy="125" rx="45" ry="99"/><ellipse cx="150" cy="125" rx="99" ry="35"/><path d="M51 125h198M150 26v198"/></g><ellipse cx="116" cy="72" rx="46" ry="18" transform="rotate(-25 116 72)" fill="white" opacity=".6"/><path d="M195 219q-15-70 61-78 1 75-61 78" fill="url(#login-leaf)" stroke="#f1ffe3"/><path d="m194 222 47-61" stroke="#ecffce" stroke-width="2"/><circle cx="42" cy="177" r="20" fill="url(#login-orb)" stroke="white"/><circle cx="250" cy="62" r="13" fill="url(#login-orb)" stroke="white"/></svg><h2>Sua rede, em outro horizonte.</h2><p>Uma conexão.<br>Quatro formas de explorar.</p></div>
+      <div class="aero-login-art" aria-hidden="true"><svg viewBox="0 0 300 270" width="260" height="234"><defs><radialGradient id="login-orb" cx="30%" cy="20%"><stop stop-color="white" stop-opacity=".95"/><stop offset=".45" stop-color="#7ce2f9" stop-opacity=".5"/><stop offset="1" stop-color="#117bb6" stop-opacity=".8"/></radialGradient><linearGradient id="login-leaf" x2=".8" y2="1"><stop stop-color="#d2f893"/><stop offset="1" stop-color="#318946"/></linearGradient></defs><ellipse cx="150" cy="245" rx="100" ry="12" fill="#236980" opacity=".12"/><circle cx="150" cy="125" r="100" fill="url(#login-orb)" stroke="#eaffff" stroke-width="2"/><g fill="none" stroke="white" opacity=".65" stroke-width="1.5"><ellipse cx="150" cy="125" rx="45" ry="99"/><ellipse cx="150" cy="125" rx="99" ry="35"/><path d="M51 125h198M150 26v198"/></g><ellipse cx="116" cy="72" rx="46" ry="18" transform="rotate(-25 116 72)" fill="white" opacity=".6"/><path d="M195 219q-15-70 61-78 1 75-61 78" fill="url(#login-leaf)" stroke="#f1ffe3"/><path d="m194 222 47-61" stroke="#ecffce" stroke-width="2"/><circle cx="42" cy="177" r="20" fill="url(#login-orb)" stroke="white"/><circle cx="250" cy="62" r="13" fill="url(#login-orb)" stroke="white"/></svg><h2>Sua rede, em outro horizonte.</h2><p>Uma conexão.<br>Cinco formas de explorar.</p></div>
       <p>Interface técnica para leitura, diagnóstico e operação de rede.</p>
     </aside>
   </div>
@@ -83,22 +85,23 @@
     <label class="theme-control">Tema <select id="theme-select" aria-label="Tema"><option value="terminal">Terminal</option><option value="aero">Frutiger Aero</option></select></label>
     <button class="button" id="world-theme" type="button" aria-pressed="false" hidden>Tema Aero</button>
     <button class="button" id="service-current" type="button">Atendimento atual</button>
-    <label class="theme-control">Experiência <select id="world-experience"><option value="interface">Interface</option><option value="world3d">Mundo 3D</option><option value="voxel">Voxel World</option></select></label>
+    <label class="theme-control">Experiência <select id="world-experience"><option value="interface">Interface</option><option value="world3d">Mundo 3D</option><option value="voxel">Voxel World</option><option value="wasteland">Wasteland Ops 3D</option></select></label>
     <button class="button" id="world-toggle" type="button" aria-pressed="false">Mundo 3D</button>
     <button class="button secondary" id="disconnect-button" disabled>Desconectar</button>
   </header>
 
   <p id="world-notice" role="status" hidden></p>
   <button id="world-close-panel" type="button" hidden>Voltar ao mundo · Esc</button>
-  <section id="aero-world" aria-label="Exploração Frutiger Aero" hidden data-voxel-bundle="{{ static('access_manager/js/voxel-runtime.js') }}" data-bundle="{{ static('access_manager/js/world-runtime.js') }}" data-audio-manifest="{{ static('access_manager/audio/user/manifest.json') }}" data-model="{{ static('access_manager/models/player/frutiger_buddy.glb') }}">
+  <section id="aero-world" aria-label="Exploração Frutiger Aero" hidden data-wasteland-bundle="{{ static('access_manager/js/wasteland-runtime.js') }}" data-voxel-bundle="{{ static('access_manager/js/voxel-runtime.js') }}" data-bundle="{{ static('access_manager/js/world-runtime.js') }}" data-audio-manifest="{{ static('access_manager/audio/user/manifest.json') }}" data-model="{{ static('access_manager/models/player/frutiger_buddy.glb') }}">
     <div class="world-hud">
       <button class="world-glass" id="world-service" type="button">Atendimento atual</button>
-      <div class="world-glass"><strong>Access World</strong><small><span id="world-context-label">Natureza, internet e telecom</span></small><small id="world-inventory">Exploração: 0/5 regiões visitadas</small></div>
-      <div class="world-glass"><label>Qualidade <select id="world-quality"><option value="low">Baixa</option><option value="medium" selected>Média</option><option value="high">Alta</option></select></label></div>
-      <div class="world-glass"><button id="world-music" type="button" aria-pressed="false">♪ Reproduzir</button><small id="world-track" role="status">Nenhuma música instalada</small><label>Volume <input id="world-volume" type="range" min="0" max="1" step="0.01" value="0.35"></label><button id="world-audio-settings" type="button">Escolher música…</button><input id="world-audio-file" type="file" accept="audio/ogg,audio/mpeg,audio/wav,.ogg,.mp3,.wav" hidden><label><input id="world-audio-loop" type="checkbox" checked> Repetir</label></div>
+      <div class="world-glass"><strong id="world-title">Access World</strong><small><span id="world-context-label">Natureza, internet e telecom</span></small><small id="world-inventory">Exploração: 0/5 regiões visitadas</small></div>
+      <div class="world-glass"><span id="field-sector" role="status">Área de operações</span><label>Qualidade <select id="world-quality"><option value="low">Baixa</option><option value="medium" selected>Média</option><option value="high">Alta</option></select></label></div>
+      <div class="world-glass"><button id="world-ambient" type="button" hidden>Ambiente: desligado</button><button id="world-music" type="button" aria-pressed="false">♪ Reproduzir</button><small id="world-track" role="status">Nenhuma música instalada</small><label>Volume <input id="world-volume" type="range" min="0" max="1" step="0.01" value="0.35"></label><button id="world-audio-settings" type="button">Escolher música…</button><input id="world-audio-file" type="file" accept="audio/ogg,audio/mpeg,audio/wav,.ogg,.mp3,.wav" hidden><label><input id="world-audio-loop" type="checkbox" checked> Repetir</label></div>
       <label class="world-glass"><input id="world-gamification" type="checkbox" checked> Exploração opcional</label>
     </div>
     <div id="world-scanner" class="world-glass" hidden aria-label="Scanner: regiões disponíveis"></div>
+    <aside id="field-telemetry" class="world-glass" hidden><strong>NET:// ÚLTIMA COLETA</strong><div>WAN <output id="field-wan">Não coletada</output></div><div>Clientes <output id="field-clients">Não coletados</output></div><div>Latência <output id="field-latency">Não testada</output></div><div>Perda <output id="field-loss">Não testada</output></div><small>Última coleta e último ping; sem medição contínua</small></aside>
     <canvas id="world-map" width="180" height="180" aria-label="Minimapa: jogador e regiões disponíveis da sessão atual"></canvas>
     <p id="world-prompt" class="world-glass" role="status">WASD para andar · E para inspecionar</p>
     <output id="world-debug">Iniciando renderer…</output>
