@@ -35,13 +35,58 @@ class DeviceQueryBus:
     def clients(self): return normalize_clients(self.execute('clients','get_clients'))
     def wifi(self): return self.execute('wifi','get_wifi')
     def wifi_ssids(self): return self.execute('wifi','get_wifi_networks')
-    def wifi_radios(self): return self.execute('wifi_radio','get_wifi_radios')
+    @staticmethod
+    def _zte_standard_options(band):
+        band=str(band or '').lower()
+        if '2.4' in band:
+            values=('b','g','b,g','n','g,n','b,g,n','b,g,n,ax')
+        elif '5' in band:
+            values=('a','n','a,n','ac','a,n,ac','a,n,ac,ax')
+        else:
+            values=()
+        return [{'value':value,'label':value} for value in values]
+    def wifi_radios(self):
+        rows=self.execute('wifi_radio','get_wifi_radios')
+        # The canonical legacy ZTE writer accepts these standards even when
+        # the firmware page does not expose its <select> options to the parser.
+        # Restore that proven editor contract only for ZTE and keep observed
+        # vendor options authoritative when more than one was returned.
+        if getattr(self.sessions.provider,'vendor',None)=='zte':
+            for row in rows if isinstance(rows,list) else []:
+                options=row.setdefault('options',{})
+                observed=options.get('standard') or []
+                if len(observed)<=1:
+                    fallback=self._zte_standard_options(row.get('band') or row.get('banda'))
+                    current=row.get('standard') or row.get('padrao')
+                    if current is not None and all(str(item.get('value'))!=str(current) for item in fallback):
+                        fallback.insert(0,{'value':str(current),'label':str(current)})
+                    if fallback:options['standard']=fallback
+        return rows
     def wifi_channels(self, band=None, bandwidth=None, country=None): return self.execute('wifi_channels','get_available_channels',band=band,bandwidth=bandwidth,country=country)
     def wifi_neighbor_scan(self, band): return self.execute('wifi_neighbor_scan','get_wifi_neighbor_scan',band)
     def wifi_reveal(self): return {'networks':self.execute('wifi','get_wifi_networks',reveal_password=True)}
     def wan(self):
         data=self.execute('wan','get_wan')
-        return [wan_view(r) for r in (data if isinstance(data,list) else [data])]
+        result=[wan_view(r) for r in (data if isinstance(data,list) else [data])]
+        provider=self.sessions.provider
+        # Profile-based ZTE reads intentionally project a narrow WAN shape.
+        # Reuse the raw payload cached by that same read (no second ONT poll)
+        # so UserName/ServList from the proven legacy contract remain visible.
+        if getattr(provider,'vendor',None)=='zte' and getattr(provider,'_profile',None):
+            try:
+                from apps.access_manager.infrastructure.zte.discovery.profile_runtime import state
+                cached=state(provider._need()).get('payloads',{}).get('wan')
+                objects=cached[1] if cached else {}
+                raw_rows=objects.get('ID_WAN_COMFIG',[])
+                by_id={str(row.get('_InstID')):row for row in raw_rows if row.get('_InstID') is not None}
+                for row in result:
+                    source=by_id.get(str((row.get('advanced') or {}).get('id')))
+                    if source:
+                        row['username']=row.get('username') or source.get('UserName')
+                        row['service']=row.get('service') or source.get('ServList')
+            except Exception:
+                logging.getLogger(__name__).debug('zte.wan.legacy_fields_unavailable',exc_info=True)
+        return result
     def lan(self): return self.execute('lan','get_lan')
     def dhcp(self):
         result=dhcp_view(self.execute('dhcp','get_dhcp'))

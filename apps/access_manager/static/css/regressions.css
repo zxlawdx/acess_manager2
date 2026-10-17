@@ -1,0 +1,97 @@
+/* Regression fixes for native WebView rendering and infrastructure login.
+   Loaded last so Windows native form controls cannot inherit terminal-green
+   text on a light system surface. */
+
+/* Native <select> rendering on Windows may ignore the authored dark popup.
+   Keep the control intentionally light with dark text so both the collapsed
+   value and the OS-owned option list remain legible. */
+select:not([multiple]){
+  color-scheme:light!important;
+  background:#fff!important;
+  color:#050805!important;
+  border:1px solid #8d998d!important;
+  text-shadow:none!important;
+}
+select:not([multiple]) option{
+  background:#fff!important;
+  color:#050805!important;
+  text-shadow:none!important;
+}
+select:not([multiple]):disabled{
+  background:#d7d9d7!important;
+  color:#454945!important;
+  opacity:1!important;
+}
+select:not([multiple]):focus-visible{
+  outline:2px solid var(--accent)!important;
+  outline-offset:1px!important;
+  border-color:#050805!important;
+}
+
+/* Juniper adds transport, AD credentials and advanced ports, so the generic
+   two-column device login becomes cramped well before the mobile breakpoint.
+   Collapse that variant sooner and remove the decorative console first. */
+@media (max-width:1100px), (max-height:760px){
+  #login-page.infrastructure-login{
+    place-items:start center!important;
+    padding:18px 14px!important;
+  }
+  #login-page.infrastructure-login .connection-card{
+    width:min(100%,720px)!important;
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  #login-page.infrastructure-login .connection-visual{
+    display:none!important;
+  }
+  #login-page.infrastructure-login .connection-content{
+    min-width:0!important;
+    padding:22px 28px!important;
+  }
+  #login-page.infrastructure-login #connect-form,
+  #login-page.infrastructure-login #juniper-connection{
+    min-width:0!important;
+    width:100%!important;
+  }
+}
+
+@media (max-width:620px){
+  #login-page.infrastructure-login{
+    padding:0!important;
+  }
+  #login-page.infrastructure-login .connection-card{
+    width:100%!important;
+    min-height:100dvh!important;
+    border-inline:0!important;
+  }
+  #login-page.infrastructure-login .connection-content{
+    padding:18px 14px 28px!important;
+  }
+  #login-page.infrastructure-login #juniper-connection .form-grid,
+  #login-page.infrastructure-login .password-field{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}
+
+/* Three operational diagnostics fit on desktop and collapse without squeezing
+   fields or buttons into unreadable columns. */
+.diagnostic-tools-three{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+  align-items:start!important;
+}
+.diagnostic-tool-card{
+  min-width:0;
+  padding:12px;
+  border:1px solid var(--border)!important;
+  background:var(--surface)!important;
+}
+.diagnostic-tool-card h3{margin-top:0;color:var(--accent)!important}
+.wifi-neighbor-results{display:grid;gap:8px;margin-top:10px}
+.wifi-neighbor-band{padding:9px;border:1px solid var(--border)!important;background:#090c09!important}
+.wifi-neighbor-band strong{color:var(--accent)!important}
+.wifi-neighbor-band .channel-action{margin-top:8px}
+
+@media (max-width:980px){
+  .diagnostic-tools-three{grid-template-columns:minmax(0,1fr)!important}
+}
