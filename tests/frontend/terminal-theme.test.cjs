@@ -8,6 +8,7 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const tokens=read('apps/access_manager/static/css/tokens.css');
 const terminal=read('apps/access_manager/static/css/professional.css');
 const vela=read('apps/access_manager/static/css/vela-integration.css');
+const regressions=read('apps/access_manager/static/css/regressions.css');
 const shell=read('apps/access_manager/static/js/shell-ui.js');
 const template=read('apps/access_manager/templates/index.html');
 
@@ -43,6 +44,14 @@ test('SSH host-key modal is isolated, centered and readable',()=>{
   assert.match(vela,/\.juniper-surface \.j-kv>div\{[\s\S]*grid-template-columns:minmax\(150px,\.72fr\) minmax\(0,1\.28fr\)!important/);
   assert.match(vela,/\.juniper-surface \.j-kv dd\{[\s\S]*word-break:break-all!important/);
   assert.match(vela,/\.juniper-surface \.dialog-footer\{[\s\S]*background:#070907!important/);
+});
+
+test('Juniper login resets the legacy 540px cap and collapses before fields clip',()=>{
+  assert.match(regressions,/#login-page\.infrastructure-login \.connection-card\{[\s\S]*max-width:1080px!important/);
+  assert.match(regressions,/#login-page\.infrastructure-login \.connection-card\{[\s\S]*grid-template-columns:minmax\(420px,1\.08fr\) minmax\(320px,\.92fr\)!important/);
+  assert.match(regressions,/@media \(max-width:1100px\), \(max-height:820px\)\{[\s\S]*max-width:760px!important[\s\S]*grid-template-columns:minmax\(0,1fr\)!important/);
+  assert.match(regressions,/@media \(max-width:1100px\), \(max-height:820px\)\{[\s\S]*\.connection-visual\{[\s\S]*display:none!important/);
+  assert.match(regressions,/@media \(max-width:620px\)\{[\s\S]*\.password-field\{[\s\S]*display:grid!important/);
 });
 
 test('terminal integration preserves existing functional selectors and Vela runtime',()=>{
