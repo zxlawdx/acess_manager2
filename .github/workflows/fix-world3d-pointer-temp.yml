@@ -25,9 +25,9 @@ jobs:
           cache: npm
       - name: Apply visual and third-person interaction patch
         run: python tools/_fix_world3d_visual.py
+      - run: npm ci
       - name: Synchronize generated frontend bundle
         run: python tools/sync_frontend.py
-      - run: npm ci
       - name: Verify 3D visual smoke
         run: node tests/visual/world-interactions.cjs
       - name: Commit fix and remove temporary helpers
