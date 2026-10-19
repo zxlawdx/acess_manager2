@@ -7,7 +7,7 @@ const presets={low:{ratio:1,shadows:false,particles:12},medium:{ratio:1.5,shadow
 export class WorldRenderer {
  constructor(host,{interact,onError,modelURL,regions=[],layout='router'}={}){
   this.host=host;this.regions=regions;this.layout=layout;this.interact=interact;this.onError=onError;this.player=new PlayerController();this.keys=new Set();this.yaw=0;this.pitch=.42;this.distance=13;this.active=false;this.paused=false;this.time=0;this.frames=0;this.elapsed=0;this.visited=new Set();this.cleanups=[];this.quality='medium';
-  this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'low-power'});
+  this.renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer:true});
   this.renderer.setClearColor(0x71cafa);this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.25;
   const canvas=this.renderer.domElement;canvas.tabIndex=0;canvas.setAttribute('aria-label','Mundo 3D: WASD para andar, Shift correr, espaço pular, E inspecionar, arraste para girar a câmera.');host.prepend(canvas);
   this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x71cafa);this.scene.fog=new THREE.Fog(0x9bdaf5,55,160);this.camera=new THREE.PerspectiveCamera(50,1,.1,220);
@@ -73,9 +73,9 @@ export class WorldRenderer {
    if(this.mixer){const state=!p.grounded?'jump':p.moving?(p.running?'run':'walk'):'idle';if(state!==this.animationState){this.currentAction?.fadeOut(.2);const action=Object.entries(this.actions).find(([name])=>name.includes(state))?.[1];action?.reset().fadeIn(.2).play();this.currentAction=action;this.animationState=state;}this.mixer.update(dt)}
    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;if(!reduced){this.orbs.forEach(({orb,base},i)=>orb.position.y=base+Math.sin(this.time+i)*.18);this.bubbles.forEach((b,i)=>b.position.y=1+(this.time*.4+i)%12);if(this.quality!=='low'){const vertices=this.water.geometry.attributes.position;for(let i=0;i<vertices.count;i++)vertices.setZ(i,.08*Math.sin(vertices.getX(i)*.65+this.time*.8)*Math.cos(vertices.getY(i)*.45+this.time*.5));vertices.needsUpdate=true;this.water.geometry.computeVertexNormals();}}
    this.updateCamera(dt);this.renderer.render(this.scene,this.camera);
-   const hostRect=this.host.getBoundingClientRect(),hudRects=[...this.host.querySelector('.world-hud').children].filter(el=>!el.hidden).map(el=>el.getBoundingClientRect());
-   for(const {label,h} of this.labels){const v=new THREE.Vector3(h.x,terrainHeight(h.x,h.z)+4.6,h.z).project(this.camera),x=(v.x*.5+.5)*this.host.clientWidth,y=(-v.y*.5+.5)*this.host.clientHeight,w=Math.min(180,h.label.length*7+18);const rect={left:hostRect.left+x-w/2,right:hostRect.left+x+w/2,top:hostRect.top+y-30,bottom:hostRect.top+y};
-    label.hidden=v.z>1||v.z< -1||x-w/2<8||x+w/2>this.host.clientWidth-8||y<35||y>this.host.clientHeight-70||hudRects.some(r=>rect.left<r.right&&rect.right>r.left&&rect.top<r.bottom&&rect.bottom>r.top);
+   const hostRect=this.host.getBoundingClientRect(),viewW=this.host.clientWidth,viewH=this.host.clientHeight,hudRects=[...this.host.querySelector('.world-hud').children].filter(el=>!el.hidden).map(el=>el.getBoundingClientRect());
+   for(const {label,h} of this.labels){const v=new THREE.Vector3(h.x,terrainHeight(h.x,h.z)+4.6,h.z).project(this.camera),x=(v.x*.5+.5)*viewW,y=(-v.y*.5+.5)*viewH,w=Math.min(180,h.label.length*7+18);const rect={left:hostRect.left+x-w/2,right:hostRect.left+x+w/2,top:hostRect.top+y-30,bottom:hostRect.top+y};
+    label.hidden=v.z>1||v.z< -1||x-w/2<8||x+w/2>viewW-8||y<35||y>viewH-70||hudRects.some(r=>rect.left<r.right&&rect.right>r.left&&rect.top<r.bottom&&rect.bottom>r.top);
     label.style.left=`${x}px`;label.style.top=`${y}px`;}
 
    this.frames++;this.elapsed+=elapsed;if(this.elapsed>.4){this.fps=Math.round(this.frames/this.elapsed);this.frames=0;this.elapsed=0;this.host.dispatchEvent(new CustomEvent('world-frame',{detail:{player:p,hotspot:nearestHotspot(p,this.regions),fps:this.fps,visited:this.visited.size,total:this.regions.length}}));}

@@ -1171,7 +1171,6 @@
       document.querySelector("#world-inventory").textContent = `Exploração: ${visited}/${total} regiões visitadas`;
       document.querySelector("#field-sector").textContent = hotspot?.worldLabel || hotspot?.label || "Área de operações";
       if (ctx) {
-        ctx.clearRect(0, 0, 180, 180);
         ctx.fillStyle = mode === "wasteland" ? "#0b120d" : host.dataset.layout === "juniper" ? "#e0f2fa" : "#e2f4d1";
         ctx.fillRect(0, 0, 180, 180);
         ctx.font = "13px sans-serif";
