@@ -1,0 +1,243 @@
+from pathlib import Path
+import re
+
+
+def replace_once(text, old, new, label):
+    if old not in text:
+        if new in text:
+            return text
+        raise SystemExit(f"{label}: expected pattern not found")
+    return text.replace(old, new, 1)
+
+
+# Renderer
+path = Path("apps/access_manager/static/js/world/renderer.js")
+text = path.read_text(encoding="utf-8")
+text = replace_once(text, "import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';\n", "import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';\nimport {CSS3DRenderer,CSS3DObject} from 'three/addons/renderers/CSS3DRenderer.js';\n", "renderer CSS3D import")
+text = replace_once(text, "this.quality='medium';this.firstPerson=true;", "this.quality='medium';this.firstPerson=false;", "third person default")
+text = replace_once(text,
+    "const canvas=this.renderer.domElement;canvas.tabIndex=0;canvas.setAttribute('aria-label','Mundo 3D: WASD para andar, Shift correr, espaço pular, E inspecionar, arraste para girar a câmera.');host.prepend(canvas);",
+    "const canvas=this.renderer.domElement;canvas.tabIndex=0;canvas.setAttribute('aria-label','Mundo 3D: WASD para andar, Shift correr, espaço pular, E inspecionar, arraste para girar a câmera.');host.prepend(canvas);this.cssRenderer=new CSS3DRenderer();this.cssRenderer.domElement.className='world-css3d';host.insertBefore(this.cssRenderer.domElement,canvas.nextSibling);",
+    "CSS3D renderer setup")
+text = replace_once(text,
+    "this.listen(canvas,'keydown',e=>{if(this.paused||e.repeat)return;if(e.code==='KeyV'){this.firstPerson=!this.firstPerson;this.updateCamera(1);}if(e.code==='KeyF'){e.preventDefault();this.environmentSystem.interactions.interact(true);}const action={KeyJ:'light',KeyK:'heavy',KeyB:'block',KeyQ:'dodge',KeyT:'taunt'}[e.code];if(action)this.environmentSystem.action(action);if(e.code==='KeyR'&&this.environmentSystem.combat)this.environmentSystem.combat.reset();});",
+    "this.listen(canvas,'keydown',e=>{if(this.paused||e.repeat)return;if(e.code==='KeyV'){e.preventDefault();this.firstPerson=!this.firstPerson;this.updateCamera(1);}if(e.code==='KeyF'){e.preventDefault();this.environmentSystem.interactions.interact(true);}const action={KeyJ:'light',KeyK:'heavy',KeyB:'block',KeyQ:'dodge',KeyT:'taunt'}[e.code];if(action){e.preventDefault();this.performCombatAction(action);}if(e.code==='KeyR'&&this.environmentSystem.combat){e.preventDefault();this.performCombatAction('reset');}});",
+    "safe combat keys")
+text = replace_once(text,
+    "setScene(id){if(!sceneDefinitions[id])return;this.sceneId=id;this.baseObjects.forEach(o=>o.visible=id==='aero');this.regionGroup.visible=id==='aero';this.scene.background.setHex(id==='arena'?0x14263c:id==='office'?0x93bac0:0x71cafa);this.environmentSystem.build(id);const [x,z]=sceneDefinitions[id].spawn;Object.assign(this.player,{x,z,y:terrainHeight(x,z),velocity:0});this.yaw=0;this.pitch=.08;this.updateCamera(1);}",
+    "setScene(id){if(!sceneDefinitions[id])return;this.sceneId=id;this.baseObjects.forEach(o=>o.visible=id==='aero');this.regionGroup.visible=id==='aero';this.scene.background.setHex(id==='arena'?0x14263c:id==='office'?0x93bac0:0x71cafa);this.environmentSystem.build(id);const [x,z]=sceneDefinitions[id].spawn;Object.assign(this.player,{x,z,y:terrainHeight(x,z),velocity:0});if(id==='arena'){this.firstPerson=false;this.distance=7;}this.yaw=0;this.pitch=.08;this.updateCamera(1);}",
+    "arena third person")
+text = replace_once(text, "this.firstPerson=state.firstPerson!==false;", "this.firstPerson=state.firstPerson===true;if(this.sceneId==='arena')this.firstPerson=false;", "restore third person")
+text = replace_once(text,
+    "resize(){const rawW=this.host.clientWidth,rawH=this.host.clientHeight;if(!rawW||!rawH)return;const w=Math.max(1,Math.round(rawW)),h=Math.max(1,Math.round(rawH));if(this.viewportWidth===w&&this.viewportHeight===h)return;this.viewportWidth=w;this.viewportHeight=h;this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}",
+    "resize(){const rawW=this.host.clientWidth,rawH=this.host.clientHeight;if(!rawW||!rawH)return;const w=Math.max(1,Math.round(rawW)),h=Math.max(1,Math.round(rawH));if(this.viewportWidth===w&&this.viewportHeight===h)return;this.viewportWidth=w;this.viewportHeight=h;this.renderer.setSize(w,h,false);this.cssRenderer?.setSize(w,h);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}",
+    "CSS3D resize")
+methods = """ createMediaSurface(parent,{width=470,height=250,scale=.01,position=[0,1.4,.18]}={}){\n  if(!parent||!this.cssRenderer)return null;const element=document.createElement('div');element.className='world-tv-surface';element.style.width=width+'px';element.style.height=height+'px';element.setAttribute('aria-label','Tela da televisão 3D');const object=new CSS3DObject(element);object.position.set(...position);object.scale.setScalar(scale);parent.add(object);return {element,object,destroy(){object.removeFromParent();element.remove();}};\n }\n performCombatAction(action){\n  try{if(action==='reset'){this.environmentSystem?.combat?.reset();return true;}return Boolean(this.environmentSystem?.action(action));}catch(error){console.error('[Access World combat]',error);this.host.dispatchEvent(new CustomEvent('world-interaction',{detail:{kind:'message',text:'A arena ignorou uma ação que falhou. Tente novamente.'}}));return false;}\n }\n clearInput(){this.keys.clear();}"""
+text = replace_once(text, " clearInput(){this.keys.clear();}", methods, "renderer media/combat methods")
+text = replace_once(text, "this.updateCamera(dt);this.renderer.render(this.scene,this.camera);", "this.updateCamera(dt);this.renderer.render(this.scene,this.camera);this.cssRenderer?.render(this.scene,this.camera);", "CSS3D render")
+text = replace_once(text,
+    "combat:this.environmentSystem.combat?{hp:this.environmentSystem.combat.hp,npcHp:this.environmentSystem.combat.npcHp,result:this.environmentSystem.combat.result,combo:this.environmentSystem.combat.combo}:null",
+    "combat:this.environmentSystem.combat?{hp:this.environmentSystem.combat.hp,npcHp:this.environmentSystem.combat.npcHp,result:this.environmentSystem.combat.result,combo:this.environmentSystem.combat.combo,cooldown:this.environmentSystem.combat.cooldown,playerState:this.environmentSystem.combat.player.state,distance:Math.hypot(p.x-this.environmentSystem.router.position.x,p.z-this.environmentSystem.router.position.z)}:null",
+    "combat frame details")
+text = replace_once(text, "this.renderer.dispose();this.renderer.domElement.remove();this.labels?.forEach(({label})=>label.remove());", "this.renderer.dispose();this.renderer.domElement.remove();this.cssRenderer?.domElement.remove();this.labels?.forEach(({label})=>label.remove());", "CSS3D dispose")
+path.write_text(text, encoding="utf-8")
+
+# Environment
+path = Path("apps/access_manager/static/js/world/environment.js")
+text = path.read_text(encoding="utf-8")
+text = replace_once(text, "arena:{name:'Router Rumble',spawn:[0,6]", "arena:{name:'Router Rumble',spawn:[0,4]", "arena spawn")
+text = replace_once(text, "build(scene){this.generation++;this.loadedAssets=0;", "build(scene){this.generation++;if(this.tvMedia){this.event('tv_surface',{host:null});this.tvMedia.destroy();this.tvMedia=null;this.tvSurface=null;}this.loadedAssets=0;", "TV surface lifecycle")
+text = replace_once(text,
+    "this.tv=this.prop('tv',0,-4,'Usar TV / YouTube',()=>this.event('tv'),0x152e45,[5,2.8,.3]);this.tv.position.y=1.2;const screen=new THREE.Mesh(new THREE.PlaneGeometry(4.7,2.5),material(0x168cad,{emissive:0x083b50}));screen.position.set(0,1.4,.16);this.tv.add(screen);",
+    "this.tv=this.prop('tv',0,-4,'Usar TV / YouTube',()=>this.event('tv'),0x152e45,[5,2.8,.3]);this.tv.position.y=1.2;const screen=new THREE.Mesh(new THREE.PlaneGeometry(4.7,2.5),material(0x05090c,{emissive:0x021018}));screen.position.set(0,1.4,.16);this.tv.add(screen);this.tvMedia=this.world.createMediaSurface?.(this.tv,{width:470,height:250,scale:.01,position:[0,1.4,.18]})||null;this.tvSurface=this.tvMedia?.element||null;if(this.tvSurface)this.event('tv_surface',{host:this.tvSurface});",
+    "3D TV media surface")
+text = replace_once(text,
+    "buildArena(){this.router.position.set(0,-.1,1);this.box(22,.4,22,0x233f58,0,-.7,0);this.box(12,.04,12,0x427e8c,0,-.46,0);for(const x of [-7,7])for(const z of [-7,7])this.box(.3,2.4,.3,0xf2c267,x,.7,z);for(const y of [.4,1.1,1.8])for(const z of [-7,7])this.box(14,.07,.07,0xe8bf66,0,y,z);this.combat=new CombatSystem({difficulty:this.difficulty||'normal',emit:trigger=>this.event('dialogue',{trigger})});this.prop('arena-exit',7,6,'Sair da arena',()=>this.event('scene',{scene:'office'}),0x67d5ad,[1.5,2.5,.4]);this.colliders=[{x:0,z:-8,w:16,d:.2},{x:0,z:8,w:16,d:.2},{x:-8,z:0,w:.2,d:16},{x:8,z:0,w:.2,d:16}];}",
+    "buildArena(){this.router.position.set(0,-.1,1);this.box(22,.4,22,0x233f58,0,-.7,0);this.box(12,.04,12,0x427e8c,0,-.46,0);for(const x of [-7,7])for(const z of [-7,7])this.box(.3,2.4,.3,0xf2c267,x,.7,z);for(const y of [.4,1.1,1.8])for(const z of [-7,7])this.box(14,.07,.07,0xe8bf66,0,y,z);this.combat=new CombatSystem({difficulty:this.difficulty||'normal',emit:trigger=>this.event('dialogue',{trigger})});this.register('arena-router',this.router,'Bater no roteador · E soco · F golpe forte',()=>this.action('light'),{secondary:()=>this.action('heavy'),distance:3.05});this.prop('arena-exit',7,6,'Sair da arena',()=>this.event('scene',{scene:'office'}),0x67d5ad,[1.5,2.5,.4]);this.colliders=[{x:0,z:-8,w:16,d:.2},{x:0,z:8,w:16,d:.2},{x:-8,z:0,w:.2,d:16},{x:8,z:0,w:.2,d:16}];}",
+    "arena router interaction")
+text = replace_once(text,
+    "action(action){if(!this.combat)return;const p=this.world.player,r=this.router.position;this.combat.action(action,Math.hypot(p.x-r.x,p.z-r.z));}",
+    "action(action){if(!this.combat)return false;const p=this.world.player,r=this.router.position,distance=Math.hypot(p.x-r.x,p.z-r.z);try{const before=this.combat.npcHp,accepted=this.combat.action(action,distance);if(accepted&&['light','heavy'].includes(action)&&before===this.combat.npcHp&&distance>3)this.event('message',{text:'Chegue mais perto do roteador para acertar o golpe.'});if(accepted&&['light','heavy'].includes(action))p.heading=Math.atan2(r.x-p.x,r.z-p.z);return accepted;}catch(error){console.error('[Router Rumble]',error);this.event('message',{text:'O golpe foi cancelado para manter o mundo estável.'});return false;}}",
+    "safe arena action")
+text = replace_once(text, "dispose(){this.disposed=true;this.generation++;this.events.clear();", "dispose(){this.disposed=true;this.generation++;this.tvMedia?.destroy();this.tvMedia=null;this.tvSurface=null;this.events.clear();", "TV dispose")
+path.write_text(text, encoding="utf-8")
+
+# Combat event isolation
+path = Path("apps/access_manager/static/js/world/combat.js")
+text = path.read_text(encoding="utf-8")
+if "emitEvent(name)" not in text:
+    text = text.replace("this.emit('", "this.emitEvent('")
+    text = replace_once(text,
+        "constructor({random=Math.random,emit=()=>{},difficulty='normal'}={}){this.random=random;this.emit=emit;this.difficulty=difficulty;this.player=new AnimationStateMachine();this.npc=new AnimationStateMachine();this.reset();}\n",
+        "constructor({random=Math.random,emit=()=>{},difficulty='normal'}={}){this.random=random;this.emit=emit;this.difficulty=difficulty;this.player=new AnimationStateMachine();this.npc=new AnimationStateMachine();this.reset();}\n emitEvent(name){try{this.emit(name)}catch(error){console.error('[Router Rumble event]',error);}}\n",
+        "combat safe emitter")
+text = replace_once(text, "action(action,distance=2){if(this.result)return false;", "action(action,distance=2){distance=Number.isFinite(Number(distance))?Number(distance):99;if(this.result)return false;", "combat distance guard")
+path.write_text(text, encoding="utf-8")
+
+# YouTube media module
+Path("apps/access_manager/static/js/world/media.js").write_text(r'''export function parseYouTube(value){const input=String(value||'').trim();if(/^[\w-]{11}$/.test(input))return {videoId:input};if(/^(PL|UU|OLAK5uy_)[\w-]{10,}$/.test(input))return {list:input};let url;try{url=new URL(input)}catch{throw new Error('Cole uma URL ou ID válido do YouTube.');}if(url.protocol!=='https:'||url.username||url.password||url.port||!['youtube.com','www.youtube.com','m.youtube.com','youtu.be','www.youtube-nocookie.com'].includes(url.hostname))throw new Error('Use um link HTTPS do YouTube.');const bits=url.pathname.split('/').filter(Boolean),videoId=url.hostname==='youtu.be'?bits[0]:['embed','shorts','live'].includes(bits[0])?bits[1]:url.pathname==='/watch'?url.searchParams.get('v'):null,list=url.searchParams.get('list');if(videoId&&!/^[\w-]{11}$/.test(videoId))throw new Error('ID de vídeo inválido.');if(list&&!/^[\w-]{10,100}$/.test(list))throw new Error('ID de playlist inválido.');if(!videoId&&!list)throw new Error('Não encontrei um vídeo ou playlist nessa URL.');return {...(videoId?{videoId}:{}),...(list?{list}:{})};}
+export function youtubeURL(data){return data.videoId?'https://www.youtube.com/watch?v='+data.videoId+(data.list?'&list='+data.list:''):'https://www.youtube.com/playlist?list='+data.list;}
+export function looksLikeYouTubeReference(value){const input=String(value||'').trim();return /^[\w-]{11}$/.test(input)||/^(PL|UU|OLAK5uy_)[\w-]{10,}$/.test(input)||/^https?:\/\//i.test(input);}
+export async function searchYouTube(query){const q=String(query||'').trim();if(q.length<2)throw new Error('Digite pelo menos 2 caracteres para pesquisar no YouTube.');const res=await fetch(new URL('/api/media/youtube/search',location.origin),{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:q})});let data={};try{data=await res.json()}catch{}if(!res.ok||data?.success===false)throw new Error(data?.error?.message||'Não foi possível pesquisar no YouTube.');return Array.isArray(data?.results)?data.results:[];}
+let apiPromise;
+function loadAPI(){if(window.YT?.Player)return Promise.resolve(window.YT);if(apiPromise)return apiPromise;apiPromise=new Promise((resolve,reject)=>{const previous=window.onYouTubeIframeAPIReady;const script=document.createElement('script');const timeout=setTimeout(()=>{script.remove();apiPromise=null;reject(new Error('YouTube indisponível nesta WebView.'));},12000);window.onYouTubeIframeAPIReady=()=>{clearTimeout(timeout);previous?.();resolve(window.YT)};script.src='https://www.youtube.com/iframe_api';script.onerror=()=>{clearTimeout(timeout);script.remove();apiPromise=null;reject(new Error('Não foi possível acessar o player do YouTube.'));};document.head.append(script);});return apiPromise;}
+export class YouTubeTV {
+ constructor(host=null,status=null){this.host=host;this.status=status;this.generation=0;}
+ setStatus(text){if(this.status)this.status.textContent=text;}
+ attach(host){if(host===this.host)return;if(!host){this.destroy();this.host=null;return;}const previous=this.host;this.host=host;if(previous&&previous!==host)while(previous.firstChild)host.append(previous.firstChild);}
+ async play(value){const data=parseYouTube(value);if(!this.host)throw new Error('A televisão 3D não está disponível neste cenário.');this.destroy({keepHost:true});const generation=this.generation;this.data=data;this.setStatus('Carregando vídeo na televisão 3D…');try{const YT=await loadAPI();if(this.generation!==generation)return data;const mount=document.createElement('div');this.host.replaceChildren(mount);this.player=new YT.Player(mount,{width:'100%',height:'100%',videoId:data.videoId||'',playerVars:{controls:1,playsinline:1,autoplay:1,rel:0,origin:location.origin,...(data.list?{listType:'playlist',list:data.list}:{})},events:{onReady:()=>{if(generation!==this.generation)return;this.setStatus('Reproduzindo na televisão 3D. Use os controles diretamente na TV.');const frame=this.player.getIframe?.();frame?.setAttribute('referrerpolicy','strict-origin-when-cross-origin');frame?.setAttribute('title','YouTube na televisão 3D');try{this.player.playVideo?.()}catch{}},onAutoplayBlocked:()=>this.setStatus('Vídeo carregado na TV. Clique no player para iniciar.'),onError:e=>this.setStatus(`YouTube não conseguiu reproduzir (${e.data}). Tente outro vídeo.`)}});}catch(e){if(this.generation===generation)this.setStatus(e.message);}return data;}
+ destroy({keepHost=false}={}){this.generation++;try{this.player?.destroy()}catch{}this.player=null;if(this.host)this.host.replaceChildren();if(!keepHost)this.data=null;}
+}
+''', encoding="utf-8")
+
+# Experience UI
+path = Path("apps/access_manager/static/js/world/experience.js")
+text = path.read_text(encoding="utf-8")
+text = replace_once(text, "import {YouTubeTV,parseYouTube,youtubeURL} from './media.js';", "import {YouTubeTV,parseYouTube,youtubeURL,looksLikeYouTubeReference,searchYouTube} from './media.js';", "media imports")
+text = replace_once(text, "  <output id=\"world-combat\" hidden></output>", "  <div id=\"world-combat\" hidden><output id=\"world-combat-status\"></output><div class=\"world-combat-actions\"><button type=\"button\" data-combat-action=\"light\">J · Soco</button><button type=\"button\" data-combat-action=\"heavy\">K · Golpe forte</button><button type=\"button\" data-combat-action=\"block\">B · Bloquear</button><button type=\"button\" data-combat-action=\"dodge\">Q · Esquivar</button><button type=\"button\" data-combat-action=\"taunt\">T · Provocar</button><button type=\"button\" data-combat-action=\"reset\">R · Revanche</button></div></div>", "combat controls")
+pattern = re.compile(r'  <dialog id="world-tv" class="world-dialog world-tv-dialog">.*?  </dialog>`;', re.S)
+replacement = '''  <dialog id="world-tv" class="world-dialog world-tv-dialog"><div class="world-dialog-head"><h2>TV do Network Ops</h2><button data-world-close type="button">Voltar · Esc</button></div>\n   <form id="world-tv-form"><label>Buscar no YouTube ou colar URL / ID <input id="world-youtube-url" type="text" maxlength="400" placeholder="Ex.: lo-fi para plantão ou https://youtu.be/…"></label><div class="world-actions"><button type="submit">Pesquisar / reproduzir</button><a id="world-youtube-external" target="_blank" rel="noopener noreferrer" hidden>Abrir vídeo no navegador</a></div></form>\n   <div id="world-youtube-results" class="world-youtube-results" aria-live="polite"></div><p id="world-tv-status" role="status">Pesquise um vídeo. A reprodução aparece na televisão dentro do mundo 3D.</p>\n  </dialog>`;'''
+text, count = pattern.subn(replacement, text, count=1)
+if count != 1:
+    raise SystemExit("TV dialog block not found")
+text = replace_once(text, "host.append(root);const $=id=>root.querySelector('#'+id),dialogs=[...root.querySelectorAll('dialog')],tv=new YouTubeTV($('world-tv-player'),$('world-tv-status'));let speechTimer;", "host.append(root);const $=id=>root.querySelector('#'+id),dialogs=[...root.querySelectorAll('dialog')],tv=new YouTubeTV(null,$('world-tv-status'));let speechTimer,lastTtsAt=0;", "YouTubeTV constructor")
+text = replace_once(text, "if(settings.tts&&window.speechSynthesis&&window.SpeechSynthesisUtterance){window.speechSynthesis.cancel();const utterance=new window.SpeechSynthesisUtterance(text);utterance.lang='pt-BR';window.speechSynthesis.speak(utterance);}", "if(settings.tts&&window.speechSynthesis&&window.SpeechSynthesisUtterance&&Date.now()-lastTtsAt>800){lastTtsAt=Date.now();try{window.speechSynthesis.cancel();const utterance=new window.SpeechSynthesisUtterance(text);utterance.lang='pt-BR';window.speechSynthesis.speak(utterance);}catch{}}", "speech throttle")
+text = replace_once(text, "dialogs.forEach(d=>{d.addEventListener('close',()=>{if(d.id==='world-tv')tv.destroy();if(!dialogs.some(x=>x.open)&&isActive())getWorld()?.setPaused(false);});", "dialogs.forEach(d=>{d.addEventListener('close',()=>{if(!dialogs.some(x=>x.open)&&isActive())getWorld()?.setPaused(false);});", "TV persistent playback")
+old = "$('world-youtube-url').value=settings.youtube;$('world-tv-form').onsubmit=async e=>{e.preventDefault();try{const value=$('world-youtube-url').value,data=parseYouTube(value);$('world-youtube-external').href=youtubeURL(data);$('world-youtube-external').hidden=false;settings.youtube=value;save();await tv.play(value);}catch(error){$('world-tv-status').textContent=error.message;}};"
+new = """$('world-youtube-url').value=settings.youtube;\n function tvHost(){return getWorld()?.environmentSystem?.tvSurface||null;}\n function paintYouTubeResults(results){const box=$('world-youtube-results');box.replaceChildren();if(!results.length){box.textContent='Nenhum vídeo encontrado.';return;}for(const item of results){const button=document.createElement('button');button.type='button';button.className='world-youtube-result';const img=document.createElement('img');img.alt='';img.loading='lazy';img.src=item.thumbnail||'';const meta=document.createElement('span');const title=document.createElement('strong');title.textContent=item.title||'Vídeo';const detail=document.createElement('small');detail.textContent=[item.channel,item.duration].filter(Boolean).join(' · ');meta.append(title,detail);button.append(img,meta);button.onclick=async()=>{try{tv.attach(tvHost());await tv.play(item.videoId);settings.youtube=item.videoId;save();$('world-youtube-url').value=item.videoId;$('world-youtube-external').href=youtubeURL({videoId:item.videoId});$('world-youtube-external').hidden=false;$('world-tv-status').textContent=`${item.title||'Vídeo'} carregado na televisão 3D.`;}catch(error){$('world-tv-status').textContent=error.message;}};box.append(button);}}\n $('world-tv-form').onsubmit=async e=>{e.preventDefault();const value=$('world-youtube-url').value.trim();$('world-youtube-results').replaceChildren();$('world-tv-status').textContent='Consultando YouTube…';try{if(looksLikeYouTubeReference(value)){const data=parseYouTube(value);tv.attach(tvHost());await tv.play(value);$('world-youtube-external').href=youtubeURL(data);$('world-youtube-external').hidden=false;settings.youtube=value;save();return;}const results=await searchYouTube(value);paintYouTubeResults(results);$('world-tv-status').textContent=results.length?'Escolha um resultado para reproduzir na TV 3D.':'Nenhum vídeo encontrado.';}catch(error){$('world-tv-status').textContent=error.message;}};"""
+text = replace_once(text, old, new, "YouTube search handler")
+marker = "$('world-scene').value=settings.scene;$('world-scene').onchange=e=>{setScene(e.target.value);closeDialogs();};$('world-hud-mode')"
+insert = "root.querySelectorAll('[data-combat-action]').forEach(button=>button.onclick=()=>{const world=getWorld(),action=button.dataset.combatAction;if(!world?.environmentSystem?.combat)return;const ok=world.performCombatAction?.(action)??(action==='reset'?(world.environmentSystem.combat.reset(),true):world.environmentSystem.action(action));if(!ok&&['light','heavy'].includes(action))notice('Aproxime-se do roteador ou aguarde o próximo golpe.');world.renderer?.domElement?.focus();});\n "
+if insert.strip() not in text:
+    text = text.replace(marker, insert + marker, 1)
+text = replace_once(text, "case 'scene':setScene(e.detail.scene);break;case 'tv':show('world-tv');break;case 'music':show('world-radio');", "case 'scene':setScene(e.detail.scene);break;case 'tv_surface':tv.attach(e.detail.host);break;case 'tv':tv.attach(tvHost());show('world-tv');break;case 'music':show('world-radio');", "TV surface event")
+text = replace_once(text,
+    "frame(detail){$('world-combat').hidden=!detail.combat;if(detail.combat){const c=detail.combat;$('world-combat').textContent=`Você ${c.hp}/100 · Roteador ${c.npcHp}/100 · Combo ${c.combo} ${c.result==='win'?'— Vitória! R para revanche':c.result==='lose'?'— Derrota! R para revanche':'· J/K soco · B bloqueio · Q esquiva'}`;}",
+    "frame(detail){$('world-combat').hidden=!detail.combat;if(detail.combat){const c=detail.combat,inRange=Number(c.distance)<=3;$('world-combat-status').textContent=`Você ${c.hp}/100 · Roteador ${c.npcHp}/100 · Combo ${c.combo} · ${Number(c.distance).toFixed(1)}m ${c.result==='win'?'— Vitória! R para revanche':c.result==='lose'?'— Derrota! R para revanche':inRange?'— alcance de golpe':'— aproxime-se para bater'}`;for(const b of root.querySelectorAll('[data-combat-action]'))b.disabled=b.dataset.combatAction!=='reset'&&(Boolean(c.result)||((b.dataset.combatAction==='light'||b.dataset.combatAction==='heavy')&&c.cooldown>0));}",
+    "combat HUD frame")
+path.write_text(text, encoding="utf-8")
+
+# CSS
+path = Path("apps/access_manager/static/css/world.css")
+text = path.read_text(encoding="utf-8")
+block = '''
+/* Projected media and stable arena controls. */
+.world-css3d{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none}
+.world-tv-surface{box-sizing:border-box;background:#020609;border:8px solid #0b1f2f;border-radius:9px;overflow:hidden;pointer-events:auto;box-shadow:0 0 20px #1bc7e866}
+.world-tv-surface iframe{display:block;width:100%!important;height:100%!important;border:0;background:#000}
+.world-hud{z-index:4}.world-experience-ui{position:absolute;inset:0;z-index:5;pointer-events:none}.world-experience-ui>*{pointer-events:auto}
+#world-combat{position:absolute;top:16px;left:50%;transform:translateX(-50%);max-width:min(860px,90%);padding:10px 14px;border:1px solid #ecce7d;border-radius:12px;background:#132d47ed;color:#fff1c4;font:600 13px "Segoe UI",sans-serif;text-align:center;display:grid;gap:8px}
+#world-combat[hidden]{display:none!important}.world-combat-actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.world-combat-actions button{font:600 12px "Segoe UI",sans-serif;border:1px solid #d8bd72;border-radius:7px;padding:6px 9px;background:#f8e8b9;color:#26384a;cursor:pointer}.world-combat-actions button:disabled{opacity:.45;cursor:not-allowed}
+.world-youtube-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;max-height:42vh;overflow:auto}.world-youtube-result{display:grid!important;grid-template-columns:120px 1fr;gap:10px;align-items:center;text-align:left!important;padding:6px!important;background:#f7fbfc!important;color:#173d50!important}.world-youtube-result img{width:120px;aspect-ratio:16/9;object-fit:cover;border-radius:5px;background:#102338}.world-youtube-result span{min-width:0}.world-youtube-result strong,.world-youtube-result small{display:block;overflow-wrap:anywhere}.world-youtube-result small{margin-top:4px;color:#496774}
+@media(max-width:780px){#world-combat{top:54px;max-width:94%;font-size:11px}.world-combat-actions button{font-size:10px;padding:5px}.world-youtube-result{grid-template-columns:90px 1fr}.world-youtube-result img{width:90px}}
+'''
+if "/* Projected media and stable arena controls. */" not in text:
+    text += block
+path.write_text(text, encoding="utf-8")
+
+# Backend search
+Path("apps/access_manager/infrastructure/youtube.py").write_text('''from __future__ import annotations
+
+import json
+import re
+from urllib.parse import quote_plus
+
+import requests
+
+_ASSIGNMENT = re.compile(r'(?:var\\s+ytInitialData|ytInitialData|window\\["ytInitialData"\\])\\s*=\\s*')
+_VIDEO_ID = re.compile(r'^[A-Za-z0-9_-]{11}$')
+
+
+def _text(node):
+    if not isinstance(node, dict):
+        return ''
+    if isinstance(node.get('simpleText'), str):
+        return node['simpleText']
+    return ''.join(str(run.get('text', '')) for run in node.get('runs', []) if isinstance(run, dict))
+
+
+def _video(renderer):
+    video_id = str(renderer.get('videoId') or '')
+    if not _VIDEO_ID.fullmatch(video_id):
+        return None
+    thumbs = ((renderer.get('thumbnail') or {}).get('thumbnails') or [])
+    thumbnail = next((str(item.get('url')) for item in reversed(thumbs) if isinstance(item, dict) and item.get('url')), '')
+    return {'videoId': video_id, 'title': _text(renderer.get('title')) or 'Vídeo do YouTube', 'channel': _text(renderer.get('ownerText')) or _text(renderer.get('shortBylineText')), 'duration': _text(renderer.get('lengthText')), 'thumbnail': thumbnail}
+
+
+def extract_youtube_results(page: str, limit: int = 8):
+    match = _ASSIGNMENT.search(page or '')
+    if not match:
+        return []
+    try:
+        data, _ = json.JSONDecoder().raw_decode(page[match.end():])
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    results, seen = [], set()
+    stack = [data]
+    while stack and len(results) < max(1, min(int(limit), 20)):
+        current = stack.pop()
+        if isinstance(current, dict):
+            renderer = current.get('videoRenderer')
+            if isinstance(renderer, dict):
+                item = _video(renderer)
+                if item and item['videoId'] not in seen:
+                    seen.add(item['videoId'])
+                    results.append(item)
+            stack.extend(reversed(list(current.values())))
+        elif isinstance(current, list):
+            stack.extend(reversed(current))
+    return results
+
+
+def search_youtube(query: str, limit: int = 8):
+    query = str(query or '').strip()
+    if len(query) < 2:
+        raise ValueError('Digite pelo menos 2 caracteres para pesquisar no YouTube.')
+    response = requests.get('https://www.youtube.com/results?search_query=' + quote_plus(query) + '&hl=pt-BR', timeout=(3.5, 8), headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/155 Safari/537.36', 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.7'})
+    response.raise_for_status()
+    return extract_youtube_results(response.text, limit=limit)
+''', encoding="utf-8")
+Path("apps/access_manager/presentation/api/media.py").write_text('''from __future__ import annotations
+
+from .common import api, body
+
+
+@api.post('/media/youtube/search')
+def youtube_search(context=None):
+    from apps.access_manager.infrastructure.youtube import search_youtube
+    query = str(body(context).get('query') or '').strip()
+    if len(query) < 2:
+        return {'success': False, 'error': {'code': 'INVALID_QUERY', 'message': 'Digite pelo menos 2 caracteres para pesquisar no YouTube.', 'type': 'validation', 'retryable': False}}
+    try:
+        return {'success': True, 'results': search_youtube(query, limit=8)}
+    except Exception:
+        return {'success': False, 'error': {'code': 'YOUTUBE_SEARCH_UNAVAILABLE', 'message': 'Não foi possível pesquisar no YouTube agora. Verifique a internet ou cole a URL de um vídeo.', 'type': 'media', 'retryable': True}}
+''', encoding="utf-8")
+path = Path("apps/access_manager/api.py")
+text = path.read_text(encoding="utf-8")
+if "presentation.api.media" not in text:
+    text += "\nfrom apps.access_manager.presentation.api.media import *\n"
+path.write_text(text, encoding="utf-8")
+
+# Tests
+path = Path("tests/frontend/world-interactions.test.cjs")
+text = path.read_text(encoding="utf-8")
+if "world renderer keeps arena third-person" not in text:
+    text += r'''
+test('world renderer keeps arena third-person, safe combat dispatch and a projected 3D TV surface',()=>{const renderer=fs.readFileSync('apps/access_manager/static/js/world/renderer.js','utf8'),environment=fs.readFileSync('apps/access_manager/static/js/world/environment.js','utf8');assert.match(renderer,/this\.firstPerson=false/);assert.match(renderer,/CSS3DRenderer/);assert.match(renderer,/createMediaSurface/);assert.match(renderer,/performCombatAction/);assert.match(environment,/arena-router/);assert.match(environment,/tvSurface/);assert.match(environment,/spawn:\[0,4\]/);});
+test('YouTube flow searches inside the app and no longer mounts the player in a dialog',()=>{const experience=fs.readFileSync('apps/access_manager/static/js/world/experience.js','utf8'),media=fs.readFileSync('apps/access_manager/static/js/world/media.js','utf8');assert.match(experience,/searchYouTube/);assert.match(experience,/world-youtube-results/);assert.doesNotMatch(experience,/id="world-tv-player"/);assert.match(media,/\/api\/media\/youtube\/search/);assert.match(media,/televisão 3D/);});
+'''
+path.write_text(text, encoding="utf-8")
+Path("tests/test_youtube_search.py").write_text('''from apps.access_manager.infrastructure.youtube import extract_youtube_results
+
+
+def test_extract_youtube_results_reads_video_renderers_without_network():
+    page = 'var ytInitialData = ' + '{"contents":{"videoRenderer":{"videoId":"dQw4w9WgXcQ","title":{"runs":[{"text":"Teste"}]},"ownerText":{"runs":[{"text":"Canal"}]},"lengthText":{"simpleText":"3:32"},"thumbnail":{"thumbnails":[{"url":"https://i.ytimg.com/test.jpg"}]}}}};'
+    assert extract_youtube_results(page) == [{'videoId': 'dQw4w9WgXcQ', 'title': 'Teste', 'channel': 'Canal', 'duration': '3:32', 'thumbnail': 'https://i.ytimg.com/test.jpg'}]
+
+
+def test_extract_youtube_results_rejects_missing_or_invalid_ids():
+    assert extract_youtube_results('no initial data here') == []
+    assert extract_youtube_results('var ytInitialData = {"videoRenderer":{"videoId":"bad"}};') == []
+''', encoding="utf-8")
