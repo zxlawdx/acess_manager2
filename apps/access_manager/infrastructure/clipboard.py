@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 try:
@@ -13,15 +14,16 @@ class ClipboardError(RuntimeError):
 
 
 MAX_CLIPBOARD_CHARS = 2_000_000
+_CLIPBOARD_RETRY_DELAYS = (0.0, 0.03, 0.08, 0.15)
 
 
 def copy_text(value: Any) -> None:
     """Copy text through the desktop backend instead of QtWebEngine Clipboard API.
 
-    The packaged Qt/WebEngine build has shown native crashes when
-    navigator.clipboard.writeText() is triggered from some Juniper tables.
-    AtendeClip already uses pyperclip successfully in the same desktop context,
-    so Access Manager keeps clipboard ownership in Python as well.
+    QtWebEngine clipboard ownership has produced native crashes in packaged
+    Windows builds on some machines. Keep clipboard ownership in Python and
+    retry briefly because the Win32 clipboard may be locked momentarily by
+    another process.
     """
     text = "" if value is None else str(value)
     if not text:
@@ -31,7 +33,16 @@ def copy_text(value: Any) -> None:
     if pyperclip is None:
         raise ClipboardError("Backend de clipboard indisponível.")
 
-    try:
-        pyperclip.copy(text)
-    except Exception as exc:
-        raise ClipboardError(f"Não foi possível copiar para a área de transferência: {exc}") from exc
+    last_error: Exception | None = None
+    for delay in _CLIPBOARD_RETRY_DELAYS:
+        if delay:
+            time.sleep(delay)
+        try:
+            pyperclip.copy(text)
+            return
+        except Exception as exc:  # Windows clipboard can be transiently busy
+            last_error = exc
+
+    raise ClipboardError(
+        f"Não foi possível copiar para a área de transferência: {last_error}"
+    ) from last_error
