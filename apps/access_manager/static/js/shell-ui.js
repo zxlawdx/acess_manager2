@@ -26,6 +26,54 @@
     try { window.localStorage.setItem(key, value); } catch (_) {}
   }
 
+  function toast(message) {
+    const host = document.querySelector('#toast-region');
+    if (!host || !message) return;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = message;
+    host.append(el);
+    window.setTimeout(() => el.remove(), 3600);
+  }
+
+  async function copyThroughDesktopBackend(value) {
+    const text = String(value ?? '');
+    if (!text) return false;
+    try {
+      const response = await fetch(new URL('/api/system/clipboard', window.location.origin), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text})
+      });
+      const data = await response.json().catch(() => ({}));
+      return Boolean(response.ok && data?.success !== false);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /* QtWebEngine in the packaged Windows build has crashed when some Juniper
+     table copy buttons call navigator.clipboard.writeText(). Intercept those
+     clicks in the capture phase before the view-level onclick runs and copy
+     through the Python desktop backend instead. This mirrors the proven
+     AtendeClip pyperclip path and keeps the WebView out of native clipboard
+     ownership. */
+  document.addEventListener('click', async (event) => {
+    const button = event.target.closest?.('[data-copy-juniper]');
+    if (!button) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+      const ok = await copyThroughDesktopBackend(button.dataset.copyJuniper);
+      toast(ok ? 'Copiado.' : 'Não foi possível copiar.');
+    } finally {
+      button.disabled = false;
+    }
+  }, true);
+
   function navLabel(button) {
     return button.querySelector('span')?.textContent?.trim() || button.textContent?.trim() || 'Navegação';
   }
