@@ -65,7 +65,7 @@ jobs:
                   return text
               raise SystemExit(f'{label}: expected pattern not found')
 
-          # Service panel: PR28 event stays, PR27 desktop clipboard backend wins over browser clipboard.
+          # Service panel: keep PR28's event, but always use PR27's desktop clipboard backend.
           path = Path('apps/access_manager/static/js/service/panel.js')
           text = path.read_text(encoding='utf-8')
           if "import {copyText} from '../shared/clipboard.js';" not in text:
@@ -74,14 +74,20 @@ jobs:
                   "import {service,startService,clearService,detachService,subscribeService,setServiceNotes,formatService,observeOperation} from './model.js';\nimport {copyText} from '../shared/clipboard.js';\n",
                   1,
               )
+          text = text.replace('await navigator.clipboard.writeText(text);', 'await copyText(text);')
+          if 'await copyText(text);' not in text:
+              raise SystemExit('service copy does not use desktop clipboard backend')
+          if "document.dispatchEvent(new CustomEvent('service-log-copied'))" not in text:
+              text = text.replace(
+                  "status('Registro copiado.');",
+                  "status('Registro copiado.');document.dispatchEvent(new CustomEvent('service-log-copied'));",
+                  1,
+              )
           text = text.replace(
               "// Use the same Clipboard API path as the working Wi-Fi password copy.\n// Success is only reported after writeText resolves.\n",
               "// QtWebEngine clipboard ownership is avoided in packaged desktop builds.\n// Keep a manual Ctrl+C fallback if the desktop backend cannot copy.\n",
               1,
           )
-          old = """ panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{\n  const text=formatService({secrets,mode:b.dataset.copy==='technical'?'technical':panel.querySelector('[data-mode]').value,markdown:b.dataset.copy==='markdown'});\n  try{\n   await navigator.clipboard.writeText(text);\n   status('Registro copiado.');document.dispatchEvent(new CustomEvent('service-log-copied'));\n  }catch{\n   selectRecordForManualCopy(panel);\n   status('Não foi possível copiar automaticamente. O registro foi selecionado; pressione Ctrl+C.');\n  }\n });"""
-          new = """ panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{\n  const text=formatService({secrets,mode:b.dataset.copy==='technical'?'technical':panel.querySelector('[data-mode]').value,markdown:b.dataset.copy==='markdown'});\n  b.disabled=true;\n  try{\n   await copyText(text);\n   status('Registro copiado.');document.dispatchEvent(new CustomEvent('service-log-copied'));\n  }catch{\n   selectRecordForManualCopy(panel);\n   status('Não foi possível copiar automaticamente. O registro foi selecionado; pressione Ctrl+C.');\n  }finally{b.disabled=false}\n });"""
-          text = replace_once(text, old, new, 'service copy block')
           path.write_text(text, encoding='utf-8')
 
           # Renderer: preserve all PR28 interactions/scenes, but keep PR27 Qt/WebGL stability fixes.
@@ -123,8 +129,7 @@ jobs:
 
           # Minimap: paint the background directly; no transparent clear frame between draws.
           path = Path('apps/access_manager/static/js/world/bridge.js')
-          text = path.read_text(encoding='utf-8')
-          text = text.replace("ctx.clearRect(0,0,180,180);", "", 1)
+          text = path.read_text(encoding='utf-8').replace("ctx.clearRect(0,0,180,180);", "", 1)
           path.write_text(text, encoding='utf-8')
 
           # Canvas compositing and glass stability from PR27, without touching PR28 immersive rules.
