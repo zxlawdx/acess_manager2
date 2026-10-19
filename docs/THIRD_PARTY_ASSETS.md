@@ -27,3 +27,13 @@ Consulted references: [InstancedMesh documentation](https://threejs.org/docs/pag
 The supplied `access_manager_wasteland_ops_3d_preview(1).html` and `access_manager_terminal_wasteland_preview.html` informed the original industrial/CRT direction. Their mock network data, fake statuses and CDN import were not integrated. Wasteland uses the already pinned local Three.js package and its existing MIT notice. Space Mono remains the locally bundled font with its existing OFL notice; no new font download is required.
 
 Terrain grain is a small procedurally generated DataTexture. Shelters, telecom towers/dishes, industrial skyline, cables, rocks, CRT consoles and the field operator are procedural meshes. The optional equipment hum is synthesized from an oscillator after explicit user interaction. No external textures, models, audio, Fallout/Bethesda branding, characters, proprietary typefaces or other franchise assets were added. A custom GLB is an optional local integration point; no GLB is shipped by this patch.
+
+## Access World interactions (2026-10-19)
+
+The previous no-model statement describes the initial Aero release. This change includes four self-contained GLBs from **Kenney Furniture Kit 2.0 (CC0-1.0)**: `desk`, `chairDesk`, `kitchenCoffeeMachine`, `plantSmall1`. Original: https://kenney.nl/assets/furniture-kit ; redistribution source: https://github.com/ChingAmazing/OpenHome3D-html/tree/main/public/models/kenney . Source URLs, byte sizes, hashes and triangle counts are recorded in `apps/access_manager/static/models/world3d/catalog.json`. The pack's original license is preserved as `LICENSE-Kenney.txt` in that directory. No mesh/texture bytes modified; objects are scaled/positioned at runtime. Total GLBs: 75,620 bytes / 1,054 triangles. `python tools/world3d_assets.py` checks self-contained buffers/images, lengths and SHA-256; `--ingest` restores only the catalogued files.
+
+The anthropomorphic router, limbs, animations, arena and other props are original procedural geometry. No customer name/photo is used. KayKit, Quaternius and OpenGameArt animations were researched but are not included. DeskRPG, ThisOffice and Threejs Arena source code/assets are not distributed.
+
+Cannon ES 0.20.0 (MIT, https://github.com/pmndrs/cannon-es) is bundled locally for the ball physics. The full license is preserved at `static/licenses/cannon-es-MIT.txt`; esbuild also retains its applicable license notice. No second physics engine is installed. No additional font or music recording is distributed.
+
+YouTube is an optional third-party network service. The official IFrame API is fetched only after an explicit playback request; no video bytes are proxied or distributed by Access Manager.
