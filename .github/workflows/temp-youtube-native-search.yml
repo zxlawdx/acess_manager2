@@ -19,6 +19,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install frontend dependencies
+        run: npm ci
       - name: Patch real YouTube search flow
         run: python tools/patch_youtube_native_search.py
       - name: Sync generated frontend bundles
