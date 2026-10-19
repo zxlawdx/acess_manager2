@@ -1,11 +1,13 @@
 import {service,startService,clearService,detachService,subscribeService,setServiceNotes,formatService,observeOperation} from './model.js';
+import {copyText} from '../shared/clipboard.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const exitPolicyKey='accessManager.serviceLog.exitPolicy';
 const readExitPolicy=()=>{try{const value=localStorage.getItem(exitPolicyKey);return ['ask','keep','clear'].includes(value)?value:'ask'}catch{return 'ask'}};
 const writeExitPolicy=value=>{try{localStorage.setItem(exitPolicyKey,value)}catch{}};
 
-// Use the same Clipboard API path as the working Wi-Fi password copy.
-// Success is only reported after writeText resolves.
+// QtWebEngine clipboard ownership is avoided in packaged desktop builds.
+// If the Python desktop backend cannot copy, leave the rendered record selected
+// so the operator still has a manual Ctrl+C fallback without a native crash.
 function selectRecordForManualCopy(panel){
  const record=panel.querySelector('[data-record]');if(!record)return;
  try{record.focus({preventScroll:true})}catch{record.focus?.()}
@@ -30,13 +32,14 @@ export function mountServicePanel(store){
  panel.querySelector('[data-clear-service]').onclick=()=>{if(!service.id&&!service.entries.length){status('O atendimento já está vazio.');return}if(!window.confirm('Limpar todo o atendimento atual? Esta ação apaga a linha do tempo e as observações desta sessão.'))return;clearService({keepSession:Boolean(store.session?.connected)});panel.querySelector('[data-notes]').value='';status(store.session?.connected?'Atendimento limpo. O novo registro continuará nesta conexão.':'Atendimento limpo.');paint()};
  panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{
   const text=formatService({secrets,mode:b.dataset.copy==='technical'?'technical':panel.querySelector('[data-mode]').value,markdown:b.dataset.copy==='markdown'});
+  b.disabled=true;
   try{
-   await navigator.clipboard.writeText(text);
+   await copyText(text);
    status('Registro copiado.');document.dispatchEvent(new CustomEvent('service-log-copied'));
   }catch{
    selectRecordForManualCopy(panel);
    status('Não foi possível copiar automaticamente. O registro foi selecionado; pressione Ctrl+C.');
-  }
+  }finally{b.disabled=false}
  });
  panel.querySelector('[data-export]').onclick=()=>{const url=URL.createObjectURL(new Blob([formatService({secrets,mode:panel.querySelector('[data-mode]').value})],{type:panel.querySelector('[data-mode]').value==='technical'?'application/json;charset=utf-8':'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=panel.querySelector('[data-mode]').value==='technical'?'atendimento-tecnico.json':'atendimento.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
  const handleDisconnect=()=>{if(!service.id)return;const policy=readExitPolicy();if(policy==='clear'){clearService();return}if(policy==='keep'){detachService();return}if(window.confirm('Você saiu do roteador. Deseja limpar o atendimento atual?\n\nOK = limpar\nCancelar = manter para continuar depois'))clearService();else detachService()};

@@ -1,14 +1,14 @@
 #aero-world[hidden],#world-close-panel[hidden],#world-notice[hidden]{display:none!important}
 .app-shell.world-mode{position:relative;isolation:isolate}
 #aero-world{position:absolute;inset:56px 0 0;overflow:hidden;background:#74ccf6;color:#12384c;font-family:"Segoe UI",Tahoma,sans-serif;min-height:250px}
-#aero-world>canvas:first-child{display:block;width:100%;height:100%;outline-offset:-4px;touch-action:none}
+#aero-world>canvas:first-child{display:block;position:absolute;inset:0;width:100%;height:100%;outline-offset:-4px;touch-action:none;transform:translateZ(0);backface-visibility:hidden}
 .world-mode>.layout{visibility:hidden;pointer-events:none}
 .world-mode.world-panel-open>.layout{visibility:visible;pointer-events:auto;position:absolute;z-index:4;inset:112px 22px 18px;display:block;border:1px solid #fff;border-radius:16px!important;background:#e4f3f9f5;box-shadow:0 14px 50px #18486577!important;overflow:hidden}
 .world-panel-open #sidebar{display:none!important}.world-panel-open .app-main{height:100%;overflow:auto}
 #world-close-panel{position:absolute;z-index:5;right:24px;top:70px;border:1px solid #67a8c8;border-radius:10px;padding:8px 16px;background:linear-gradient(#fff,#bee7fa);color:#17455f}
 #world-notice{position:absolute;left:12px;right:12px;top:58px;z-index:6;margin:0;padding:12px;border:1px solid #ba7823;background:#fff4d1;color:#472e07;font:12px "Segoe UI",sans-serif}
 .world-hud{position:absolute;left:20px;top:16px;right:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:start;pointer-events:none}.world-hud>*{pointer-events:auto}
-.world-glass{border:1px solid #ffffffd0!important;border-radius:16px!important;background:linear-gradient(#ffffffe8,#c8eeefd9)!important;box-shadow:0 5px 24px #17628830!important;color:#12384c!important;padding:12px 16px;backdrop-filter:blur(8px)}
+.world-glass{border:1px solid #ffffffd0!important;border-radius:16px!important;background:linear-gradient(#fffffff2,#c8eeefea)!important;box-shadow:0 5px 24px #17628830!important;color:#12384c!important;padding:12px 16px}
 .world-hud strong{font-size:18px}.world-hud small{display:block;font-size:11px;margin-top:4px;max-width:220px;overflow-wrap:anywhere}
 .world-hud button,.world-hud select{font:inherit;color:#12384c!important;background:linear-gradient(#fff,#cdeefa)!important;border:1px solid #72a9c0!important;border-radius:8px!important;padding:6px;cursor:pointer}
 .world-hud label{font-size:12px;display:flex;gap:6px;align-items:center;margin-top:5px}.world-hud input[type=range]{width:100px}
