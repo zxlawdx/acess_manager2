@@ -45,8 +45,59 @@ def test_extract_youtube_results_data_reads_innertube_video_renderer():
     }]
 
 
-def test_search_youtube_prefers_innertube_without_touching_html(monkeypatch):
+def test_search_youtube_prefers_ytdlp_without_touching_direct_http(monkeypatch):
     calls = {}
+
+    class FakeYDL:
+        def __init__(self, options):
+            calls['options'] = options
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def extract_info(self, query, download=False):
+            calls['query'] = query
+            calls['download'] = download
+            return {
+                'entries': [{
+                    'id': 'dQw4w9WgXcQ',
+                    'title': 'Criando jogos',
+                    'channel': 'Canal yt-dlp',
+                    'duration': 605,
+                    'thumbnail': 'https://i.ytimg.com/test.jpg',
+                }],
+            }
+
+    class ForbiddenSession:
+        def __init__(self):
+            raise AssertionError('HTTP fallback must not run when yt-dlp succeeds')
+
+    monkeypatch.setattr(youtube.yt_dlp, 'YoutubeDL', FakeYDL)
+    monkeypatch.setattr(youtube.requests, 'Session', ForbiddenSession)
+
+    results = youtube.search_youtube('Criando jogos', limit=8)
+
+    assert calls['query'] == 'ytsearch8:Criando jogos'
+    assert calls['download'] is False
+    assert calls['options']['extract_flat'] is True
+    assert calls['options']['skip_download'] is True
+    assert results == [{
+        'videoId': 'dQw4w9WgXcQ',
+        'title': 'Criando jogos',
+        'channel': 'Canal yt-dlp',
+        'duration': '10:05',
+        'thumbnail': 'https://i.ytimg.com/test.jpg',
+    }]
+
+
+def test_search_youtube_falls_back_to_innertube_when_ytdlp_fails(monkeypatch):
+    calls = {}
+
+    def fail_ytdlp(query, limit):
+        raise RuntimeError('yt-dlp temporarily unavailable')
 
     class FakeCookies:
         def set(self, *args, **kwargs):
@@ -85,6 +136,7 @@ def test_search_youtube_prefers_innertube_without_touching_html(monkeypatch):
         def close(self):
             calls['closed'] = True
 
+    monkeypatch.setattr(youtube, '_search_ytdlp', fail_ytdlp)
     monkeypatch.setattr(youtube.requests, 'Session', FakeSession)
     results = youtube.search_youtube('Criando jogos', limit=8)
 
@@ -92,5 +144,4 @@ def test_search_youtube_prefers_innertube_without_touching_html(monkeypatch):
     assert calls['post'][0].endswith('/youtubei/v1/search?prettyPrint=false')
     assert calls['post'][1]['json']['query'] == 'Criando jogos'
     assert calls['post'][1]['json']['params'] == youtube._VIDEO_SEARCH_PARAMS
-    assert calls['post'][1]['headers']['X-YouTube-Client-Name'] == '1'
     assert calls['closed'] is True
