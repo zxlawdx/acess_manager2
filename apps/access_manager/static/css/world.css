@@ -55,3 +55,13 @@
 #aero-world dialog.world-dialog::backdrop{background:#10273c8c!important}
 #aero-world #world-menu-button,#aero-world #world-menu-button:hover{color:#f0fbff!important;background:#123349e8!important;font-size:12px!important}
 #aero-world .world-dialog-head h2{color:#173d50!important}
+
+/* Projected media and stable arena controls. */
+.world-css3d{position:absolute;inset:0;z-index:1;overflow:hidden;pointer-events:none}
+.world-tv-surface{box-sizing:border-box;background:#020609;border:8px solid #0b1f2f;border-radius:9px;overflow:hidden;pointer-events:auto;box-shadow:0 0 20px #1bc7e866}
+.world-tv-surface iframe{display:block;width:100%!important;height:100%!important;border:0;background:#000}
+.world-hud{z-index:4}.world-experience-ui{position:absolute;inset:0;z-index:5;pointer-events:none}.world-experience-ui>*{pointer-events:auto}
+#world-combat{position:absolute;top:16px;left:50%;transform:translateX(-50%);max-width:min(860px,90%);padding:10px 14px;border:1px solid #ecce7d;border-radius:12px;background:#132d47ed;color:#fff1c4;font:600 13px "Segoe UI",sans-serif;text-align:center;display:grid;gap:8px}
+#world-combat[hidden]{display:none!important}.world-combat-actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.world-combat-actions button{font:600 12px "Segoe UI",sans-serif;border:1px solid #d8bd72;border-radius:7px;padding:6px 9px;background:#f8e8b9;color:#26384a;cursor:pointer}.world-combat-actions button:disabled{opacity:.45;cursor:not-allowed}
+.world-youtube-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;max-height:42vh;overflow:auto}.world-youtube-result{display:grid!important;grid-template-columns:120px 1fr;gap:10px;align-items:center;text-align:left!important;padding:6px!important;background:#f7fbfc!important;color:#173d50!important}.world-youtube-result img{width:120px;aspect-ratio:16/9;object-fit:cover;border-radius:5px;background:#102338}.world-youtube-result span{min-width:0}.world-youtube-result strong,.world-youtube-result small{display:block;overflow-wrap:anywhere}.world-youtube-result small{margin-top:4px;color:#496774}
+@media(max-width:780px){#world-combat{top:54px;max-width:94%;font-size:11px}.world-combat-actions button{font-size:10px;padding:5px}.world-youtube-result{grid-template-columns:90px 1fr}.world-youtube-result img{width:90px}}

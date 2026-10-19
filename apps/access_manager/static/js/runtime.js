@@ -1138,6 +1138,22 @@
   function youtubeURL(data) {
     return data.videoId ? "https://www.youtube.com/watch?v=" + data.videoId + (data.list ? "&list=" + data.list : "") : "https://www.youtube.com/playlist?list=" + data.list;
   }
+  function looksLikeYouTubeReference(value2) {
+    const input = String(value2 || "").trim();
+    return /^[\w-]{11}$/.test(input) || /^(PL|UU|OLAK5uy_)[\w-]{10,}$/.test(input) || /^https?:\/\//i.test(input);
+  }
+  async function searchYouTube(query2) {
+    const q = String(query2 || "").trim();
+    if (q.length < 2) throw new Error("Digite pelo menos 2 caracteres para pesquisar no YouTube.");
+    const res = await fetch(new URL("/api/media/youtube/search", location.origin), { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: q }) });
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+    }
+    if (!res.ok || data?.success === false) throw new Error(data?.error?.message || "Não foi possível pesquisar no YouTube.");
+    return Array.isArray(data?.results) ? data.results : [];
+  }
   var apiPromise;
   function loadAPI() {
     if (window.YT?.Player) return Promise.resolve(window.YT);
@@ -1148,7 +1164,7 @@
       const timeout = setTimeout(() => {
         script.remove();
         apiPromise = null;
-        reject(new Error("YouTube indisponível nesta WebView. Use Abrir no navegador."));
+        reject(new Error("YouTube indisponível nesta WebView."));
       }, 12e3);
       window.onYouTubeIframeAPIReady = () => {
         clearTimeout(timeout);
@@ -1160,46 +1176,69 @@
         clearTimeout(timeout);
         script.remove();
         apiPromise = null;
-        reject(new Error("Não foi possível acessar o YouTube. Use Abrir no navegador."));
+        reject(new Error("Não foi possível acessar o player do YouTube."));
       };
       document.head.append(script);
     });
     return apiPromise;
   }
   var YouTubeTV = class {
-    constructor(host, status3) {
+    constructor(host = null, status3 = null) {
       this.host = host;
       this.status = status3;
       this.generation = 0;
     }
+    setStatus(text2) {
+      if (this.status) this.status.textContent = text2;
+    }
+    attach(host) {
+      if (host === this.host) return;
+      if (!host) {
+        this.destroy();
+        this.host = null;
+        return;
+      }
+      const previous = this.host;
+      this.host = host;
+      if (previous && previous !== host) while (previous.firstChild) host.append(previous.firstChild);
+    }
     async play(value2) {
       const data = parseYouTube(value2);
-      this.destroy();
+      if (!this.host) throw new Error("A televisão 3D não está disponível neste cenário.");
+      this.destroy({ keepHost: true });
       const generation3 = this.generation;
       this.data = data;
-      this.status.textContent = "Carregando player oficial…";
+      this.setStatus("Carregando vídeo na televisão 3D…");
       try {
         const YT = await loadAPI();
-        if (this.generation !== generation3) return;
+        if (this.generation !== generation3) return data;
         const mount8 = document.createElement("div");
         this.host.replaceChildren(mount8);
-        this.player = new YT.Player(mount8, { width: "100%", height: "100%", videoId: data.videoId || "", playerVars: { controls: 1, playsinline: 1, origin: location.origin, ...data.list ? { listType: "playlist", list: data.list } : {} }, events: { onReady: () => {
+        this.player = new YT.Player(mount8, { width: "100%", height: "100%", videoId: data.videoId || "", playerVars: { controls: 1, playsinline: 1, autoplay: 1, rel: 0, origin: location.origin, ...data.list ? { listType: "playlist", list: data.list } : {} }, events: { onReady: () => {
           if (generation3 !== this.generation) return;
-          this.status.textContent = "Use os controles do YouTube. Esc volta ao mundo.";
-          this.player.getIframe?.().setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
-        }, onError: (e) => {
-          this.status.textContent = `YouTube não conseguiu reproduzir (${e.data}). Abra no navegador.`;
-        } } });
+          this.setStatus("Reproduzindo na televisão 3D. Use os controles diretamente na TV.");
+          const frame = this.player.getIframe?.();
+          frame?.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+          frame?.setAttribute("title", "YouTube na televisão 3D");
+          try {
+            this.player.playVideo?.();
+          } catch {
+          }
+        }, onAutoplayBlocked: () => this.setStatus("Vídeo carregado na TV. Clique no player para iniciar."), onError: (e) => this.setStatus(`YouTube não conseguiu reproduzir (${e.data}). Tente outro vídeo.`) } });
       } catch (e) {
-        if (this.generation === generation3) this.status.textContent = e.message;
+        if (this.generation === generation3) this.setStatus(e.message);
       }
       return data;
     }
-    destroy() {
+    destroy({ keepHost = false } = {}) {
       this.generation++;
-      this.player?.destroy();
+      try {
+        this.player?.destroy();
+      } catch {
+      }
       this.player = null;
-      this.host.replaceChildren();
+      if (this.host) this.host.replaceChildren();
+      if (!keepHost) this.data = null;
     }
   };
 
@@ -1216,7 +1255,7 @@
   <button id="world-menu-button" class="world-compact" type="button">☰ Menu · Esc</button>
   <span id="world-connection" class="world-compact">● Sessão conectada</span>
   <output id="world-speech" role="status" hidden></output>
-  <output id="world-combat" hidden></output>
+  <div id="world-combat" hidden><output id="world-combat-status"></output><div class="world-combat-actions"><button type="button" data-combat-action="light">J · Soco</button><button type="button" data-combat-action="heavy">K · Golpe forte</button><button type="button" data-combat-action="block">B · Bloquear</button><button type="button" data-combat-action="dodge">Q · Esquivar</button><button type="button" data-combat-action="taunt">T · Provocar</button><button type="button" data-combat-action="reset">R · Revanche</button></div></div>
   <dialog id="world-menu" class="world-dialog"><div class="world-dialog-head"><h2>Access World</h2><button data-world-close type="button">Voltar · Esc</button></div>
    <p id="world-tutorial">WASD mover · Shift correr · Espaço pular · arraste o mouse para olhar · duplo clique captura mouse · V alterna câmera · E interage · F ação extra · H/Tab HUD · M músicas.</p>
    <div class="world-options"><label>Cenário <select id="world-scene"><option value="aero">Frutiger Aero</option><option value="office">Network Ops</option><option value="arena">Router Rumble</option></select></label>
@@ -1244,12 +1283,12 @@
    <div class="world-options"><label><input id="world-tts" type="checkbox"> Falar em voz alta (se disponível)</label><label>Palavrões <select id="world-profanity"><option value="off">Ocultar</option><option value="moderado">Moderar</option><option value="livre/local">Livre / local</option></select></label></div>
   </dialog>
   <dialog id="world-tv" class="world-dialog world-tv-dialog"><div class="world-dialog-head"><h2>TV do Network Ops</h2><button data-world-close type="button">Voltar · Esc</button></div>
-   <form id="world-tv-form"><label>URL ou ID do YouTube <input id="world-youtube-url" type="text" maxlength="400" placeholder="https://www.youtube.com/watch?v=…"></label><div class="world-actions"><button type="submit">Abrir player</button><a id="world-youtube-external" target="_blank" rel="noopener noreferrer" hidden>Abrir no navegador</a></div></form>
-   <div id="world-tv-player"></div><p id="world-tv-status" role="status">Player oficial. Reprodução depende da internet e da WebView.</p>
+   <form id="world-tv-form"><label>Buscar no YouTube ou colar URL / ID <input id="world-youtube-url" type="text" maxlength="400" placeholder="Ex.: lo-fi para plantão ou https://youtu.be/…"></label><div class="world-actions"><button type="submit">Pesquisar / reproduzir</button><a id="world-youtube-external" target="_blank" rel="noopener noreferrer" hidden>Abrir vídeo no navegador</a></div></form>
+   <div id="world-youtube-results" class="world-youtube-results" aria-live="polite"></div><p id="world-tv-status" role="status">Pesquise um vídeo. A reprodução aparece na televisão dentro do mundo 3D.</p>
   </dialog>`;
     host.append(root2);
-    const $ = (id) => root2.querySelector("#" + id), dialogs = [...root2.querySelectorAll("dialog")], tv = new YouTubeTV($("world-tv-player"), $("world-tv-status"));
-    let speechTimer;
+    const $ = (id) => root2.querySelector("#" + id), dialogs = [...root2.querySelectorAll("dialog")], tv = new YouTubeTV(null, $("world-tv-status"));
+    let speechTimer, lastTtsAt = 0;
     function speak(trigger, preview = false) {
       if (!isActive() && !preview) return;
       const text2 = dialogue.choose(trigger, { preview, profanity: settings.profanity });
@@ -1260,11 +1299,15 @@
       bubble.hidden = false;
       clearTimeout(speechTimer);
       speechTimer = setTimeout(() => bubble.hidden = true, 5e3);
-      if (settings.tts && window.speechSynthesis && window.SpeechSynthesisUtterance) {
-        window.speechSynthesis.cancel();
-        const utterance = new window.SpeechSynthesisUtterance(text2);
-        utterance.lang = "pt-BR";
-        window.speechSynthesis.speak(utterance);
+      if (settings.tts && window.speechSynthesis && window.SpeechSynthesisUtterance && Date.now() - lastTtsAt > 800) {
+        lastTtsAt = Date.now();
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new window.SpeechSynthesisUtterance(text2);
+          utterance.lang = "pt-BR";
+          window.speechSynthesis.speak(utterance);
+        } catch {
+        }
       }
     }
     function closeDialogs() {
@@ -1361,7 +1404,6 @@
     root2.querySelectorAll("[data-world-close]").forEach((b) => b.onclick = () => b.closest("dialog").close());
     dialogs.forEach((d) => {
       d.addEventListener("close", () => {
-        if (d.id === "world-tv") tv.destroy();
         if (!dialogs.some((x) => x.open) && isActive()) getWorld()?.setPaused(false);
       });
       d.addEventListener("cancel", (e) => {
@@ -1377,6 +1419,13 @@
     $("world-open-music").onclick = () => show("world-radio");
     $("world-open-dialogue").onclick = () => show("world-dialogue");
     $("world-open-tv").onclick = () => show("world-tv");
+    root2.querySelectorAll("[data-combat-action]").forEach((button2) => button2.onclick = () => {
+      const world = getWorld(), action = button2.dataset.combatAction;
+      if (!world?.environmentSystem?.combat) return;
+      const ok = world.performCombatAction?.(action) ?? (action === "reset" ? (world.environmentSystem.combat.reset(), true) : world.environmentSystem.action(action));
+      if (!ok && ["light", "heavy"].includes(action)) notice("Aproxime-se do roteador ou aguarde o próximo golpe.");
+      world.renderer?.domElement?.focus();
+    });
     $("world-scene").value = settings.scene;
     $("world-scene").onchange = (e) => {
       setScene(e.target.value);
@@ -1553,15 +1602,67 @@
     };
     paintRule();
     $("world-youtube-url").value = settings.youtube;
+    function tvHost() {
+      return getWorld()?.environmentSystem?.tvSurface || null;
+    }
+    function paintYouTubeResults(results) {
+      const box = $("world-youtube-results");
+      box.replaceChildren();
+      if (!results.length) {
+        box.textContent = "Nenhum vídeo encontrado.";
+        return;
+      }
+      for (const item of results) {
+        const button2 = document.createElement("button");
+        button2.type = "button";
+        button2.className = "world-youtube-result";
+        const img = document.createElement("img");
+        img.alt = "";
+        img.loading = "lazy";
+        img.src = item.thumbnail || "";
+        const meta2 = document.createElement("span");
+        const title = document.createElement("strong");
+        title.textContent = item.title || "Vídeo";
+        const detail = document.createElement("small");
+        detail.textContent = [item.channel, item.duration].filter(Boolean).join(" · ");
+        meta2.append(title, detail);
+        button2.append(img, meta2);
+        button2.onclick = async () => {
+          try {
+            tv.attach(tvHost());
+            await tv.play(item.videoId);
+            settings.youtube = item.videoId;
+            save();
+            $("world-youtube-url").value = item.videoId;
+            $("world-youtube-external").href = youtubeURL({ videoId: item.videoId });
+            $("world-youtube-external").hidden = false;
+            $("world-tv-status").textContent = `${item.title || "Vídeo"} carregado na televisão 3D.`;
+          } catch (error) {
+            $("world-tv-status").textContent = error.message;
+          }
+        };
+        box.append(button2);
+      }
+    }
     $("world-tv-form").onsubmit = async (e) => {
       e.preventDefault();
+      const value2 = $("world-youtube-url").value.trim();
+      $("world-youtube-results").replaceChildren();
+      $("world-tv-status").textContent = "Consultando YouTube…";
       try {
-        const value2 = $("world-youtube-url").value, data = parseYouTube(value2);
-        $("world-youtube-external").href = youtubeURL(data);
-        $("world-youtube-external").hidden = false;
-        settings.youtube = value2;
-        save();
-        await tv.play(value2);
+        if (looksLikeYouTubeReference(value2)) {
+          const data = parseYouTube(value2);
+          tv.attach(tvHost());
+          await tv.play(value2);
+          $("world-youtube-external").href = youtubeURL(data);
+          $("world-youtube-external").hidden = false;
+          settings.youtube = value2;
+          save();
+          return;
+        }
+        const results = await searchYouTube(value2);
+        paintYouTubeResults(results);
+        $("world-tv-status").textContent = results.length ? "Escolha um resultado para reproduzir na TV 3D." : "Nenhum vídeo encontrado.";
       } catch (error) {
         $("world-tv-status").textContent = error.message;
       }
@@ -1612,7 +1713,11 @@
         case "scene":
           setScene(e.detail.scene);
           break;
+        case "tv_surface":
+          tv.attach(e.detail.host);
+          break;
         case "tv":
+          tv.attach(tvHost());
           show("world-tv");
           break;
         case "music":
@@ -1683,8 +1788,9 @@
     }, frame(detail) {
       $("world-combat").hidden = !detail.combat;
       if (detail.combat) {
-        const c = detail.combat;
-        $("world-combat").textContent = `Você ${c.hp}/100 · Roteador ${c.npcHp}/100 · Combo ${c.combo} ${c.result === "win" ? "— Vitória! R para revanche" : c.result === "lose" ? "— Derrota! R para revanche" : "· J/K soco · B bloqueio · Q esquiva"}`;
+        const c = detail.combat, inRange = Number(c.distance) <= 3;
+        $("world-combat-status").textContent = `Você ${c.hp}/100 · Roteador ${c.npcHp}/100 · Combo ${c.combo} · ${Number(c.distance).toFixed(1)}m ${c.result === "win" ? "— Vitória! R para revanche" : c.result === "lose" ? "— Derrota! R para revanche" : inRange ? "— alcance de golpe" : "— aproxime-se para bater"}`;
+        for (const b of root2.querySelectorAll("[data-combat-action]")) b.disabled = b.dataset.combatAction !== "reset" && (Boolean(c.result) || (b.dataset.combatAction === "light" || b.dataset.combatAction === "heavy") && c.cooldown > 0);
       }
       if (Date.now() - idleAt > 6e4) {
         idleAt = Date.now();
