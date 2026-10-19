@@ -25,7 +25,7 @@ O menu fica no canto inferior direito mesmo com o HUD oculto. A barra compacta r
 
 Aproxime-se, olhe para o objeto e pressione E quando houver destaque. No escritório: cadeira, terminal, rádio, TV, porta, interruptor, cafeteira, quadro, lixeira, pacote coletável, bola, NPC e portais. F na bola aplica impulso; E pega/solta. Andar também empurra a bola. Sentar prende a posição; mover/Space levanta. O roteador anda numa rota curta e olha para o jogador. Os terminais existentes continuam abrindo rotas reais, respeitando as capabilities da sessão.
 
-Na primeira pessoa o crosshair determina o alvo. Na terceira pessoa o raio sai da câmera e a distância de uso continua limitada a partir do jogador. NPCs, móveis e combate são locais. Apenas a ação explícita Usar computador / terminal abre a interface técnica.
+Na primeira pessoa o crosshair/raycast determina o alvo. Na terceira pessoa, a seleção prefere objetos próximos dentro do cone de direção do personagem e usa o raycast como fallback, evitando que móveis entre a câmera e o avatar roubem a interação. A distância de uso continua limitada a partir do jogador. NPCs, móveis e combate são locais. Apenas a ação explícita Usar computador / terminal abre a interface técnica.
 
 ## Músicas
 
@@ -43,13 +43,17 @@ Triggers de conexão, diagnósticos e cópia do atendimento recebem somente nome
 
 ## YouTube
 
-E na TV ou Menu → TV abre um painel de mídia em foco dentro do app, libera mouse e pausa o mundo. URLs HTTPS de hosts permitidos e IDs são validados. A IFrame Player API oficial é carregada só ao solicitar um vídeo. Controles e branding são preservados. Não há download, extração de stream, captura de iframe ou VideoTexture.
+E na TV ou Menu → TV abre a busca de mídia dentro do Access Manager e libera o mouse enquanto o painel está em foco. O campo aceita uma pesquisa textual do YouTube ou uma URL/ID/playlist. Pesquisas passam pelo endpoint local `/api/media/youtube/search`, que retorna resultados com título, canal, duração e miniatura; isso evita depender de CORS direto na WebView.
 
-Esc fecha o player e retoma o mundo. O painel foi escolhido como fallback estável, sem iframe em perspectiva/CSS3D. Falha de rede/API, vídeos com embed desativado, CSP e erro 153 de identificação da WebView podem impedir reprodução; Abrir no navegador permanece disponível. Os testes offline simulam somente a API externa; não comprovam reprodução em todos os runtimes Windows/Linux.
+Ao escolher um resultado, a IFrame Player API oficial é montada na superfície da televisão modelada no cenário por `CSS3DRenderer`, alinhada à câmera do mundo. O vídeo não é reproduzido em uma tela separada do painel. Fechar a busca devolve o controle ao mundo sem destruir o player, então o vídeo continua na TV 3D. Controles e branding do YouTube são preservados; não há download, extração de stream ou captura do vídeo para textura WebGL.
+
+A pesquisa sem chave usa a página pública de resultados do YouTube e pode precisar de ajuste se o formato externo mudar. Falha de rede/API, vídeos com embed desativado, CSP e erro 153 de identificação da WebView ainda podem impedir reprodução; colar uma URL/ID diretamente e Abrir no navegador permanecem como alternativas.
 
 ## Arena e performance
 
-Router Rumble é opt-in, com vida, combo, bloqueio, esquiva, dano, queda, provocação, vitória/derrota e revanche. O oponente se aproxima e sinaliza ataques antes de atingir. Não há sangue. Não existe import de serviços de equipamentos no módulo de combate. O sistema emite apenas triggers de diálogo.
+Router Rumble é opt-in, com vida, combo, bloqueio, esquiva, dano, queda, provocação, vitória/derrota e revanche. A arena entra em terceira pessoa por padrão e reposiciona o jogador dentro do alcance inicial. O roteador é um alvo interativo: E executa soco leve e F golpe forte; J/K fazem as mesmas ações, enquanto B/Q/T controlam defesa/esquiva/provocação. O HUD também oferece botões equivalentes e mostra distância, vida e cooldown. Golpes fora de alcance não causam dano.
+
+As ações de combate são isoladas por tratamento de erro para uma falha de UI, TTS ou callback não encerrar o renderer/WebView. O oponente se aproxima e sinaliza ataques antes de atingir. Não há sangue. Não existe import de serviços de equipamentos no módulo de combate. O sistema emite apenas triggers de diálogo e nenhuma ação da arena dispara comandos reais no equipamento conectado.
 
 O roteador é um modelo procedural próprio; pernas, braços e antenas são animados por estado. As bibliotecas CC0 humanoides foram pesquisadas, mas não adicionadas por exigirem retargeting e trazerem geometria desnecessária. Modelos de escritório Kenney são carregados sob demanda, somente quatro GLBs com 75,6 KB no total; fallback procedural preserva interações se falharem. O motor físico único é Cannon ES para bola/gravidade; o jogador mantém o controller existente com colliders simples. Não há navmesh: as rotas curtas do NPC não exigem Recast.
 
@@ -63,7 +67,7 @@ O debug opcional mostra FPS, draw calls, triângulos, assets e quantidade de geo
 
 ## Manutenção e validação
 
-`world/experience.js` cuida da UI; `settings.js`, `playlist.js`, `dialogue.js`, `interactions.js` e `combat.js` têm regras testáveis sem WebGL. `environment.js` declara cenários e objetos, usa a registry central e controla física/poses. `renderer.js` continua responsável por câmera e renderização. `bridge.js` conecta tudo à sessão atual.
+`world/experience.js` cuida da UI; `settings.js`, `playlist.js`, `dialogue.js`, `interactions.js` e `combat.js` têm regras testáveis sem WebGL. `environment.js` declara cenários e objetos, usa a registry central e controla física/poses. `renderer.js` continua responsável por câmera e renderização WebGL/CSS3D. `bridge.js` conecta tudo à sessão atual.
 
 ```bash
 npm ci
