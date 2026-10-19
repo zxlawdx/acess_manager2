@@ -1285,6 +1285,10 @@ def update_wan(
         config,
     )
 
+    for secret in ('Password',):
+        if merged.get(secret) and set(str(merged[secret])) <= set('*•●·'):
+            raise ValueError('Senha WAN mascarada não pode ser reenviada; informe uma credencial temporária real.')
+
     prepared, encode = (
         _encrypt_wan_post_secrets(
             zte,

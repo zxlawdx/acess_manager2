@@ -34,3 +34,10 @@ def test_identity_fallback_never_uses_hostname_or_merges_different_macs():
 def test_qualified_public_fields_and_case_aliases_keep_fragment_boundaries():
  c=Client();c.responses['accessdev_ssiddev_lua.lua']=xml('OBJ_ACCESSDEV_ID',[{'Device.1.hostname':'A'},{'Device.1.macaddr':'02:00:00:00:00:01'},{'Device.1.ipaddr':'192.0.2.1'},{'Device.2.hostname':'B'},{'Device.2.macaddr':'02:00:00:00:00:02'}])
  r=clients(c,'wifi_clients');assert len(r)==2;assert r[0]['hostname']=='A';assert r[1]['hostname']=='B'
+
+def test_current_mode_precedes_generic_mode_and_reaches_domain():
+ from apps.access_manager.domain.clients import normalize_clients
+ c=Client();c.responses['accessdev_ssiddev_lua.lua']=xml('OBJ_WLAN_AD_ID',[{'MACAddress':'02:00:00:00:00:03','CurrentMode':'ac','Mode':'ax','RSSI':'-52','RxRate':'144'}])
+ rows=normalize_clients(clients(c,'wifi_clients'))
+ assert rows[0]['wifi_generation']==5
+ assert rows[0]['wifi_standard_raw']=='ac'

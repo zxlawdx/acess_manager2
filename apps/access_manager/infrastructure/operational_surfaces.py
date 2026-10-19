@@ -94,7 +94,13 @@ class F6201BSurfaces:
     if raw not in row.get('current',{}):continue
     private=raw in PRIVATE or raw in getattr(spec,'secrets',())
     boolean=raw in _BOOLEANS or raw.startswith(('AllowDHCP6S_','AllowRA_')) or (raw.startswith('Is') and raw.endswith('Alg')) or raw in ('BsEnable','BPDUEnable')
-    fields.append({'key':key,'label':label(raw),'value':None if private else row['current'][raw],
+    metadata={}
+    if feature=='wan_connection':
+     from apps.access_manager.infrastructure.configuration_adapters import NativeWan
+     from apps.access_manager.infrastructure.zte.protocol.zte_configuration.zte_management import _WAN_API_MAP
+     intent=next((k for k,v in _WAN_API_MAP.items() if v==raw),None)
+     if intent:metadata=NativeWan.field_spec(intent,{'vlan_enabled':row['current'].get('VlanEnable')})
+    fields.append({**metadata,'key':key,'label':label(raw),'value':None if private else row['current'][raw],
       'secret':private,'options':[{'value':'0','label':'Não'},{'value':'1','label':'Sim'}] if boolean else []})
    instances.append({'id':row['id'],'label':f'Configuração {len(instances)+1}','fields':fields,
      'ready':row.get('ready',not row.get('missing')),'missing':[label(k) for k in row.get('missing') or []]})

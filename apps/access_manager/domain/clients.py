@@ -32,5 +32,21 @@ def normalize_clients(rows):
         item = dict(row)
         kind = str(item.get('connection_type') or '').lower()
         item['connection_type'] = {'lan':'Ethernet','ethernet':'Ethernet','wifi':'Wi-Fi','wi-fi':'Wi-Fi','mesh':'Mesh'}.get(kind, item.get('connection_type'))
+        raw = next((item[k] for k in ('CurrentMode', 'wifi_standard_raw', 'sta_mode', 'Mode', 'Standard', 'OperatingStandard', 'PhyMode', 'PHYMode', 'mode', 'modo') if item.get(k) not in (None, '')), None)
+        item.update(normalize_wifi_standard(raw))
+        for target, aliases in {'bandwidth': ('largura',), 'connected_time': ('connect_time', 'tempo_conectado', 'conectado_desde')}.items():
+            if not item.get(target):
+                item[target] = next((item[k] for k in aliases if item.get(k) is not None), None)
         result.append(item)
     return result
+
+
+def normalize_wifi_standard(raw):
+    """Only a single reported station mode is evidence; mixed radio modes aren't."""
+    value = str(raw or '').strip().lower().replace('802.11', '').replace('wi-fi ', 'wifi')
+    aliases = {'b': ('b', None), 'g': ('g', None), 'n': ('n', 4), 'ht': ('n', 4), 'n/ht': ('n', 4),
+               'ac': ('ac', 5), 'vht': ('ac', 5), 'ax': ('ax', 6), 'he': ('ax', 6),
+               'be': ('be', 7), 'eht': ('be', 7)}
+    mode, generation = aliases.get(value, (None, None))
+    return {'wifi_standard_raw': raw, 'wifi_standard': '802.11' + mode if mode else None,
+            'wifi_generation': generation, 'wifi_mode_family': {'n': 'N', 'ac': 'AC', 'ax': 'AX', 'be': 'BE'}.get(mode, mode.upper() if mode else None)}

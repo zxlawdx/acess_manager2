@@ -38,6 +38,7 @@ NATIVE.update({
 })
 BOOLS.update({'TS_Enable','Wan_Enable','Lan_Enable',*NATIVE['alg'][0].fields})
 TITLES.update({'TS_Enable':'Servidor Telnet','Wan_Enable':'Permitir pela WAN','Lan_Enable':'Permitir pela LAN','MinSrcIp':'IP de origem inicial','MaxSrcIp':'IP de origem final','Prefix':'Prefixo IPv6','PrefixLen':'Comprimento do prefixo','ServiceList':'Serviços','IPMode':'Família IP',**{key:key[2:-3]+' ALG' for key in NATIVE['alg'][0].fields}})
+TITLES.update({'name': 'Nome da conexão', 'mode': 'Routing / Bridge', 'link_mode': 'Link', 'lan_binding': 'Binding LAN', 'service_list': 'Lista de serviço', 'service_code': 'Código de serviço', 'nat': 'NAT', 'default_gateway': 'Gateway padrão', 'forward': 'Encaminhamento', 'vlan_id': 'VLAN ID', 'priority': 'Prioridade 802.1p', 'vlan_enabled': 'Habilitar VLAN', 'mtu': 'MTU', 'ip_mode': 'Versão IP', 'username': 'Usuário PPPoE', 'password': 'Senha PPPoE', 'auth_type': 'Autenticação', 'trigger': 'Modo de conexão', 'pppoe_service_name': 'Nome do serviço PPPoE', 'ip_address': 'Endereço IPv4', 'subnet_mask': 'Máscara IPv4', 'gateway': 'Gateway IPv4', 'dns1': 'DNS IPv4 1', 'dns2': 'DNS IPv4 2', 'dns3': 'DNS IPv4 3', 'mru': 'MRU', 'transport_type': 'Transporte PPP', 'idle_time': 'Tempo ocioso', 'dscp': 'DSCP', 'pass_through': 'Pass-through', 'ipv6_acquire_mode': 'Aquisição IPv6', 'ipv6_dns_source': 'Origem DNS IPv6', 'ipv6_dns1': 'DNS IPv6 1', 'ipv6_dns2': 'DNS IPv6 2', 'ipv6_dns3': 'DNS IPv6 3', 'ipv6_gateway_source': 'Origem gateway IPv6', 'ipv6_gateway': 'Gateway IPv6', 'prefix_delegation': 'Prefix Delegation', 'slaac': 'SLAAC', 'gua': 'GUA', 'pd': 'PD'})
 MAPPED={'speed_test':('speed_test','Teste de velocidade por seção','Diagnóstico'),'sntp_general':('sntp','NTP / sincronização','Gerenciamento'), 'sntp_dst':('sntp','Horário de verão','Gerenciamento'), 'dscp_to_pbit':('dscp_to_pbit','Mapeamento DSCP → P-bit','QoS'), 'wlan_mac_filter':('mac_filter','Política MAC Wi-Fi','Wi-Fi'), 'lan_service':('lan_service','Serviços LAN','Gerenciamento'), 'wan_config':('wan_config','Conexão WAN capturada','WAN')}
 
 
@@ -45,6 +46,7 @@ def digest(value):return hashlib.sha256(json.dumps(value,sort_keys=True,default=
 
 def validate(fields):
  for key,value in fields.items():
+  if _is_secret(key) and value and re.fullmatch(r'[•*●·]+',str(value)):raise ValueError('Valor mascarado não é uma credencial')
   if isinstance(value,(dict,list)) or len(str(value))>4096:raise ValueError('Valor de configuração inválido')
   if key in BOOLS and str(value) not in {'0','1','True','False'}:raise ValueError('Estado booleano inválido')
   if value and key in {'InternalClient','SourceIP','DestIP','IPAddress','Gateway6'}:ip_address(str(value))
@@ -148,10 +150,13 @@ class OperationalConfigurations:
    result.append({'id':r['_InstID'],'label':r.get('Alias') or r.get('Name') or r.get('name') or ('Nova regra' if r['_InstID']=='new' else f'Configuração {len(result)+1}'),
      'actions':['create'] if r['_InstID']=='new' else ['update','delete'] if a.crud else ['update'],
      'fields':[{'key':key,'label':_WRITE_FIELD_LABELS.get(raw,TITLES.get(raw,label(raw))),'secret':_is_secret(raw),'value':None if _is_secret(raw) else r.get(raw),
-      'options':self._options(a,raw,r), 'select':raw in {'channel','standard','country','bandwidth','tx_power'}} for key,raw in mapping.items() if raw in r or a.crud],
+      **(a.field_spec(raw,r) if isinstance(a,NativeWan) else {}), 'options':self._options(a,raw,r), 'select':raw in {'channel','standard','country','bandwidth','tx_power'}} for key,raw in mapping.items() if raw in r or (a.crud and (not isinstance(a,NativeWan) or r['_InstID']=='new'))],
      'missing':[TITLES.get(k,label(k)) for k in a.fields if k not in r] if r['_InstID']!='new' else [],'ready':True})
   return {'feature':feature,'available':True,'instances':result}
  def _options(self,adapter,raw,row):
+  if isinstance(adapter,NativeWan) and raw in {'nat','default_gateway','forward','vlan_enabled','pass_through','prefix_delegation','slaac','gua','pd'}:return [{'value':'0','label':'Não'},{'value':'1','label':'Sim'}]
+  if isinstance(adapter,NativeWan) and raw=='mode':return [{'value':'route','label':'Routing'},{'value':'bridge','label':'Bridge'}]
+  if isinstance(adapter,NativeWan) and raw=='link_mode':return [{'value':'PPP','label':'PPP'},{'value':'IP','label':'IP'}]
   if raw in BOOLS or raw in RF_BOOLS or raw in {'enabled','wps_enabled','isolation','broadcast','airtime_fairness'} or raw.endswith('.Enable'):return [{'value':'0','label':'Não'},{'value':'1','label':'Sim'}]
   if isinstance(adapter,NativeRadio) and raw in {'channel','standard','country','bandwidth','tx_power'}:
    return adapter.options.get(raw,[])
@@ -168,7 +173,11 @@ class OperationalConfigurations:
   targets=[r for r in records if r.get('_InstID')==instance]
   if action!='create' and len(targets)!=1:raise ValueError('Selecione uma instância atual')
   original=targets[0] if targets else {};desired={k:v for k,v in original.items() if k in a.fields};clean={mapping[k]:v for k,v in changes.items()}
-  validate(clean);desired.update(clean)
+  validate(clean)
+  if isinstance(a,NativeWan):
+   if action!='create' and set(clean)-set(original):raise ValueError('O firmware não retornou o campo WAN solicitado')
+   a.validate(clean,original)
+  desired.update(clean)
   if isinstance(a,NativeServicePorts) and 'ServPort' in clean:
    if not str(clean['ServPort']).isdigit() or not 1<=int(clean['ServPort'])<=65535:raise ValueError('Porta administrativa inválida')
   if isinstance(a,NativeRadio):
@@ -207,6 +216,20 @@ class NativeWan:
  fields=tuple(zm._WAN_API_MAP);crud=True;writes_changes_only=True
  def __init__(self,owner):self.owner=owner
  def read(self):return [{'_InstID':r['_InstID'],**{key:r.get(raw) for key,raw in zm._WAN_API_MAP.items() if raw in r}} for r in self.owner._need().wan_configurations()]
+ @staticmethod
+ def field_spec(key,row):
+  group='IPv6' if key.startswith('ipv6_') or key in {'prefix_delegation','slaac','gua','pd'} else 'VLAN' if key in {'vlan_id','priority','vlan_enabled'} else 'PPP / PPPoE' if key in {'username','password','auth_type','trigger','pppoe_service_name','mtu','mru','transport_type','idle_time'} else 'IPv4' if key in {'ip_address','subnet_mask','gateway','dns1','dns2','dns3','nat','default_gateway','forward','pass_through'} else 'Identidade / serviço'
+  limits={'vlan_id':(1,4094),'priority':(0,7),'mtu':(576,1500),'mru':(576,1500)}
+  spec={'intent_key':key,'group':group,'control':'password' if _is_secret(key) else 'number' if key in limits else 'text'}
+  if key in limits:spec.update(min=limits[key][0],max=limits[key][1],step=1)
+  if key=='vlan_id' and str(row.get('vlan_enabled')) in {'0','False','false'}:spec['min']=0
+  if key in {'username','password','auth_type','trigger','pppoe_service_name','transport_type','idle_time'}:spec['visibleWhen']={'intent_key':'link_mode','values':['PPP']}
+  if key=='password':spec.update(help='Segredo temporário. Não selecione para preservar a credencial atual; readback mascarado não confirma a senha.',placeholder='Nova senha PPPoE')
+  return spec
+ @staticmethod
+ def validate(changes,original=None):
+  from apps.access_manager.domain.configuration import validate_wan
+  validate_wan(changes)
  def write(self,identity,changes,action):
   c=self.owner._need()
   return c.delete_wan(identity) if action=='delete' else c.create_wan(changes) if action=='create' else c.update_wan(identity,changes)

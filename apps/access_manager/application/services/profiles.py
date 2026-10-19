@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Protocol
 
 from apps.access_manager.domain.capabilities import SupportStatus
+from apps.access_manager.domain.redaction import _is_secret
+from apps.access_manager.domain.configuration import validate_wan
 from apps.access_manager.domain.profiles import NetworkProfile, ProfileOperation
 
 
@@ -204,7 +206,7 @@ class ProfileService:
         if isinstance(value, dict):
             for key, item in value.items():
                 normalized = str(key).strip().lower()
-                if normalized in forbidden or normalized.endswith("password") or normalized.endswith("token"):
+                if normalized in forbidden or _is_secret(normalized):
                     return f"{path}.{key}"
                 found = ProfileService._find_secret(item, f"{path}.{key}")
                 if found:
@@ -247,6 +249,12 @@ class ProfileService:
         if not profile.name:
             raise ValueError("Nome do perfil é obrigatório")
         self._validate_dns(profile.dns)
+        for connection in profile.wan.get('connections') or []:
+            if not isinstance(connection,dict) or not connection.get('id') or not isinstance(connection.get('config'),dict):raise ValueError('Selecione a conexão WAN e sua configuração')
+            if any(key in connection['config'] for key in ('username','password')):raise ValueError('Credenciais PPPoE não são persistidas em profiles')
+            validate_wan(connection['config'])
+        if 'enabled' in profile.firewall and not isinstance(profile.firewall['enabled'],bool):raise ValueError('Firewall habilitado deve ser booleano')
+        if profile.firewall and (set(profile.firewall)-{'enabled','level'} or profile.firewall.get('level','Low') not in {'Low','Middle','High'}):raise ValueError('Nível de firewall inválido')
         return self.repository.save(profile).to_dict()
 
     def delete(self, name: str) -> dict:
@@ -320,12 +328,29 @@ class ProfileService:
         dhcp = deepcopy(dhcp) if isinstance(dhcp, dict) else {}
         dhcp.pop("reservation_fields", None)
 
+        firewall=read('firewall','firewall',{})
+        firewall={key:firewall[key] for key in ('enabled','level') if key in firewall and firewall[key] is not None and (key!='level' or firewall[key] in {'Low','Middle','High'})} if isinstance(firewall,dict) else {}
+        wan={'connections':[]}
+        try:
+            surface=next((r['id'] for r in self.queries.surface_catalog() if r['id'] in {'wan_crud','wan_connection'}),None)
+            if surface:
+                for row in self.queries.surface_read(surface).get('instances',[]):
+                    if row['id']=='new':continue
+                    config={f['intent_key']:f['value'] for f in row['fields'] if f.get('intent_key') and f.get('value') is not None and not f.get('secret') and f['intent_key']!='username'}
+                    wan['connections'].append({'id':row['id'],'config':config})
+        except Exception:
+            pass
+        def without_secrets(value):
+            if isinstance(value,dict):return {k:without_secrets(v) for k,v in value.items() if not _is_secret(k)}
+            if isinstance(value,list):return [without_secrets(v) for v in value]
+            return value
         return NetworkProfile.from_dict({
+            "wan":wan,"firewall":firewall,
             "name": str(name or "").strip(),
             "description": "Capturado do equipamento atual; revise antes de salvar.",
             "wifi": {"radios": radios, "ssids": ssids},
-            "dns": dns,
-            "dhcp": dhcp,
+            "dns": without_secrets(dns),
+            "dhcp": without_secrets(dhcp),
             "capture": {
                 "vendor": getattr(provider, "vendor", None),
                 "model": getattr(provider, "model", None),
@@ -333,8 +358,13 @@ class ProfileService:
             },
         }).to_dict()
 
-    def preview(self, value: str | dict | NetworkProfile) -> dict:
+    def preview(self, value: str | dict | NetworkProfile, *, _transient=False) -> dict:
         profile = self._profile(value)
+        if not _transient and self._find_secret(profile.to_dict()):
+            raise ValueError('Use secrets temporários somente ao aplicar; o perfil não pode conter segredos')
+        self._validate_dns(profile.dns)
+        for connection in profile.wan.get('connections') or []:
+            validate_wan(connection.get('config') or {})
         provider = self.sessions.provider
         translator = self.translators.get(provider.vendor)
         if translator is None:
@@ -369,12 +399,20 @@ class ProfileService:
         for op in operations:
             if op.feature not in current_cache:
                 try:
-                    reader = {'wifi': 'wifi', 'wifi_radio': 'wifi_radios', 'dns': 'dns', 'dns_hosts': 'dns', 'dhcp': 'dhcp'}.get(op.feature)
+                    reader = {'wifi': 'wifi', 'wifi_radio': 'wifi_radios', 'dns': 'dns', 'dns_hosts': 'dns', 'dhcp': 'dhcp', 'firewall':'firewall'}.get(op.feature)
                     current_cache[op.feature] = getattr(self.queries, reader)() if self.queries is not None and reader else None
                 except Exception:
                     current_cache[op.feature] = None
             current = current_cache[op.feature] or {}
-            config = op.args[-1] if op.args and isinstance(op.args[-1], dict) else {}
+            if op.method=='set_profile_wan':
+                try:
+                    surface=next(r['id'] for r in self.queries.surface_catalog() if r['id'] in {'wan_crud','wan_connection'})
+                    current_cache['wan_rows']=current_cache.get('wan_rows') or self.queries.surface_read(surface).get('instances',[])
+                    row=next(r for r in current_cache['wan_rows'] if str(r['id'])==str(op.args[0]['id']))
+                    current={f['intent_key']:f['value'] for f in row['fields'] if f.get('intent_key') and not f.get('secret')}
+                except Exception:
+                    current={}
+            config = op.args[0]['config'] if op.method=='set_profile_wan' else op.args[-1] if op.args and isinstance(op.args[-1], dict) else {}
             if op.feature == 'dns_hosts':
                 current = next((r for r in current.get('hosts', []) if r.get('name') == config.get('name')), {})
             if op.feature == 'wifi':
@@ -396,11 +434,18 @@ class ProfileService:
                     'current_known': old is not None,
                 })
             cap = provider.capabilities.get(op.feature)
+            available=True
+            if op.method=='set_profile_wan':
+                available=bool(current) and hasattr(provider,'set_profile_wan')
             result.append({
                 **op.public(),
+                "impact":"Pode interromper a conexão" if op.feature in {'configuration_surfaces','firewall','dns','dhcp'} else "Altera a rede Wi-Fi",
+                "requires_transient_secret":False,
+                "transient_secret_policy":"Senha PPPoE opcional; informe uma nova credencial se o firmware não preservar a atual" if op.method=="set_profile_wan" else "Senha Wi-Fi opcional" if op.feature=="wifi" else "Não exige",
+
                 "changes": changes,
-                "support": cap.write.value,
-                "will_apply": cap.write == SupportStatus.SUPPORTED,
+                "support": cap.write.value if available else "UNSUPPORTED",
+                "will_apply": cap.write == SupportStatus.SUPPORTED and available,
                 "evidence": cap.evidence.value,
                 "source": cap.source,
             })
@@ -415,6 +460,7 @@ class ProfileService:
 
     def apply(self, value: str | dict | NetworkProfile, secrets=None) -> dict:
         profile = self._profile(value)
+        if self._find_secret(profile.to_dict()):raise ValueError('Use o campo de secrets temporários separado do perfil')
         if secrets:
             if not isinstance(secrets, dict):
                 raise ValueError('Senhas temporárias devem ser um mapa de SSID')
@@ -422,7 +468,7 @@ class ProfileService:
             data = profile.to_dict()
             wifi = dict(data.get('wifi') or {})
             ssids = [dict(s) for s in wifi.get('ssids') or []]
-            known = {str(s.get('id')) for s in ssids}
+            known = {str(s.get('id')) for s in ssids} | {'wan:'+str(c['id']) for c in profile.wan.get('connections') or []}
             if set(str(k) for k in secrets) - known:
                 raise ValueError('SSID de senha temporária não pertence ao perfil')
             for ssid in ssids:
@@ -430,8 +476,15 @@ class ProfileService:
                     ssid['password'] = str(secrets[str(ssid['id'])])
             wifi['ssids'] = ssids
             data['wifi'] = wifi
+            wan=deepcopy(data.get('wan') or {})
+            for connection in wan.get('connections') or []:
+                key='wan:'+str(connection['id'])
+                if key in secrets:
+                    validate_wan({'password':secrets[key]})
+                    connection['config']['password']=secrets[key]
+            data['wan']=wan
             profile = NetworkProfile.from_dict(data)
-        preview = self.preview(profile)
+        preview = self.preview(profile,_transient=True)
         applied: list[dict] = []
         skipped: list[dict] = []
         failed: list[dict] = []
@@ -463,7 +516,7 @@ class ProfileService:
             except Exception as exc:
                 detail = {
                     "feature": item["feature"], "label": item["label"],
-                    "error": type(exc).__name__, "message": str(exc),
+                    "error": type(exc).__name__, "message": "Falha na operação com segredo temporário" if secrets else str(exc),
                 }
                 failed.append(detail)
                 steps.append({**detail, 'status': 'FAILED'})

@@ -20,4 +20,5 @@ jobs:
       - run: npm test
       - run: node tests/visual/terminal-theme.cjs
       - run: node tests/visual/world-interactions.cjs
+      - run: node tests/visual/configuration-ux.cjs
       - run: python manage.py collectstatic --no-tailwind
