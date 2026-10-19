@@ -5,11 +5,15 @@ const root=path.resolve(__dirname,'../..'),base=path.join(root,'apps/access_mana
  const executablePath=process.env.ACCESS_MANAGER_CHROMIUM||await portable.executablePath();browser=await chromium.launch({executablePath,args:[...portable.args.filter(a=>!a.includes('use-gl')&&!a.includes('use-angle')),'--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'],env:{...process.env,LD_LIBRARY_PATH:process.env.ACCESS_MANAGER_BROWSER_LIBS||'/tmp/am-chromium'},headless:true});
  const page=await browser.newPage();await page.addInitScript(()=>localStorage.setItem('accessManager.world.quality','low'));const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.error(m.text())});let worldRequests=0;page.on('request',req=>{if(req.url().endsWith('world-runtime.js'))worldRequests++});
 
+ if(process.env.ACCESS_MANAGER_QA_CPU_THROTTLE){const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:Number(process.env.ACCESS_MANAGER_QA_CPU_THROTTLE)});}
  const shots=path.join(root,'docs/qa/world-interactions');fs.mkdirSync(shots,{recursive:true});
  const baseURL='http://127.0.0.1:'+server.address().port;
+ const nextWorldFrame=()=>page.evaluate(()=>new Promise(resolve=>document.querySelector('#aero-world').addEventListener('world-frame',()=>resolve(),{once:true})));
+ const canvas=page.locator('#aero-world>canvas').first();
  await page.goto(baseURL);await page.waitForFunction(()=>window.__amStore?.session?.connected);
  await page.locator('#world-toggle').click();await page.locator('#world-menu[open]').waitFor();
  await page.locator('#world-menu [data-world-close]').click();
+ await page.evaluate(()=>document.querySelector('#aero-world').addEventListener('world-frame',e=>window.__worldQA={x:e.detail.player.x,z:e.detail.player.z,combat:e.detail.combat}));
  await page.waitForFunction(()=>document.querySelector('#world-debug').textContent.includes('FPS'));
  await page.locator('#aero-world>canvas').first().dblclick();await page.waitForFunction(()=>Boolean(document.pointerLockElement));await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.pointerLockElement);await page.locator('#world-menu [data-world-close]').click();
  for(const [width,height] of [[1366,768],[1600,900],[1920,1080]]){
@@ -28,9 +32,12 @@ const root=path.resolve(__dirname,'../..'),base=path.join(root,'apps/access_mana
  }
  // Actual keyboard combat does not issue any API mutation.
  const mutations=[];page.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/api/')&&r.method()!=='GET')mutations.push(r.url());});
- await page.keyboard.down('KeyW');await page.waitForTimeout(650);await page.keyboard.up('KeyW');
- await page.keyboard.press('KeyB');await page.keyboard.press('KeyQ');await page.waitForTimeout(900);for(let n=0;n<5;n++){await page.keyboard.press('KeyJ');await page.waitForTimeout(600);}await page.keyboard.press('KeyK');await page.keyboard.press('KeyT');
- await page.waitForFunction(()=>!document.querySelector('#world-combat').textContent.includes('Roteador 100/100'));
+ await page.locator('#world-menu').waitFor({state:'hidden'});await canvas.focus();await page.keyboard.press('KeyR');await nextWorldFrame();
+ // Observe simulated movement instead of assuming wall time equals game time on software WebGL.
+ await page.keyboard.down('KeyW');try{await page.waitForFunction(()=>window.__worldQA?.z<3.2,null,{timeout:60000});}finally{await page.keyboard.up('KeyW');}
+ for(let n=0;n<20&&await page.evaluate(()=>window.__worldQA?.combat?.npcHp===100);n++){await page.keyboard.press('KeyJ');await nextWorldFrame();}
+ assert.ok(await page.evaluate(()=>window.__worldQA?.combat?.npcHp<100),'keyboard punch damages the nearby opponent');
+ await page.keyboard.press('KeyB');await page.keyboard.press('KeyQ');await page.keyboard.press('KeyK');await page.keyboard.press('KeyT');
  assert.deepEqual(mutations,[]);await page.keyboard.press('KeyR');await page.waitForFunction(()=>document.querySelector('#world-combat').textContent.includes('Roteador 100/100'));
  // A real folder selection (not network URLs), previous/next, repeat, shuffle and progress.
  await page.keyboard.press('KeyM');await page.locator('#world-radio[open]').waitFor();
@@ -56,10 +63,10 @@ const root=path.resolve(__dirname,'../..'),base=path.join(root,'apps/access_mana
  assert.equal(await page.locator('#world-tv-player iframe').count(),1);await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelectorAll('#world-tv-player iframe').length===0);
  await page.locator('#world-menu-button').click();await page.locator('#world-scene').selectOption('office');
  // Look ahead and walk into interaction distance; E is routed through the central raycast manager.
- await page.keyboard.down('KeyW');await page.waitForTimeout(400);await page.keyboard.up('KeyW');
+ await page.locator('#world-menu').waitFor({state:'hidden'});await canvas.focus();await page.keyboard.down('KeyW');try{await page.waitForFunction(()=>window.__worldQA?.z<6.3,null,{timeout:60000});}finally{await page.keyboard.up('KeyW');}
  await page.waitForFunction(()=>document.querySelector('#world-prompt').textContent.includes('Falar com o roteador'));
  await page.keyboard.press('KeyE');assert.ok((await page.locator('#world-speech').textContent()).includes('PPPoE'));
- await page.evaluate(()=>document.querySelector('#aero-world').addEventListener('world-frame',e=>window.__worldQA={x:e.detail.player.x,z:e.detail.player.z}));await page.keyboard.down('KeyA');await page.waitForFunction(()=>window.__worldQA?.x< -3.8);await page.keyboard.up('KeyA');await page.keyboard.down('KeyW');await page.waitForFunction(()=>window.__worldQA?.z<4.7);await page.keyboard.up('KeyW');await page.waitForFunction(()=>document.querySelector('#world-prompt').textContent.includes('Usar computador'));await page.keyboard.press('KeyE');await page.waitForFunction(()=>document.querySelector('.app-shell').classList.contains('world-panel-open'));await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.app-shell').classList.contains('world-panel-open'));
+ await page.keyboard.down('KeyA');await page.waitForFunction(()=>window.__worldQA?.x< -3.8);await page.keyboard.up('KeyA');await page.keyboard.down('KeyW');await page.waitForFunction(()=>window.__worldQA?.z<4.7);await page.keyboard.up('KeyW');await page.waitForFunction(()=>document.querySelector('#world-prompt').textContent.includes('Usar computador'));await page.keyboard.press('KeyE');await page.waitForFunction(()=>document.querySelector('.app-shell').classList.contains('world-panel-open'));await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('.app-shell').classList.contains('world-panel-open'));
  await page.locator('#world-menu-button').click();await page.locator('#world-return-interface').click();assert.equal(await page.locator('#aero-world').isHidden(),true);
  await page.locator('#world-toggle').click();await page.waitForFunction(()=>document.querySelector('.app-shell').classList.contains('world-mode'));await page.waitForFunction(()=>document.querySelector('#world-speech').textContent.includes('Vindo trabalhar de novo, law?'));
  // Persisted library survives reload without autoplay; clear removes the local blobs.

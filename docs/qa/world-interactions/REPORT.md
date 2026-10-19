@@ -43,3 +43,7 @@ The initial Qt5 attempt hit an existing application dependency on `Object.hasOwn
 - NPC navigation is a short local route and arena approach/evade logic, not a navmesh. Player colliders are simple boxes; ball physics uses a single Cannon ES world.
 - RSSI/optical visual thresholds are illustrative last-snapshot indicators. Arena does not receive real device operations or customer personal data.
 - No physical Huawei/ZTE/Juniper was used for this visual feature QA; operational routes and existing Python regression coverage remain intact.
+
+## CI follow-up — 2026-10-19
+
+Both initial GitHub checks failed at the same visual arena assertion, after unit tests, build integrity and the three viewport checks had passed. The smoke assumed 650 ms of wall time meant enough simulated movement and sent a short series of punches immediately after dodge. The renderer caps simulation delta on slow frames; CI software WebGL therefore left the player/cooldown in a different state. The test now waits for the menu to close, explicitly focuses the canvas, observes actual `world-frame` player coordinates, and checks damage after frame-synchronized keyboard attacks. The office interaction uses observed position too. No combat rule was weakened and no application code was changed for this correction. The full smoke passed locally with `ACCESS_MANAGER_QA_CPU_THROTTLE=3`, including real keyboard damage and the no-device-mutation assertion.
