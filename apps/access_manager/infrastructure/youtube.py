@@ -16,6 +16,16 @@ _VIDEO_ID = re.compile(r'^[A-Za-z0-9_-]{11}$')
 _WEB_CLIENT_VERSION = '2.20260708.00.00'
 _VIDEO_SEARCH_PARAMS = 'EgIQAfABAQ=='
 _USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/155 Safari/537.36'
+_INVIDIOUS_DIRECTORY = 'https://api.invidious.io/instances.json'
+# Current public instances from the official Invidious documentation. The
+# directory is queried first; these are only a resilience fallback when the
+# directory itself is unavailable.
+_INVIDIOUS_FALLBACKS = (
+    'https://inv.nadeko.net',
+    'https://invidious.nerdvpn.de',
+    'https://yt.chocolatemoo53.com',
+    'https://invidious.tiekoetter.com',
+)
 
 
 def _text(node):
@@ -74,6 +84,30 @@ def _video_from_ytdlp(entry):
         'title': str(entry.get('title') or 'Vídeo do YouTube'),
         'channel': str(entry.get('channel') or entry.get('uploader') or entry.get('channel_id') or ''),
         'duration': _duration_text(entry.get('duration')),
+        'thumbnail': thumbnail,
+    }
+
+
+def _video_from_invidious(entry):
+    if not isinstance(entry, dict) or entry.get('type') not in (None, 'video'):
+        return None
+    video_id = str(entry.get('videoId') or '')
+    if not _VIDEO_ID.fullmatch(video_id):
+        return None
+    thumbs = entry.get('videoThumbnails') or []
+    thumbnail = next(
+        (str(item.get('url')) for item in reversed(thumbs) if isinstance(item, dict) and item.get('url')),
+        '',
+    )
+    if thumbnail.startswith('//'):
+        thumbnail = 'https:' + thumbnail
+    if not thumbnail:
+        thumbnail = f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg'
+    return {
+        'videoId': video_id,
+        'title': str(entry.get('title') or 'Vídeo do YouTube'),
+        'channel': str(entry.get('author') or ''),
+        'duration': _duration_text(entry.get('lengthSeconds')),
         'thumbnail': thumbnail,
     }
 
@@ -152,6 +186,76 @@ def _configure_session(session):
     return session
 
 
+def _discover_invidious(session):
+    discovered = []
+    try:
+        response = session.get(_INVIDIOUS_DIRECTORY, timeout=(2.5, 5))
+        response.raise_for_status()
+        payload = response.json()
+        if isinstance(payload, list):
+            for row in payload:
+                if not isinstance(row, (list, tuple)) or len(row) < 2:
+                    continue
+                domain, meta = row[0], row[1]
+                if not isinstance(domain, str) or not domain:
+                    continue
+                if isinstance(meta, dict):
+                    if meta.get('api') is False:
+                        continue
+                    uri = str(meta.get('uri') or '').strip()
+                else:
+                    uri = ''
+                base = uri if uri.startswith('https://') else 'https://' + domain
+                if base not in discovered:
+                    discovered.append(base.rstrip('/'))
+    except Exception:
+        pass
+    for base in _INVIDIOUS_FALLBACKS:
+        if base not in discovered:
+            discovered.append(base)
+    return discovered
+
+
+def _search_invidious(session, query: str, limit: int):
+    """Search through a maintained YouTube proxy/index instead of scraping.
+
+    This mirrors the architecture used by media frontends and Tubidy-like
+    services: discovery is handled by a server-side index/API, while playback
+    remains separate. Public instances are tried briefly and failures fall
+    through to the local yt-dlp/InnerTube strategies below.
+    """
+    cap = max(1, min(int(limit), 20))
+    last_error = None
+    for base in _discover_invidious(session)[:8]:
+        try:
+            response = session.get(
+                base + '/api/v1/search',
+                params={'q': query, 'type': 'video', 'region': 'BR', 'hl': 'pt-BR', 'page': 1},
+                timeout=(2.5, 5),
+                headers={'Accept': 'application/json'},
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, list):
+                raise ValueError('Resposta inválida da instância Invidious.')
+            results, seen = [], set()
+            for entry in payload:
+                item = _video_from_invidious(entry)
+                if not item or item['videoId'] in seen:
+                    continue
+                seen.add(item['videoId'])
+                results.append(item)
+                if len(results) >= cap:
+                    return results
+            if results:
+                return results
+            raise ValueError('A instância Invidious não retornou vídeos.')
+        except (requests.RequestException, ValueError, TypeError, json.JSONDecodeError) as exc:
+            last_error = exc
+            continue
+    raise RuntimeError('Nenhuma instância Invidious respondeu à busca.') from last_error
+
+
 def _search_innertube(session, query: str, limit: int):
     payload = {
         'context': {
@@ -203,19 +307,26 @@ def search_youtube(query: str, limit: int = 8):
         raise ValueError('Digite pelo menos 2 caracteres para pesquisar no YouTube.')
 
     errors = []
-
-    # Primary path: reuse yt-dlp's maintained YoutubeSearch extractor instead of
-    # duplicating YouTube's private search protocol. Several mature desktop and
-    # media apps use the same ytsearchN:<query> flow with extract_flat metadata.
-    try:
-        return _search_ytdlp(query, limit)
-    except Exception as exc:
-        errors.append(exc)
-
-    # Compatibility fallbacks stay available for environments where yt-dlp is
-    # missing or temporarily blocked, but they are no longer the main path.
     session = _configure_session(requests.Session())
     try:
+        # Search and playback are deliberately separate. First use a maintained
+        # proxy/index API, similar to self-hosted media frontends, so a Python
+        # process blocked by YouTube's anti-bot page can still retrieve result
+        # metadata without needing to solve playback/download challenges.
+        try:
+            return _search_invidious(session, query, limit)
+        except Exception as exc:
+            errors.append(exc)
+
+        # Then use yt-dlp's maintained YoutubeSearch extractor. This remains a
+        # useful local fallback but, since 2025/2026, YouTube challenge handling
+        # may require extra JS runtime components for full extraction support.
+        try:
+            return _search_ytdlp(query, limit)
+        except Exception as exc:
+            errors.append(exc)
+
+        # Last-resort direct YouTube strategies.
         for strategy in (_search_innertube, _search_html):
             try:
                 return strategy(session, query, limit)
