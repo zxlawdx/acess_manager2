@@ -19,4 +19,11 @@ if old in text:
     text = text.replace(old, new, 1)
 elif new not in text:
     raise SystemExit('old YouTube visual smoke block not found')
+old_open = """ await page.locator('#world-menu-button').click();await page.locator('#world-open-tv').click();await page.locator('#world-youtube-url').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');await page.locator('#world-tv-form button[type=submit]').click();"""
+new_open = """ await page.locator('#world-menu-button').click();await page.locator('#world-scene').selectOption('office');await page.locator('#world-menu').waitFor({state:'hidden'});await canvas.focus();await nextWorldFrame();
+ await page.locator('#world-menu-button').click();await page.locator('#world-open-tv').click();await page.locator('#world-youtube-url').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');await page.locator('#world-tv-form button[type=submit]').click();"""
+if old_open in text:
+    text = text.replace(old_open, new_open, 1)
+elif new_open not in text:
+    raise SystemExit('YouTube smoke open block not found')
 test.write_text(text, encoding='utf-8')
