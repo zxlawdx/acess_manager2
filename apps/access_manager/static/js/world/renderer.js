@@ -22,7 +22,7 @@ export class WorldRenderer {
   this.listen(canvas,'pointermove',e=>{if(!drag||this.paused)return;this.yaw-=(e.clientX-drag.x)*.006;this.pitch=THREE.MathUtils.clamp(this.pitch+(e.clientY-drag.y)*.004,.15,1.05);drag={x:e.clientX,y:e.clientY}});
   this.listen(canvas,'pointerup',()=>{drag=null});this.listen(canvas,'lostpointercapture',()=>{drag=null});
   this.listen(canvas,'wheel',e=>{e.preventDefault();this.distance=THREE.MathUtils.clamp(this.distance+e.deltaY*.01,7,23)},{passive:false});
-  this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(host);this.resize();this.updateCamera(1);
+  this.resizeObserver=new ResizeObserver(()=>{if(this.resizeFrame)return;this.resizeFrame=requestAnimationFrame(()=>{this.resizeFrame=0;this.resize();});});this.resizeObserver.observe(host);this.resize();this.updateCamera(1);
   if(modelURL)this.loadModel(modelURL);
  }
  listen(target,name,fn,options){target.addEventListener(name,fn,options);this.cleanups.push(()=>target.removeEventListener(name,fn,options));}
@@ -65,7 +65,7 @@ export class WorldRenderer {
  }
  async loadModel(url){try{const gltf=await new GLTFLoader().loadAsync(url);if(this.disposed){this.disposeObject(gltf.scene);return;}const box=new THREE.Box3().setFromObject(gltf.scene),height=box.max.y-box.min.y;if(!Number.isFinite(height)||height<=0)throw new Error('Invalid model bounds');gltf.scene.scale.setScalar(2.2/height);const bounds=new THREE.Box3().setFromObject(gltf.scene);gltf.scene.position.y-=bounds.min.y;this.avatar.add(gltf.scene);this.procedural.visible=false;this.mixer=new THREE.AnimationMixer(gltf.scene);this.actions={};for(const clip of gltf.animations)this.actions[clip.name.toLowerCase()]=this.mixer.clipAction(clip);this.modelStatus='Modelo GLB local';}catch{this.modelStatus='Mascote procedural (GLB indisponível)';}}
  applyQuality(level){const p=presets[level]||presets.low;this.quality=level;this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,p.ratio));this.renderer.shadowMap.enabled=p.shadows;this.sun.castShadow=p.shadows;this.water.material.envMapIntensity=level==='high'?1.3:level==='low'?0:.7;this.sun.shadow.mapSize.set(level==='high'?2048:1024,level==='high'?2048:1024);this.sun.shadow.map?.dispose();this.sun.shadow.map=null;this.bubbles?.forEach((b,i)=>b.visible=i<p.particles);this.resize();}
- resize(){const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;this.renderer.setSize(w,h);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}
+ resize(){const rawW=this.host.clientWidth,rawH=this.host.clientHeight;if(!rawW||!rawH)return;const w=Math.max(1,Math.round(rawW)),h=Math.max(1,Math.round(rawH));if(this.viewportWidth===w&&this.viewportHeight===h)return;this.viewportWidth=w;this.viewportHeight=h;this.renderer.setSize(w,h,false);this.camera.aspect=w/h;this.camera.updateProjectionMatrix();}
  updateCamera(dt){const p=this.player;const target=new THREE.Vector3(p.x, p.y+1.2,p.z);const desired=new THREE.Vector3(p.x+Math.sin(this.yaw)*this.distance*Math.cos(this.pitch),p.y+2+Math.sin(this.pitch)*this.distance,p.z+Math.cos(this.yaw)*this.distance*Math.cos(this.pitch));desired.y=Math.max(desired.y,terrainHeight(desired.x,desired.z)+1.5);this.camera.position.lerp(desired,1-Math.exp(-dt*7));this.camera.lookAt(target);}
  clearInput(){this.keys.clear();}
  setPaused(value){this.paused=value;this.clearInput();if(!value)this.renderer.domElement.focus();}
@@ -82,6 +82,6 @@ export class WorldRenderer {
   };this.frame=requestAnimationFrame(tick);}
  stop(){this.active=false;cancelAnimationFrame(this.frame);this.clearInput();}
  disposeObject(object){object.traverse(o=>{o.geometry?.dispose();for(const m of Array.isArray(o.material)?o.material:[o.material]){if(!m)continue;for(const value of Object.values(m))if(value?.isTexture)value.dispose();m.dispose()}});}
- dispose(){this.disposed=true;this.stop();this.resizeObserver.disconnect();this.cleanups.forEach(fn=>fn());this.mixer?.stopAllAction();this.disposeObject(this.scene);this.environment?.dispose();this.skyTexture?.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.labels?.forEach(({label})=>label.remove());}
+ dispose(){this.disposed=true;this.stop();this.resizeObserver.disconnect();if(this.resizeFrame)cancelAnimationFrame(this.resizeFrame);this.resizeFrame=0;this.cleanups.forEach(fn=>fn());this.mixer?.stopAllAction();this.disposeObject(this.scene);this.environment?.dispose();this.skyTexture?.dispose();this.renderer.dispose();this.renderer.domElement.remove();this.labels?.forEach(({label})=>label.remove());}
 }
 window.AccessManagerWorld={WorldRenderer};
