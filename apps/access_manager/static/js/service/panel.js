@@ -32,7 +32,7 @@ export function mountServicePanel(store){
   const text=formatService({secrets,mode:b.dataset.copy==='technical'?'technical':panel.querySelector('[data-mode]').value,markdown:b.dataset.copy==='markdown'});
   try{
    await navigator.clipboard.writeText(text);
-   status('Registro copiado.');
+   status('Registro copiado.');document.dispatchEvent(new CustomEvent('service-log-copied'));
   }catch{
    selectRecordForManualCopy(panel);
    status('Não foi possível copiar automaticamente. O registro foi selecionado; pressione Ctrl+C.');
