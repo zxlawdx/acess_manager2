@@ -1283,7 +1283,7 @@
    <div class="world-options"><label><input id="world-tts" type="checkbox"> Falar em voz alta (se disponível)</label><label>Palavrões <select id="world-profanity"><option value="off">Ocultar</option><option value="moderado">Moderar</option><option value="livre/local">Livre / local</option></select></label></div>
   </dialog>
   <dialog id="world-tv" class="world-dialog world-tv-dialog"><div class="world-dialog-head"><h2>TV do Network Ops</h2><button data-world-close type="button">Voltar · Esc</button></div>
-   <form id="world-tv-form"><label>Buscar no YouTube ou colar URL / ID <input id="world-youtube-url" type="text" maxlength="400" placeholder="Ex.: lo-fi para plantão ou https://youtu.be/…"></label><div class="world-actions"><button type="submit">Abrir busca / reproduzir</button><a id="world-youtube-external" target="_blank" rel="noopener noreferrer" hidden>Abrir vídeo no navegador</a></div></form>
+   <form id="world-tv-form"><label>Buscar no YouTube ou colar URL / ID <input id="world-youtube-url" type="text" maxlength="400" placeholder="Ex.: lo-fi para plantão ou https://youtu.be/…"></label><div class="world-actions"><button type="submit">Pesquisar / reproduzir</button><a id="world-youtube-external" target="_blank" rel="noopener noreferrer" hidden>Abrir vídeo no navegador</a></div></form>
    <div id="world-youtube-results" class="world-youtube-results" aria-live="polite"></div><p id="world-tv-status" role="status">Pesquise um vídeo. A reprodução aparece na televisão dentro do mundo 3D.</p>
   </dialog>`;
     host.append(root2);
@@ -1648,42 +1648,25 @@
         box.append(button2);
       }
     }
-    async function openNativeYouTubeSearch(query2) {
-      const api = window.pywebview?.api;
-      if (typeof api?.open_youtube_search !== "function") return false;
-      const result = await api.open_youtube_search(query2);
-      if (!result?.ok) throw new Error(result?.error || "Não foi possível abrir a busca real do YouTube.");
-      $("world-tv-status").textContent = "Busca real do YouTube aberta. Clique em um vídeo; ele será enviado para a televisão 3D.";
-      return true;
-    }
-    const youtubeSelected = async (event) => {
-      if (event.detail?.name !== "youtube:selected") return;
-      const payload = event.detail?.payload || {}, value2 = payload.value || payload.videoId;
-      if (!value2) return;
-      try {
-        await playYouTubeSelection(value2, "Vídeo selecionado");
-        closeDialogs();
-      } catch (error) {
-        $("world-tv-status").textContent = error.message;
-      }
-    };
-    window.addEventListener("vela:event", youtubeSelected);
     $("world-tv-form").onsubmit = async (e) => {
       e.preventDefault();
       const value2 = $("world-youtube-url").value.trim();
+      const submit = e.submitter || $("world-tv-form").querySelector('button[type="submit"]');
       $("world-youtube-results").replaceChildren();
-      $("world-tv-status").textContent = "Abrindo YouTube…";
+      $("world-tv-status").textContent = looksLikeYouTubeReference(value2) ? "Carregando vídeo na televisão 3D…" : "Pesquisando vídeos dentro do Access Manager…";
+      if (submit) submit.disabled = true;
       try {
         if (looksLikeYouTubeReference(value2)) {
           await playYouTubeSelection(value2);
           return;
         }
-        if (await openNativeYouTubeSearch(value2)) return;
         const results = await searchYouTube(value2);
         paintYouTubeResults(results);
-        $("world-tv-status").textContent = results.length ? "Escolha um resultado para reproduzir na TV 3D." : "Nenhum vídeo encontrado.";
+        $("world-tv-status").textContent = results.length ? `${results.length} resultado(s). Escolha um vídeo para reproduzir na TV 3D.` : "Nenhum vídeo encontrado.";
       } catch (error) {
-        $("world-tv-status").textContent = error.message;
+        $("world-tv-status").textContent = error.message || "Não foi possível pesquisar no YouTube agora.";
+      } finally {
+        if (submit) submit.disabled = false;
       }
     };
     const keydown = (e) => {
@@ -1821,7 +1804,6 @@
     }, dispose() {
       clearTimeout(speechTimer);
       tv.destroy();
-      window.removeEventListener("vela:event", youtubeSelected);
       document.removeEventListener("keydown", keydown, true);
     } };
   }
