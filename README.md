@@ -37,3 +37,7 @@ Limitações e evidências: `docs/NETPULSE_EXECUTION_REPORT.md`.
 ## Terminal, Frutiger Aero e Access World 3D
 
 Escolha a experiência no login ou altere o tema e o modo após conectar. O Aero inclui variantes próprias para tabelas, controles, modais e drawers. O mundo deriva suas regiões das rotas reais e capabilities de Huawei/ZTE ou Juniper, mantendo os mesmos painéis técnicos. Música é opcional e local; nenhuma faixa é distribuída. Instruções, suporte a GLB, áudio e limites: [docs/FRUTIGER_WORLD.md](docs/FRUTIGER_WORLD.md). Evidências: [docs/AERO_WORLD_PATCH_REPORT.md](docs/AERO_WORLD_PATCH_REPORT.md).
+
+## Interações, rádio e arena
+
+O menu do Mundo 3D inclui HUD imersivo, Network Ops, Router Rumble, playlist local por pasta, falas configuráveis e TV com player oficial do YouTube. Controles e limites: [docs/WORLD3D_INTERACTIONS.md](docs/WORLD3D_INTERACTIONS.md). Pesquisa e licenças: [docs/research/WORLD3D_INTERACTIONS_MEDIA_COMBAT.md](docs/research/WORLD3D_INTERACTIONS_MEDIA_COMBAT.md).
