@@ -22,3 +22,36 @@
 @media(max-width:780px){.app-shell .context-bar{height:auto!important;min-height:96px!important;flex-wrap:wrap!important;align-content:center;gap:6px!important}.app-shell{grid-template-rows:96px minmax(0,1fr)!important}.app-shell .context-bar .device-title{flex:1 1 90px}.app-shell .context-bar .button{font-size:10px!important;padding:5px!important}.app-shell #aero-world{top:98px}.app-shell .context-bar::before{display:none}.app-shell #world-notice{top:98px}.world-hud{left:10px;right:10px;top:10px;gap:5px}.world-glass{padding:8px}.world-hud strong{font-size:14px}#world-map{width:90px;height:90px;right:10px;bottom:75px}#world-prompt{bottom:25px;font-size:12px}.world-mode.world-panel-open>.layout{inset:153px 8px 8px}#world-close-panel{top:112px;right:10px}}
 #aero-world[data-experience=voxel] canvas{image-rendering:pixelated}.voxel-label{border-radius:2px!important;background:#f2f8e8ed!important;color:#1c4b60!important;max-width:210px;font:600 11px var(--font-sans)!important;white-space:normal!important;text-align:center;pointer-events:none}
 #world-scanner{position:absolute;left:25%;top:35%;width:45%;z-index:10;padding:16px;display:flex;gap:12px;flex-wrap:wrap}#world-scanner[hidden]{display:none}#world-service{align-self:start;color:#173e56;cursor:pointer}
+/* The immersive layer covers the Vela viewport; operational panels keep their own focus. */
+.app-shell.world-mode #aero-world{inset:0!important;min-height:0}
+.app-shell.world-mode>.context-bar{position:absolute!important;inset:0 0 auto!important;z-index:15;transform:translateY(calc(-100% + 5px));transition:transform .15s;visibility:visible;pointer-events:auto}
+.app-shell.world-mode>.context-bar:hover,.app-shell.world-mode>.context-bar:focus-within,.app-shell.world-mode.world-hud-visible>.context-bar{transform:translateY(0)}
+.app-shell.world-mode.world-hud-hidden>.context-bar{visibility:hidden}
+.world-mode:not(.world-hud-visible) :is(.world-hud,#world-map,#field-telemetry,.world-region-label){visibility:hidden;pointer-events:none}
+.world-mode:not(.world-hud-visible) #world-debug{display:none}
+.world-mode #aero-world.world-debug-visible #world-debug{display:block;bottom:54px;max-width:calc(100% - 32px);overflow-wrap:anywhere}
+.world-mode.world-hud-visible .world-hud{top:70px}
+.world-mode.world-panel-open #world-close-panel{top:16px}
+.world-mode.world-panel-open>.layout{inset:65px 16px 16px}
+.world-compact{position:absolute;z-index:2;border:1px solid #b5d9e5;border-radius:10px;background:#123349e8;color:#f0fbff;font:12px "Segoe UI",sans-serif;padding:8px 12px}
+#world-menu-button{right:16px;bottom:16px;cursor:pointer}#world-connection{left:16px;top:16px;pointer-events:none}
+.world-crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:22px monospace;color:#fff;text-shadow:0 1px 3px #123;pointer-events:none}
+#world-prompt{bottom:18px;padding:8px 12px;font-size:12px}
+#world-speech{position:absolute;left:50%;top:16%;transform:translateX(-50%);max-width:min(540px,80%);width:max-content;white-space:pre-wrap;overflow-wrap:anywhere;padding:16px 22px;background:#f1fff3f2;border:2px solid #76b7a4;border-radius:18px;color:#153e45;font:600 16px "Segoe UI",sans-serif;pointer-events:none}
+#world-combat{position:absolute;top:16px;left:50%;transform:translateX(-50%);max-width:70%;padding:10px 18px;border:1px solid #ecce7d;border-radius:10px;background:#132d47ed;color:#fff1c4;font:600 14px "Segoe UI",sans-serif;text-align:center}
+.world-panel-open :is(.world-crosshair,#world-prompt,#world-speech){visibility:hidden}
+.world-dialog{box-sizing:border-box;width:min(760px,calc(100vw - 32px));max-width:calc(100vw - 32px);max-height:calc(100dvh - 40px);overflow:auto;margin:auto;padding:22px;border:1px solid #8dc9d5;border-radius:18px;background:#e9f5f6;color:#173d50;font:14px/1.5 "Segoe UI",sans-serif;box-shadow:0 24px 90px #09263680}
+.world-dialog::backdrop{background:#10273c8c;backdrop-filter:blur(4px)}
+.world-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}.world-dialog h2{margin:0;font-size:23px;color:#173d50}
+.world-dialog :is(button,select,input[type=text],input[type=number]){font:inherit;border:1px solid #76a7b9;border-radius:8px;padding:8px;background:#fff;color:#153a4e;max-width:100%;box-sizing:border-box}
+.world-dialog button{cursor:pointer;background:linear-gradient(#fff,#d0e9ef)}.world-dialog button:hover{background:#b4e4e5}.world-dialog :is(input,select,button,a):focus-visible{outline:3px solid #1e88bd;outline-offset:2px}
+.world-dialog label{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0;color:#173d50}.world-options,.world-actions{display:flex;gap:10px 18px;flex-wrap:wrap;align-items:center}.world-options>*{flex:1 1 200px}.world-actions{margin:14px 0}.world-dialog p{margin:12px 0;color:#365766}
+#world-playlist{width:100%;min-height:120px}#world-radio-track{display:block;font-weight:600;overflow-wrap:anywhere}#world-seek{flex:1;min-width:160px}#world-time{font-variant-numeric:tabular-nums;font-size:12px}
+.world-line-row{display:grid;grid-template-columns:minmax(100px,1fr) 80px auto;gap:8px;margin:8px 0}.world-line-row input{width:100%}.world-dialog [hidden],.world-experience-ui [hidden]{display:none!important}
+.world-tv-dialog{width:min(940px,calc(100vw - 32px))}#world-youtube-url{flex:1;min-width:200px}#world-tv-player{aspect-ratio:16/9;width:100%;min-height:200px;background:#102338;display:grid;place-items:center}#world-tv-player iframe{width:100%;height:100%;border:0;min-height:200px}#world-youtube-external{color:#075f80;text-decoration:underline}
+@media(max-width:780px){#world-combat{top:58px;font-size:12px;max-width:85%}#world-connection{font-size:10px}#world-prompt{bottom:65px;max-width:90%}.world-mode.world-panel-open>.layout{inset:65px 8px 8px}.world-dialog{padding:14px}.world-dialog-head h2{font-size:19px}.world-line-row{grid-template-columns:minmax(80px,1fr) 60px auto;gap:4px}.world-line-row button{font-size:11px}}
+/* Scope against the terminal theme's global dialog and Aero hover rules. */
+#aero-world dialog.world-dialog{background:#e9f5f6!important;color:#173d50!important;border:1px solid #8dc9d5!important;border-radius:18px!important;box-shadow:0 24px 90px #09263680!important}
+#aero-world dialog.world-dialog::backdrop{background:#10273c8c!important}
+#aero-world #world-menu-button,#aero-world #world-menu-button:hover{color:#f0fbff!important;background:#123349e8!important;font-size:12px!important}
+#aero-world .world-dialog-head h2{color:#173d50!important}

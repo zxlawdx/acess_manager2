@@ -15,7 +15,9 @@ jobs:
       - run: pip install -r requirements.txt pytest pytest-subtests
       - run: npm ci
       - run: python tools/sync_frontend.py --check
+      - run: python tools/world3d_assets.py
       - run: python -m pytest -q
       - run: npm test
       - run: node tests/visual/terminal-theme.cjs
+      - run: node tests/visual/world-interactions.cjs
       - run: python manage.py collectstatic --no-tailwind

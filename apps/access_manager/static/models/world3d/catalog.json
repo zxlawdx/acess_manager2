@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "desk",
+      "name": "desk",
+      "source": "https://raw.githubusercontent.com/ChingAmazing/OpenHome3D-html/main/public/models/kenney/desk.glb",
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "file": "desk.glb",
+      "size": 15048,
+      "triangles": 198,
+      "sha256": "0164fe828f028b321730fb8c74502e353583f751be74da1682d42fff7d3c5a42",
+      "tags": [
+        "office",
+        "low-poly"
+      ]
+    },
+    {
+      "id": "chairDesk",
+      "name": "chairDesk",
+      "source": "https://raw.githubusercontent.com/ChingAmazing/OpenHome3D-html/main/public/models/kenney/chairDesk.glb",
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "file": "chairDesk.glb",
+      "size": 39016,
+      "triangles": 588,
+      "sha256": "46406619186034cbe92b19b79a5f1a8e3f442a17a70a7524ef2c0ad0f35095c6",
+      "tags": [
+        "office",
+        "low-poly"
+      ]
+    },
+    {
+      "id": "kitchenCoffeeMachine",
+      "name": "kitchenCoffeeMachine",
+      "source": "https://raw.githubusercontent.com/ChingAmazing/OpenHome3D-html/main/public/models/kenney/kitchenCoffeeMachine.glb",
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "file": "kitchenCoffeeMachine.glb",
+      "size": 13332,
+      "triangles": 166,
+      "sha256": "063f582c6fa0f00a9f24e3393dac2295491c4becdaf5513c893ab1a2826b6ec3",
+      "tags": [
+        "office",
+        "low-poly"
+      ]
+    },
+    {
+      "id": "plantSmall1",
+      "name": "plantSmall1",
+      "source": "https://raw.githubusercontent.com/ChingAmazing/OpenHome3D-html/main/public/models/kenney/plantSmall1.glb",
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "file": "plantSmall1.glb",
+      "size": 8224,
+      "triangles": 102,
+      "sha256": "2b9c022feb47be857b2c4fdc29f36522766ba9b70c578c31d7c05d71b4377d15",
+      "tags": [
+        "office",
+        "low-poly"
+      ]
+    }
+  ]
+}

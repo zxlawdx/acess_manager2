@@ -5,6 +5,7 @@ import {deriveWorldRegions} from './regions.js';
 import {readPreference,savePreference} from '../ui/theme.js';
 import {minimapGlyph as glyphs} from './icon-metadata.js';
 import {AudioManager} from './audio.js';
+import {mountWorldExperience} from './experience.js';
 
 export function mountWorldBridge({store,theme,registry,navigate,suspend,resume}){
  const shell=document.querySelector('.app-shell'),host=document.querySelector('#aero-world');if(!host)return;
@@ -19,6 +20,7 @@ export function mountWorldBridge({store,theme,registry,navigate,suspend,resume})
  const audio=new AudioManager({volume:readPreference('volume','.35'),enabled:readPreference('enabled','false')==='true',onChange:state=>{
   musicActive=state.active;document.querySelector('#world-track').textContent=state.title;document.querySelector('#world-music').textContent=state.active?'♪ Silenciar':'♪ Reproduzir';document.querySelector('#world-music').setAttribute('aria-pressed',String(state.active||ambient.active));updateSound();
  }});
+ const worldExperience=mountWorldExperience({host,shell,audio,getWorld:()=>world,isActive:()=>active,exit:()=>exit(),openTerminal:()=>{const region=currentRegions.find(r=>r.routeId==='overview')||currentRegions[0];if(region)openPanel(region);},notice:unavailable});
  function closePanel(){if(!active||!panel)return;document.querySelector('#action-dialog')?.close();panel=false;shell.classList.remove('world-panel-open');close.hidden=true;refreshContext();suspend();world?.setPaused(false);}
  async function openPanel(region){
   if(!active||!currentRegions.some(r=>r.id===region.id))return;if(region.interactionType==='service'){document.dispatchEvent(new CustomEvent('open-service'));return;}panel=true;shell.classList.add('world-panel-open');close.hidden=false;world.setPaused(true);const source=key();await navigate(region.routeId);
@@ -42,14 +44,14 @@ export function mountWorldBridge({store,theme,registry,navigate,suspend,resume})
   world=new namespace.WorldRenderer(host,{regions:currentRegions,layout:host.dataset.layout,interact:openPanel,onError:message=>{exit({persist:false});world?.dispose();world=null;unavailable(message)},modelURL:mode==='wasteland'?host.dataset.wastelandModel:host.dataset.model});
   world.restoreState(cache.get(contextKey));world.applyQuality(readPreference('quality',readPreference('am-world-quality','medium')));document.querySelector('#world-quality').value=world.quality;world.setPaused(panel);if(active)world.start();
  }
- function exit({persist=true}={}){generation++;active=false;entering=false;button.disabled=false;panel=false;remember();world?.stop();audio.pauseMusic();ambient.pause();host.hidden=true;close.hidden=true;shell.classList.remove('world-mode','world-panel-open','wasteland-mode');button.textContent='Mundo 3D';button.setAttribute('aria-pressed','false');if(persist){savePreference('experience','interface');if(experience)experience.value='interface';}if(store.session?.connected)resume();button.focus();}
+ function exit({persist=true}={}){worldExperience.exited();generation++;active=false;entering=false;button.disabled=false;panel=false;remember();world?.stop();audio.pauseMusic();ambient.pause();host.hidden=true;close.hidden=true;shell.classList.remove('world-mode','world-panel-open','wasteland-mode');button.textContent='Mundo 3D';button.setAttribute('aria-pressed','false');if(persist){savePreference('experience','interface');if(experience)experience.value='interface';}if(store.session?.connected)resume();button.focus();}
  async function enter(nextMode='world3d'){
   if(entering)return;
   if(!['world3d','voxel','wasteland'].includes(nextMode))nextMode='world3d';if(active&&mode!==nextMode)exit({persist:false});if(mode!==nextMode){remember();world?.dispose();world=null;contextKey='';signature='';mode=nextMode;}if(experience)experience.value=mode;host.dataset.experience=mode;shell.classList.toggle('wasteland-mode',mode==='wasteland');host.setAttribute('aria-label',mode==='wasteland'?'Wasteland Ops 3D':'Exploração Access World');document.querySelector('#world-title').textContent=mode==='wasteland'?'FIELD OPS 3D':'Access World';document.querySelector('#world-ambient').hidden=mode!=='wasteland';document.querySelector('#field-telemetry').hidden=mode!=='wasteland';document.querySelector('#world-map').hidden=false;
   if(entering||active||!store.session?.connected)return;entering=true;const token=++generation;button.disabled=true;if(experience)experience.disabled=true;button.textContent='Carregando Access World…';unavailable('');
   try{namespace=await load();if(token!==generation||!store.session?.connected)return;
    refreshContext();host.hidden=false;if(!world)createWorld();theme.apply(mode==='wasteland'?'terminal':'aero');active=true;shell.classList.add('world-mode');suspend();world.setPaused(false);world.start();button.textContent='Voltar à interface';button.setAttribute('aria-pressed','true');savePreference('experience',mode);
-   await audio.loadInstalled(host.dataset.audioManifest);audio.notify();
+   await audio.loadInstalled(host.dataset.audioManifest);audio.notify();worldExperience.entered();
   }catch(error){world?.dispose();world=null;active=false;shell.classList.remove('world-mode');theme.apply(mode==='wasteland'?'terminal':'aero');savePreference('experience','interface');unavailable(`${error.message} A interface convencional continua disponível.`);button.textContent='Mundo 3D';host.hidden=true;}
   finally{entering=false;button.disabled=false;if(experience)experience.disabled=false;}
  }
@@ -75,7 +77,8 @@ export function mountWorldBridge({store,theme,registry,navigate,suspend,resume})
  const modal=document.querySelector('#service-dialog');modal?.addEventListener('close',()=>{if(active&&!panel)world?.setPaused(false)});
  const modalObserver=new MutationObserver(()=>{if(active&&modal?.open)world?.setPaused(true)});if(modal)modalObserver.observe(modal,{attributes:true,attributeFilter:['open']});
  const map=document.querySelector('#world-map');let ctx;host.addEventListener('focusin',()=>{ctx??=map.getContext?.('2d')});
- host.addEventListener('world-frame',e=>{const {player,hotspot,fps,visited,total}=e.detail;document.querySelector('#world-prompt').textContent=hotspot?`E · ${mode==='wasteland'?'Acessar '+(hotspot.worldLabel||hotspot.label):'Inspecionar '+hotspot.label}`:mode==='wasteland'?'WASD · Shift · Espaço · E acessar · T terminal · V câmera · M mapa · L atendimento':mode==='voxel'?'WASD · Shift · Espaço · E interagir · F scanner · V câmera':'WASD · Shift correr · Espaço pular · Arraste para olhar';document.querySelector('#world-debug').textContent=`${fps} FPS · ${world.quality} · ${world.modelStatus||'Mascote procedural'}`;document.querySelector('#world-inventory').textContent=`Exploração: ${visited}/${total} regiões visitadas`;
+ host.addEventListener('world-frame',e=>{const {player,hotspot,fps,visited,total}=e.detail;document.querySelector('#world-prompt').textContent=e.detail.interaction?`[E] ${e.detail.interaction}`:mode!=='world3d'&&hotspot?`E · ${mode==='wasteland'?'Acessar '+(hotspot.worldLabel||hotspot.label):'Inspecionar '+hotspot.label}`:mode==='wasteland'?'WASD · Shift · Espaço · E acessar · T terminal · V câmera · M mapa · L atendimento':mode==='voxel'?'WASD · Shift · Espaço · E interagir · F scanner · V câmera':'WASD mover · E interagir · V câmera · M rádio · Esc menu';document.querySelector('#world-debug').textContent=`${fps} FPS · ${world.quality} · ${world.modelStatus||'Mascote procedural'}`;document.querySelector('#world-inventory').textContent=`Exploração: ${visited}/${total} regiões visitadas`;
+  worldExperience.frame(e.detail);
   document.querySelector('#field-sector').textContent=hotspot?.worldLabel||hotspot?.label||'Área de operações';
   if(ctx){ctx.fillStyle=mode==='wasteland'?'#0b120d':host.dataset.layout==='juniper'?'#e0f2fa':'#e2f4d1';ctx.fillRect(0,0,180,180);ctx.font='13px sans-serif';ctx.textAlign='center';for(const h of currentRegions){ctx.fillStyle='#'+h.color.toString(16).padStart(6,'0');ctx.fillText(glyphs[h.kind]||'●',90+h.x*1.5,93+h.z*1.5)}ctx.fillStyle=mode==='wasteland'?'#7dff9c':'#123c60';ctx.beginPath();ctx.arc(90+player.x*1.5,90+player.z*1.5,4,0,Math.PI*2);ctx.fill();}
  });
@@ -84,6 +87,6 @@ export function mountWorldBridge({store,theme,registry,navigate,suspend,resume})
  for(const event of ['app-context-ready','capabilities','subscriber-context-changed'])document.addEventListener(event,contextChanged);
  const paintTelemetry=()=>{const snap=store.snapshot?.session_id===getContext()?.session_id?store.snapshot:null,wan=snap?.wan?.data??snap?.wan,clients=snap?.clients?.data??snap?.clients;const rows=Array.isArray(wan)?wan:[];document.querySelector('#field-wan').textContent=rows[0]?.status||'Não coletada';document.querySelector('#field-clients').textContent=Array.isArray(clients)?clients.length:'Não coletados';const ping=[...service.entries].reverse().find(e=>e.path==='/api/device/diagnostics/ping'&&e.session===getContext()?.session_id&&e.ok!==false);document.querySelector('#field-latency').textContent=Number.isFinite(ping?.data?.avg_ms)?ping.data.avg_ms+' ms':'Não testada';document.querySelector('#field-loss').textContent=Number.isFinite(ping?.data?.loss_percent)?ping.data.loss_percent+'%':'Não testada';};document.addEventListener('device-snapshot',paintTelemetry);document.addEventListener('app-context-ready',paintTelemetry);const unsubscribeTelemetry=subscribeService(paintTelemetry);paintTelemetry();
  document.addEventListener('visibilitychange',()=>{if(document.hidden){audio.pauseMusic();ambient.pause()}});
- window.addEventListener('pagehide',()=>{world?.dispose();audio.dispose();ambient.dispose();modalObserver.disconnect();unsubscribeTelemetry();cache.clear()});
+ window.addEventListener('pagehide',()=>{world?.dispose();audio.dispose();ambient.dispose();worldExperience.dispose();modalObserver.disconnect();unsubscribeTelemetry();cache.clear()});
  return {openPanel,exit,enter,unavailable,get active(){return active}};
 }

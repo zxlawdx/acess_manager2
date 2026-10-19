@@ -35,7 +35,7 @@ export function mountServicePanel(store){
   b.disabled=true;
   try{
    await copyText(text);
-   status('Registro copiado.');
+   status('Registro copiado.');document.dispatchEvent(new CustomEvent('service-log-copied'));
   }catch{
    selectRecordForManualCopy(panel);
    status('Não foi possível copiar automaticamente. O registro foi selecionado; pressione Ctrl+C.');

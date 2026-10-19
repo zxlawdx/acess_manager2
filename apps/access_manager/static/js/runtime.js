@@ -406,6 +406,7 @@
       try {
         await copyText(text2);
         status3("Registro copiado.");
+        document.dispatchEvent(new CustomEvent("service-log-copied"));
       } catch {
         selectRecordForManualCopy(panel3);
         status3("Não foi possível copiar automaticamente. O registro foi selecionado; pressione Ctrl+C.");
@@ -709,6 +710,103 @@
   // apps/access_manager/static/js/world/icon-metadata.js
   var minimapGlyph = { wifi: "◔", globe: "◎", clients: "●", subscribers: "♙", rack: "▤", ports: "▦", fiber: "↔", tunnel: "↔", traffic: "⇄", dns: "◇", profiles: "▣", probe: "⌕", gear: "⚙", hub: "✦", routes: "✧", cpe: "⌂" };
 
+  // apps/access_manager/static/js/world/playlist.js
+  var audioFile = (file) => /\.(mp3|ogg|wav|m4a|aac|flac|webm)$/i.test(file?.name || "");
+  function scanFiles(files, { recursive = true, order = "name" } = {}) {
+    const rows3 = Array.from(files || []).filter(audioFile).filter((f) => recursive || (f.webkitRelativePath || f.path || f.name).split("/").length <= 2).map((file) => ({ file, name: file.name, path: file.webkitRelativePath || file.path || file.name, date: file.lastModified || 0 }));
+    return rows3.sort((a, b) => {
+      const x = order === "date" ? a.date - b.date : 0;
+      return x || String(order === "path" ? a.path : a.name).localeCompare(String(order === "path" ? b.path : b.name), "en", { numeric: true }) || a.path.localeCompare(b.path, "en");
+    });
+  }
+  var Playlist = class {
+    constructor({ repeat = "playlist", shuffle = false, random = Math.random } = {}) {
+      this.items = [];
+      this.index = -1;
+      this.repeat = repeat;
+      this.shuffle = shuffle;
+      this.random = random;
+      this.history = [];
+      this.bag = [];
+    }
+    set(items, index = 0) {
+      this.items = items;
+      this.index = items.length ? Math.max(0, Math.min(index, items.length - 1)) : -1;
+      this.history = [];
+      this.bag = [];
+      return this.current;
+    }
+    get current() {
+      return this.items[this.index] || null;
+    }
+    next({ ended = false } = {}) {
+      if (!this.items.length) return null;
+      if (ended && this.repeat === "track") return this.current;
+      const old = this.index;
+      if (this.shuffle) {
+        if (!this.bag.length) {
+          if (ended && this.repeat === "off" && this.history.length >= this.items.length - 1) return null;
+          this.bag = this.items.map((_, i) => i).filter((i) => i !== old);
+          for (let i = this.bag.length - 1; i > 0; i--) {
+            const j = Math.floor(this.random() * (i + 1));
+            [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
+          }
+        }
+        this.index = this.bag.pop() ?? old;
+      } else {
+        if (old === this.items.length - 1 && ended && this.repeat === "off") return null;
+        this.index = (old + 1) % this.items.length;
+      }
+      this.history.push(old);
+      return this.current;
+    }
+    previous() {
+      if (!this.items.length) return null;
+      this.index = this.history.pop() ?? (this.index - 1 + this.items.length) % this.items.length;
+      return this.current;
+    }
+  };
+  function library(mode, work) {
+    return new Promise((resolve, reject) => {
+      if (typeof indexedDB === "undefined") {
+        reject(new Error("Biblioteca persistente indisponível nesta WebView."));
+        return;
+      }
+      const request2 = indexedDB.open("accessManager.world.music", 1);
+      request2.onupgradeneeded = () => request2.result.createObjectStore("library");
+      request2.onerror = () => reject(request2.error);
+      request2.onsuccess = () => {
+        const db = request2.result, tx = db.transaction("library", mode), store2 = tx.objectStore("library");
+        let result;
+        try {
+          const r = work(store2);
+          r.onsuccess = () => {
+            result = r.result;
+          };
+        } catch (e) {
+          db.close();
+          reject(e);
+          return;
+        }
+        tx.oncomplete = () => {
+          db.close();
+          resolve(result);
+        };
+        tx.onerror = () => {
+          db.close();
+          reject(tx.error);
+        };
+        tx.onabort = () => {
+          db.close();
+          reject(tx.error || new Error("Não foi possível salvar as músicas."));
+        };
+      };
+    });
+  }
+  var saveMusicLibrary = (items) => library("readwrite", (s) => s.put(items.map(({ file, name, path: path2, date }) => ({ file, name, path: path2, date })), "tracks"));
+  var loadMusicLibrary = () => library("readonly", (s) => s.get("tracks")).then((rows3) => Array.isArray(rows3) ? rows3.filter((r) => r.file && audioFile(r)) : []);
+  var clearMusicLibrary = () => library("readwrite", (s) => s.delete("tracks"));
+
   // apps/access_manager/static/js/world/audio.js
   var clamp = (v) => Number.isFinite(Number(v)) ? Math.max(0, Math.min(1, Number(v))) : 0.35;
   var AudioManager = class {
@@ -723,9 +821,12 @@
       this.regionTracks = {};
       this.loop = true;
       this.operation = 0;
+      this.playlist = new Playlist();
+      this.failed = /* @__PURE__ */ new Set();
+      this.playRequested = false;
     }
     notify() {
-      this.onChange({ active: this.active, enabled: this.enabled, title: this.title, installed: Boolean(this.element), volume: this.volume });
+      this.onChange({ active: this.active, enabled: this.enabled, title: this.title, installed: Boolean(this.element), volume: this.volume, index: this.playlist.index, count: this.playlist.items.length, position: this.element?.currentTime || 0, duration: this.element?.duration || 0 });
     }
     ensureContext() {
       if (this.context) return;
@@ -747,18 +848,36 @@
       this.source.connect(this.music);
     }
     setTrack(url, title, { objectURL = false } = {}) {
+      if (this.element) {
+        this.element.onended = null;
+        this.element.onerror = null;
+        this.element.ontimeupdate = null;
+      }
       this.pauseMusic();
       this.source?.disconnect();
       if (this.objectURL) URL.revokeObjectURL(this.objectURL);
+      if (this.element) {
+        this.element.removeAttribute?.("src");
+        this.element.load?.();
+      }
       this.objectURL = objectURL ? url : null;
       this.element = new Audio(url);
       this.element.preload = "metadata";
-      this.element.loop = this.loop;
+      this.element.loop = this.playlist.items.length ? false : this.loop;
       this.title = title || "Música local";
+      this.element.onended = () => {
+        if (this.playRequested) this.advance(true).catch(() => {
+        });
+      };
+      this.element.ontimeupdate = () => this.notify();
       this.element.onerror = () => {
+        const resume = this.playRequested;
         this.active = false;
-        this.title = "Não foi possível ler esta música local";
+        this.failed.add(this.playlist.index);
+        this.title = "Faixa inválida; tentando a próxima";
         this.notify();
+        if (resume && this.failed.size < this.playlist.items.length) this.advance(true).catch(() => {
+        });
       };
       if (this.context) this.connectElement();
       this.notify();
@@ -781,6 +900,77 @@
       } finally {
         this.notify();
       }
+    }
+    importFiles(files, options = {}) {
+      const items = scanFiles(files, options);
+      if (!items.length) throw new Error("A pasta não contém áudio compatível.");
+      this.setPlaylist(items);
+      return items;
+    }
+    setPlaylist(items, index = 0) {
+      if (!items.length) {
+        this.pauseMusic({ immediate: true });
+        this.source?.disconnect();
+        if (this.objectURL) URL.revokeObjectURL(this.objectURL);
+        this.objectURL = null;
+        if (this.element) {
+          this.element.onended = null;
+          this.element.onerror = null;
+          this.element.removeAttribute?.("src");
+          this.element.load?.();
+        }
+        this.element = null;
+        if (this.preloadURL) URL.revokeObjectURL(this.preloadURL);
+        this.preload?.pause();
+        this.preload = null;
+      }
+      this.failed.clear();
+      this.playlist.set(items, index);
+      this.selectCurrent();
+    }
+    selectCurrent() {
+      const item = this.playlist.current;
+      if (!item) return;
+      this.setTrack(URL.createObjectURL(item.file), item.name, { objectURL: true });
+      this.preloadNext();
+    }
+    preloadNext() {
+      if (this.preloadURL) URL.revokeObjectURL(this.preloadURL);
+      this.preload?.pause();
+      if (this.preload) {
+        this.preload.removeAttribute("src");
+        this.preload.load();
+      }
+      this.preload = null;
+      const items = this.playlist.items;
+      if (items.length < 2 || this.playlist.shuffle) return;
+      const item = items[(this.playlist.index + 1) % items.length];
+      this.preloadURL = URL.createObjectURL(item.file);
+      this.preload = new Audio(this.preloadURL);
+      this.preload.preload = "metadata";
+    }
+    async advance(ended = false) {
+      const playing = this.active || ended;
+      if (!this.playlist.next({ ended })) {
+        this.pauseMusic({ immediate: true });
+        return false;
+      }
+      this.selectCurrent();
+      if (playing) return this.playMusic();
+      return true;
+    }
+    async previous() {
+      const playing = this.active;
+      if ((this.element?.currentTime || 0) > 3) {
+        this.seek(0);
+        return;
+      }
+      if (!this.playlist.previous()) return;
+      this.selectCurrent();
+      if (playing) await this.playMusic();
+    }
+    seek(seconds) {
+      if (this.element && Number.isFinite(this.element.duration)) this.element.currentTime = Math.max(0, Math.min(this.element.duration, Number(seconds) || 0));
     }
     importFile(file) {
       if (!file || !/\.(mp3|ogg|wav)$/i.test(file.name)) throw new Error("Selecione um arquivo OGG, MP3 ou WAV.");
@@ -810,12 +1000,14 @@
         this.notify();
         return false;
       }
-      const operation = ++this.operation;
+      const operation = ++this.operation, element = this.element;
+      this.playRequested = true;
       this.ensureContext();
       await this.context.resume();
-      await this.element.play();
-      if (operation !== this.operation) {
-        this.element.pause();
+      if (operation !== this.operation || element !== this.element) return false;
+      await element.play();
+      if (operation !== this.operation || element !== this.element) {
+        element.pause();
         return false;
       }
       this.enabled = true;
@@ -825,6 +1017,7 @@
       return true;
     }
     pauseMusic({ immediate = false } = {}) {
+      this.playRequested = false;
       const operation = ++this.operation, element = this.element;
       this.active = false;
       if (this.context) this.fadeTo(0, 0.12);
@@ -843,7 +1036,7 @@
     }
     setLoop(value2) {
       this.loop = Boolean(value2);
-      if (this.element) this.element.loop = this.loop;
+      if (this.element) this.element.loop = this.playlist.items.length ? false : this.loop;
     }
     // Compatibility with callers from the first experimental world.
     pause() {
@@ -857,10 +1050,655 @@
         this.element.load();
       }
       if (this.objectURL) URL.revokeObjectURL(this.objectURL);
+      this.preload?.pause();
+      if (this.preloadURL) URL.revokeObjectURL(this.preloadURL);
       this.context?.close();
       this.element = null;
     }
   };
+
+  // apps/access_manager/static/js/world/settings.js
+  var WORLD_SETTINGS_KEY = "accessManager.world.settings";
+  var triggers = ["world_enter", "world_exit", "npc_interact", "device_connected", "device_disconnected", "diagnostic_started", "diagnostic_ok", "diagnostic_failed", "weak_wifi", "pppoe_issue", "optical_issue", "password_changed", "service_log_copied", "idle", "combat_enter", "combat_hit", "combat_hurt", "combat_win", "combat_lose", "attack", "hurt", "player_hit", "npc_hit", "low_health", "victory", "defeat", "taunt"];
+  var phrases = { world_enter: ["Vindo trabalhar de novo?", "Mais um plantão?"], world_exit: ["Até o próximo plantão."], npc_interact: ["Tomara que hoje o PPPoE colabore."], device_connected: ["Vamos ver o que esse roteador aprontou."], device_disconnected: ["Conexão encerrada."], diagnostic_started: ["Vamos investigar."], diagnostic_ok: ["Teste concluído. Confira o resultado."], diagnostic_failed: ["Aí complicou."], weak_wifi: ["Esse Wi-Fi está pedindo socorro."], pppoe_issue: ["Vamos conferir a sessão PPPoE."], optical_issue: ["Vamos olhar esse sinal óptico."], password_changed: ["Alteração de senha registrada."], service_log_copied: ["Registro copiado. Um a menos."], idle: ["Quer um café?"], combat_enter: ["Router Rumble! Só vale aqui na arena."], combat_hit: ["Pacote recebido!"], combat_hurt: ["Perdi um pacote!"], combat_win: ["Você venceu o roteador fictício!"], combat_lose: ["Revanche?"], attack: ["Lá vem pacote!"], hurt: ["Ai, minha antena!"], player_hit: ["Foi latência!"], npc_hit: ["Conexão direta!"], low_health: ["Minha bateria está acabando!"], victory: ["Vitória!"], defeat: ["Reiniciando o orgulho..."], taunt: ["Aqui o ping revida."] };
+  var defaultDialogue = () => Object.fromEntries(triggers.map((trigger) => [trigger, { enabled: true, mode: "random", cooldownSeconds: trigger.startsWith("combat") || ["attack", "hurt", "taunt", "player_hit", "npc_hit"].includes(trigger) ? 3 : 30, lines: phrases[trigger].map((text2) => ({ text: text2, weight: 1 })) }]));
+  function normalizeDialogue(input = {}) {
+    if (!input || typeof input !== "object") input = {};
+    const defaults = defaultDialogue();
+    return Object.fromEntries(triggers.map((key) => {
+      const r = input[key] || defaults[key];
+      return [key, { enabled: r.enabled !== false, mode: r.mode === "sequential" ? "sequential" : "random", cooldownSeconds: Math.max(0, Math.min(3600, Number(r.cooldownSeconds) || 0)), lines: (Array.isArray(r.lines) ? r.lines : defaults[key].lines).slice(0, 100).map((l) => ({ text: String(l?.text || "").slice(0, 400), weight: Math.max(0.01, Math.min(100, Number(l?.weight) || 1)) })).filter((l) => l.text.trim()) }];
+    }));
+  }
+  function normalizeSettings(raw = {}) {
+    if (!raw || typeof raw !== "object") raw = {};
+    return { version: 1, scene: ["aero", "office", "arena"].includes(raw.scene) ? raw.scene : "aero", hud: ["visible", "auto", "hidden"].includes(raw.hud) ? raw.hud : "auto", tts: raw.tts === true, debug: raw.debug === true, tutorialSeen: raw.tutorialSeen === true, repeat: ["off", "track", "playlist"].includes(raw.repeat) ? raw.repeat : "playlist", shuffle: raw.shuffle === true, order: ["name", "path", "date"].includes(raw.order) ? raw.order : "name", recursive: raw.recursive !== false, rememberMusic: raw.rememberMusic === true, lastTrack: String(raw.lastTrack || ""), position: Number.isFinite(Number(raw.position)) ? Math.max(0, Number(raw.position)) : 0, youtube: String(raw.youtube || "").slice(0, 400), profanity: ["off", "moderado", "livre/local"].includes(raw.profanity) ? raw.profanity : "off", arenaDifficulty: ["easy", "normal"].includes(raw.arenaDifficulty) ? raw.arenaDifficulty : "normal", dialogue: normalizeDialogue(raw.dialogue) };
+  }
+  function readWorldSettings() {
+    let raw = {};
+    try {
+      raw = JSON.parse(readPreference(WORLD_SETTINGS_KEY, "{}"));
+    } catch {
+    }
+    return normalizeSettings(raw);
+  }
+  function writeWorldSettings(value2) {
+    const settings = normalizeSettings(value2);
+    savePreference(WORLD_SETTINGS_KEY, JSON.stringify(settings));
+    return settings;
+  }
+
+  // apps/access_manager/static/js/world/dialogue.js
+  var DialogueManager = class {
+    constructor(rules, { random = Math.random, now = () => Date.now() / 1e3 } = {}) {
+      this.rules = normalizeDialogue(rules);
+      this.random = random;
+      this.now = now;
+      this.last = /* @__PURE__ */ new Map();
+      this.sequence = /* @__PURE__ */ new Map();
+    }
+    choose(trigger, { preview = false, profanity = "off" } = {}) {
+      const rule = this.rules[trigger];
+      if (!rule?.enabled || !rule.lines.length) return null;
+      const now = this.now();
+      if (!preview && now - (this.last.get(trigger) ?? -Infinity) < rule.cooldownSeconds) return null;
+      let line2;
+      if (rule.mode === "sequential") {
+        const n = this.sequence.get(trigger) || 0;
+        line2 = rule.lines[n % rule.lines.length];
+        if (!preview) this.sequence.set(trigger, n + 1);
+      } else {
+        let pick3 = this.random() * rule.lines.reduce((n, l) => n + l.weight, 0);
+        line2 = rule.lines.find((l) => (pick3 -= l.weight) < 0) || rule.lines.at(-1);
+      }
+      if (!preview) this.last.set(trigger, now);
+      const text2 = line2.text;
+      return profanity === "livre/local" ? text2 : text2.replace(/\b(porra|caralho|merda|puta|foder|foda|cacete)\b/gi, profanity === "moderado" ? "***" : "…");
+    }
+  };
+
+  // apps/access_manager/static/js/world/media.js
+  function parseYouTube(value2) {
+    const input = String(value2 || "").trim();
+    if (/^[\w-]{11}$/.test(input)) return { videoId: input };
+    if (/^(PL|UU|OLAK5uy_)[\w-]{10,}$/.test(input)) return { list: input };
+    let url;
+    try {
+      url = new URL(input);
+    } catch {
+      throw new Error("Cole uma URL ou ID válido do YouTube.");
+    }
+    if (url.protocol !== "https:" || url.username || url.password || url.port || !["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.youtube-nocookie.com"].includes(url.hostname)) throw new Error("Use um link HTTPS do YouTube.");
+    const bits = url.pathname.split("/").filter(Boolean), videoId = url.hostname === "youtu.be" ? bits[0] : ["embed", "shorts", "live"].includes(bits[0]) ? bits[1] : url.pathname === "/watch" ? url.searchParams.get("v") : null, list2 = url.searchParams.get("list");
+    if (videoId && !/^[\w-]{11}$/.test(videoId)) throw new Error("ID de vídeo inválido.");
+    if (list2 && !/^[\w-]{10,100}$/.test(list2)) throw new Error("ID de playlist inválido.");
+    if (!videoId && !list2) throw new Error("Não encontrei um vídeo ou playlist nessa URL.");
+    return { ...videoId ? { videoId } : {}, ...list2 ? { list: list2 } : {} };
+  }
+  function youtubeURL(data) {
+    return data.videoId ? "https://www.youtube.com/watch?v=" + data.videoId + (data.list ? "&list=" + data.list : "") : "https://www.youtube.com/playlist?list=" + data.list;
+  }
+  var apiPromise;
+  function loadAPI() {
+    if (window.YT?.Player) return Promise.resolve(window.YT);
+    if (apiPromise) return apiPromise;
+    apiPromise = new Promise((resolve, reject) => {
+      const previous = window.onYouTubeIframeAPIReady;
+      const script = document.createElement("script");
+      const timeout = setTimeout(() => {
+        script.remove();
+        apiPromise = null;
+        reject(new Error("YouTube indisponível nesta WebView. Use Abrir no navegador."));
+      }, 12e3);
+      window.onYouTubeIframeAPIReady = () => {
+        clearTimeout(timeout);
+        previous?.();
+        resolve(window.YT);
+      };
+      script.src = "https://www.youtube.com/iframe_api";
+      script.onerror = () => {
+        clearTimeout(timeout);
+        script.remove();
+        apiPromise = null;
+        reject(new Error("Não foi possível acessar o YouTube. Use Abrir no navegador."));
+      };
+      document.head.append(script);
+    });
+    return apiPromise;
+  }
+  var YouTubeTV = class {
+    constructor(host, status3) {
+      this.host = host;
+      this.status = status3;
+      this.generation = 0;
+    }
+    async play(value2) {
+      const data = parseYouTube(value2);
+      this.destroy();
+      const generation3 = this.generation;
+      this.data = data;
+      this.status.textContent = "Carregando player oficial…";
+      try {
+        const YT = await loadAPI();
+        if (this.generation !== generation3) return;
+        const mount8 = document.createElement("div");
+        this.host.replaceChildren(mount8);
+        this.player = new YT.Player(mount8, { width: "100%", height: "100%", videoId: data.videoId || "", playerVars: { controls: 1, playsinline: 1, origin: location.origin, ...data.list ? { listType: "playlist", list: data.list } : {} }, events: { onReady: () => {
+          if (generation3 !== this.generation) return;
+          this.status.textContent = "Use os controles do YouTube. Esc volta ao mundo.";
+          this.player.getIframe?.().setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+        }, onError: (e) => {
+          this.status.textContent = `YouTube não conseguiu reproduzir (${e.data}). Abra no navegador.`;
+        } } });
+      } catch (e) {
+        if (this.generation === generation3) this.status.textContent = e.message;
+      }
+      return data;
+    }
+    destroy() {
+      this.generation++;
+      this.player?.destroy();
+      this.player = null;
+      this.host.replaceChildren();
+    }
+  };
+
+  // apps/access_manager/static/js/world/experience.js
+  function mountWorldExperience({ host, shell, audio, getWorld, isActive, exit, openTerminal, notice }) {
+    let settings = readWorldSettings(), dialogue = new DialogueManager(settings.dialogue), idleAt = 0, lastMusicSave = 0, libraryGeneration = 0;
+    const save = () => {
+      settings = writeWorldSettings(settings);
+    };
+    const root2 = document.createElement("div");
+    root2.className = "world-experience-ui";
+    root2.innerHTML = `
+  <span class="world-crosshair" aria-hidden="true">+</span>
+  <button id="world-menu-button" class="world-compact" type="button">☰ Menu · Esc</button>
+  <span id="world-connection" class="world-compact">● Sessão conectada</span>
+  <output id="world-speech" role="status" hidden></output>
+  <output id="world-combat" hidden></output>
+  <dialog id="world-menu" class="world-dialog"><div class="world-dialog-head"><h2>Access World</h2><button data-world-close type="button">Voltar · Esc</button></div>
+   <p id="world-tutorial">WASD mover · Shift correr · Espaço pular · arraste o mouse para olhar · duplo clique captura mouse · V alterna câmera · E interage · F ação extra · H/Tab HUD · M músicas.</p>
+   <div class="world-options"><label>Cenário <select id="world-scene"><option value="aero">Frutiger Aero</option><option value="office">Network Ops</option><option value="arena">Router Rumble</option></select></label>
+   <label>HUD <select id="world-hud-mode"><option value="auto">Ocultar automaticamente</option><option value="visible">Sempre visível</option><option value="hidden">Oculto</option></select></label>
+   <label><input id="world-debug-toggle" type="checkbox"> Estatísticas de renderização</label>
+   <label>Dificuldade da arena <select id="world-arena-difficulty"><option value="normal">Normal</option><option value="easy">Tranquila</option></select></label></div>
+   <p>Na arena: J soco · K golpe forte · B bloqueio · Q esquiva · T provocação · R revanche. Combate fictício e local.</p>
+   <div class="world-actions"><button id="world-open-music" type="button">Rádio / músicas</button><button id="world-open-dialogue" type="button">Falas do NPC</button><button id="world-open-tv" type="button">TV / YouTube</button><button id="world-return-interface" type="button">Voltar à interface</button></div>
+  </dialog>
+  <dialog id="world-radio" class="world-dialog"><div class="world-dialog-head"><h2>Rádio do plantão</h2><button data-world-close type="button">Voltar · Esc</button></div>
+   <div class="world-actions"><button id="world-pick-files" type="button">Escolher músicas</button><button id="world-pick-folder" type="button">Escolher pasta</button><button id="world-forget-music" type="button">Limpar biblioteca</button></div>
+   <input id="world-music-files" type="file" multiple accept="audio/*,.mp3,.ogg,.wav,.m4a,.flac" hidden><input id="world-music-folder" type="file" webkitdirectory multiple hidden>
+   <div class="world-options"><label><input id="world-recursive" type="checkbox"> Incluir subpastas</label><label><input id="world-remember-music" type="checkbox"> Lembrar biblioteca e posição neste dispositivo</label><label>Ordenar <select id="world-music-order"><option value="name">Nome</option><option value="path">Pasta / caminho</option><option value="date">Data</option></select></label></div>
+   <output id="world-radio-track" role="status">Escolha suas músicas locais.</output>
+   <div class="world-actions"><button id="world-prev" type="button">Anterior</button><button id="world-play" type="button">Reproduzir</button><button id="world-next" type="button">Próxima</button></div>
+   <label>Progresso <input id="world-seek" type="range" min="0" max="1" step="0.1" value="0"><output id="world-time">0:00 / 0:00</output></label>
+   <div class="world-options"><label>Repetir <select id="world-repeat"><option value="off">Desligado</option><option value="track">Faixa</option><option value="playlist">Playlist</option></select></label><label><input id="world-shuffle" type="checkbox"> Aleatório</label><label>Volume <input id="world-radio-volume" type="range" min="0" max="1" step=".01"></label></div>
+   <label>Faixas <select id="world-playlist" size="6" aria-label="Playlist"></select></label><p id="world-library-status" role="status">Áudio local. Nenhum arquivo é enviado.</p>
+  </dialog>
+  <dialog id="world-dialogue" class="world-dialog"><div class="world-dialog-head"><h2>Falas do roteador</h2><button data-world-close type="button">Voltar · Esc</button></div>
+   <label>Evento / categoria <select id="world-trigger"></select></label>
+   <div class="world-options"><label><input id="world-dialogue-enabled" type="checkbox"> Habilitado</label><label>Seleção <select id="world-dialogue-mode"><option value="random">Aleatória com pesos</option><option value="sequential">Sequencial</option></select></label><label>Intervalo (s) <input id="world-dialogue-cooldown" type="number" min="0" max="3600"></label></div>
+   <p>Texto e peso de cada frase. Somente texto; não executa comandos.</p><div id="world-lines"></div>
+   <div class="world-actions"><button id="world-add-line" type="button">Adicionar frase</button><button id="world-preview-line" type="button">Ouvir / testar</button></div><output id="world-line-preview" role="status"></output>
+   <div class="world-options"><label><input id="world-tts" type="checkbox"> Falar em voz alta (se disponível)</label><label>Palavrões <select id="world-profanity"><option value="off">Ocultar</option><option value="moderado">Moderar</option><option value="livre/local">Livre / local</option></select></label></div>
+  </dialog>
+  <dialog id="world-tv" class="world-dialog world-tv-dialog"><div class="world-dialog-head"><h2>TV do Network Ops</h2><button data-world-close type="button">Voltar · Esc</button></div>
+   <form id="world-tv-form"><label>URL ou ID do YouTube <input id="world-youtube-url" type="text" maxlength="400" placeholder="https://www.youtube.com/watch?v=…"></label><div class="world-actions"><button type="submit">Abrir player</button><a id="world-youtube-external" target="_blank" rel="noopener noreferrer" hidden>Abrir no navegador</a></div></form>
+   <div id="world-tv-player"></div><p id="world-tv-status" role="status">Player oficial. Reprodução depende da internet e da WebView.</p>
+  </dialog>`;
+    host.append(root2);
+    const $ = (id) => root2.querySelector("#" + id), dialogs = [...root2.querySelectorAll("dialog")], tv = new YouTubeTV($("world-tv-player"), $("world-tv-status"));
+    let speechTimer;
+    function speak(trigger, preview = false) {
+      if (!isActive() && !preview) return;
+      const text2 = dialogue.choose(trigger, { preview, profanity: settings.profanity });
+      if (!text2) return;
+      if (preview) $("world-line-preview").textContent = text2;
+      const bubble = $("world-speech");
+      bubble.textContent = "Roteador: " + text2;
+      bubble.hidden = false;
+      clearTimeout(speechTimer);
+      speechTimer = setTimeout(() => bubble.hidden = true, 5e3);
+      if (settings.tts && window.speechSynthesis && window.SpeechSynthesisUtterance) {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(text2);
+        utterance.lang = "pt-BR";
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+    function closeDialogs() {
+      dialogs.forEach((d) => {
+        if (d.open) d.close();
+      });
+    }
+    function show(id) {
+      closeDialogs();
+      getWorld()?.setPaused(true);
+      const d = $(id);
+      d.showModal();
+      d.querySelector("button,input,select")?.focus();
+    }
+    function applyHUD() {
+      shell.classList.toggle("world-hud-visible", settings.hud === "visible");
+      shell.classList.toggle("world-hud-hidden", settings.hud === "hidden");
+      host.dataset.hud = settings.hud;
+      $("world-hud-mode").value = settings.hud;
+      host.classList.toggle("world-debug-visible", settings.debug);
+    }
+    function setScene(id) {
+      const w = getWorld();
+      if (!w?.setScene) {
+        notice("Estes cenários estão disponíveis em Mundo 3D / Frutiger Aero.");
+        return;
+      }
+      w.environmentSystem.difficulty = settings.arenaDifficulty;
+      w.setScene(id);
+      idleAt = Date.now();
+      settings.scene = id;
+      $("world-scene").value = id;
+      save();
+    }
+    function persistTrack() {
+      if (!settings.rememberMusic) return;
+      settings.lastTrack = audio.playlist.current?.path || "";
+      settings.position = audio.element?.currentTime || 0;
+      save();
+    }
+    async function persistLibrary() {
+      const generation3 = ++libraryGeneration;
+      if (settings.rememberMusic) {
+        try {
+          await saveMusicLibrary(audio.playlist.items);
+          if (generation3 === libraryGeneration) $("world-library-status").textContent = "Biblioteca salva neste dispositivo.";
+        } catch {
+          if (generation3 === libraryGeneration) $("world-library-status").textContent = "Não foi possível guardar as músicas. A playlist continua disponível nesta execução.";
+        }
+      } else await clearMusicLibrary().catch(() => {
+      });
+    }
+    function list2() {
+      const select = $("world-playlist");
+      select.replaceChildren();
+      audio.playlist.items.forEach((item, i) => {
+        const option = document.createElement("option");
+        option.value = String(i);
+        option.textContent = item.name;
+        select.append(option);
+      });
+      select.value = String(audio.playlist.index);
+    }
+    function updateAudio() {
+      const element = audio.element, duration = Number.isFinite(element?.duration) ? element.duration : 0, position = element?.currentTime || 0;
+      const fmt2 = (t) => Math.floor(t / 60) + ":" + String(Math.floor(t % 60)).padStart(2, "0");
+      $("world-radio-track").textContent = audio.title;
+      $("world-play").textContent = audio.active ? "Pausar" : "Reproduzir";
+      $("world-playlist").value = String(audio.playlist.index);
+      $("world-seek").max = String(duration || 1);
+      $("world-seek").value = String(position);
+      $("world-seek").disabled = !duration;
+      $("world-time").textContent = fmt2(position) + " / " + fmt2(duration);
+      if (Date.now() - lastMusicSave > 3e3) {
+        lastMusicSave = Date.now();
+        persistTrack();
+      }
+    }
+    const oldChange = audio.onChange;
+    audio.onChange = (state2) => {
+      oldChange(state2);
+      updateAudio();
+    };
+    async function importMusic(files) {
+      try {
+        audio.importFiles(files, { recursive: settings.recursive, order: settings.order });
+        list2();
+        await persistLibrary();
+        await audio.playMusic();
+      } catch (e) {
+        $("world-library-status").textContent = e.message;
+      }
+    }
+    root2.querySelectorAll("[data-world-close]").forEach((b) => b.onclick = () => b.closest("dialog").close());
+    dialogs.forEach((d) => {
+      d.addEventListener("close", () => {
+        if (d.id === "world-tv") tv.destroy();
+        if (!dialogs.some((x) => x.open) && isActive()) getWorld()?.setPaused(false);
+      });
+      d.addEventListener("cancel", (e) => {
+        e.preventDefault();
+        d.close();
+      });
+    });
+    $("world-menu-button").onclick = () => show("world-menu");
+    $("world-return-interface").onclick = () => {
+      closeDialogs();
+      exit();
+    };
+    $("world-open-music").onclick = () => show("world-radio");
+    $("world-open-dialogue").onclick = () => show("world-dialogue");
+    $("world-open-tv").onclick = () => show("world-tv");
+    $("world-scene").value = settings.scene;
+    $("world-scene").onchange = (e) => {
+      setScene(e.target.value);
+      closeDialogs();
+    };
+    $("world-hud-mode").onchange = (e) => {
+      settings.hud = e.target.value;
+      save();
+      applyHUD();
+    };
+    $("world-debug-toggle").checked = settings.debug;
+    $("world-debug-toggle").onchange = (e) => {
+      settings.debug = e.target.checked;
+      save();
+      applyHUD();
+    };
+    $("world-arena-difficulty").value = settings.arenaDifficulty;
+    $("world-arena-difficulty").onchange = (e) => {
+      settings.arenaDifficulty = e.target.value;
+      if (getWorld()?.environmentSystem?.combat) getWorld().environmentSystem.combat.difficulty = e.target.value;
+      save();
+    };
+    $("world-pick-files").onclick = () => $("world-music-files").click();
+    $("world-pick-folder").onclick = () => $("world-music-folder").click();
+    for (const id of ["world-music-files", "world-music-folder"]) $(id).onchange = (e) => {
+      importMusic(e.target.files);
+      e.target.value = "";
+    };
+    $("world-forget-music").onclick = async () => {
+      audio.pauseMusic({ immediate: true });
+      audio.setPlaylist([]);
+      audio.element?.removeAttribute("src");
+      audio.title = "Nenhuma música instalada";
+      audio.notify();
+      settings.lastTrack = "";
+      settings.position = 0;
+      save();
+      list2();
+      await clearMusicLibrary().catch(() => {
+      });
+      $("world-library-status").textContent = "Biblioteca removida deste dispositivo.";
+    };
+    $("world-recursive").checked = settings.recursive;
+    $("world-recursive").onchange = (e) => {
+      settings.recursive = e.target.checked;
+      save();
+    };
+    $("world-remember-music").checked = settings.rememberMusic;
+    $("world-remember-music").onchange = async (e) => {
+      settings.rememberMusic = e.target.checked;
+      save();
+      await persistLibrary();
+    };
+    $("world-music-order").value = settings.order;
+    $("world-music-order").onchange = (e) => {
+      const current = audio.playlist.current?.file, playing = audio.active;
+      settings.order = e.target.value;
+      const items = scanFiles(audio.playlist.items.map((i) => Object.assign(i.file, { path: i.path })), { order: settings.order });
+      audio.setPlaylist(items, Math.max(0, items.findIndex((i) => i.file === current)));
+      save();
+      list2();
+      persistLibrary();
+      if (playing) audio.playMusic().catch((e2) => notice(e2.message));
+    };
+    $("world-playlist").onchange = async (e) => {
+      audio.playlist.index = Number(e.target.value);
+      audio.selectCurrent();
+      try {
+        await audio.playMusic();
+      } catch (e2) {
+        notice(e2.message);
+      }
+    };
+    $("world-play").onclick = () => audio.toggle().catch((e) => notice(e.message));
+    $("world-next").onclick = () => audio.advance().catch((e) => notice(e.message));
+    $("world-prev").onclick = () => audio.previous().catch((e) => notice(e.message));
+    $("world-seek").oninput = (e) => audio.seek(e.target.value);
+    $("world-repeat").value = settings.repeat;
+    audio.playlist.repeat = settings.repeat;
+    $("world-repeat").onchange = (e) => {
+      settings.repeat = e.target.value;
+      audio.playlist.repeat = settings.repeat;
+      save();
+    };
+    $("world-shuffle").checked = settings.shuffle;
+    audio.playlist.shuffle = settings.shuffle;
+    $("world-shuffle").onchange = (e) => {
+      settings.shuffle = e.target.checked;
+      audio.playlist.shuffle = settings.shuffle;
+      audio.playlist.bag = [];
+      save();
+    };
+    $("world-radio-volume").value = audio.volume;
+    $("world-radio-volume").oninput = (e) => {
+      audio.setMasterVolume(e.target.value);
+      const original = document.querySelector("#world-volume");
+      original.value = e.target.value;
+      original.dispatchEvent(new Event("input"));
+    };
+    for (const trigger of triggers) {
+      const option = document.createElement("option");
+      option.value = trigger;
+      option.textContent = trigger;
+      $("world-trigger").append(option);
+    }
+    let selected2 = "world_enter";
+    function saveRule() {
+      const rule = settings.dialogue[selected2];
+      rule.enabled = $("world-dialogue-enabled").checked;
+      rule.mode = $("world-dialogue-mode").value;
+      rule.cooldownSeconds = Number($("world-dialogue-cooldown").value);
+      rule.lines = [...$("world-lines").children].map((row) => ({ text: row.querySelector("input[type=text]").value, weight: Number(row.querySelector("input[type=number]").value) }));
+      settings.dialogue = normalizeDialogue(settings.dialogue);
+      dialogue.rules = settings.dialogue;
+      save();
+    }
+    function lineRow(line2) {
+      const row = document.createElement("div");
+      row.className = "world-line-row";
+      const text2 = document.createElement("input");
+      text2.type = "text";
+      text2.maxLength = 400;
+      text2.value = line2.text;
+      text2.setAttribute("aria-label", "Texto da frase");
+      const weight = document.createElement("input");
+      weight.type = "number";
+      weight.min = ".01";
+      weight.max = "100";
+      weight.step = ".01";
+      weight.value = String(line2.weight);
+      weight.setAttribute("aria-label", "Peso da frase");
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "Remover";
+      remove.onclick = () => {
+        row.remove();
+        saveRule();
+      };
+      text2.onchange = saveRule;
+      weight.onchange = saveRule;
+      row.append(text2, weight, remove);
+      $("world-lines").append(row);
+    }
+    function paintRule() {
+      const r = settings.dialogue[selected2];
+      $("world-dialogue-enabled").checked = r.enabled;
+      $("world-dialogue-mode").value = r.mode;
+      $("world-dialogue-cooldown").value = String(r.cooldownSeconds);
+      $("world-lines").replaceChildren();
+      r.lines.forEach(lineRow);
+    }
+    $("world-trigger").onchange = (e) => {
+      selected2 = e.target.value;
+      paintRule();
+    };
+    for (const id of ["world-dialogue-enabled", "world-dialogue-mode", "world-dialogue-cooldown"]) $(id).onchange = saveRule;
+    $("world-add-line").onclick = () => {
+      lineRow({ text: "Nova frase", weight: 1 });
+      saveRule();
+    };
+    $("world-preview-line").onclick = () => {
+      saveRule();
+      speak(selected2, true);
+    };
+    $("world-tts").checked = settings.tts;
+    $("world-tts").onchange = (e) => {
+      settings.tts = e.target.checked;
+      save();
+    };
+    $("world-profanity").value = settings.profanity;
+    $("world-profanity").onchange = (e) => {
+      settings.profanity = e.target.value;
+      save();
+    };
+    paintRule();
+    $("world-youtube-url").value = settings.youtube;
+    $("world-tv-form").onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const value2 = $("world-youtube-url").value, data = parseYouTube(value2);
+        $("world-youtube-external").href = youtubeURL(data);
+        $("world-youtube-external").hidden = false;
+        settings.youtube = value2;
+        save();
+        await tv.play(value2);
+      } catch (error) {
+        $("world-tv-status").textContent = error.message;
+      }
+    };
+    const keydown = (e) => {
+      if (!isActive()) return;
+      const target = e.target;
+      if (e.key === "Escape") {
+        if (document.querySelector("#action-dialog")?.open || document.querySelector("#service-dialog")?.open || shell.classList.contains("world-panel-open")) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const open = dialogs.find((d) => d.open);
+        if (open) open.close();
+        else if (!document.querySelector("#world-scanner")?.hidden) {
+          document.querySelector("#world-scanner").hidden = true;
+          getWorld()?.setPaused(false);
+        } else show("world-menu");
+        return;
+      }
+      if (dialogs.some((d) => d.open) || target.closest?.("input,textarea,select,[contenteditable]") || shell.classList.contains("world-panel-open")) return;
+      if (["KeyH", "Tab", "KeyM"].includes(e.code)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (e.code === "KeyM") show("world-radio");
+        else {
+          settings.hud = settings.hud === "visible" ? "auto" : "visible";
+          save();
+          applyHUD();
+        }
+      }
+      idleAt = Date.now();
+    };
+    document.addEventListener("keydown", keydown, true);
+    host.addEventListener("world-interaction", (e) => {
+      switch (e.detail.kind) {
+        case "dialogue":
+          speak(e.detail.trigger);
+          break;
+        case "focus":
+          host.dataset.interaction = e.detail.label;
+          break;
+        case "message":
+          $("world-speech").textContent = e.detail.text;
+          $("world-speech").hidden = false;
+          clearTimeout(speechTimer);
+          speechTimer = setTimeout(() => $("world-speech").hidden = true, 5e3);
+          break;
+        case "scene":
+          setScene(e.detail.scene);
+          break;
+        case "tv":
+          show("world-tv");
+          break;
+        case "music":
+          show("world-radio");
+          break;
+        case "terminal":
+          openTerminal();
+          break;
+      }
+    });
+    let connected = false;
+    document.addEventListener("app-context-ready", () => {
+      const next = Boolean(window.__amStore?.session?.connected);
+      if (next !== connected) {
+        speak(next ? "device_connected" : "device_disconnected");
+        connected = next;
+      }
+    });
+    document.addEventListener("world-operation", (e) => {
+      if (!isActive() || getWorld()?.environmentSystem?.sceneId === "arena") return;
+      const { stage, path: path2, ok } = e.detail;
+      if (/diagnostic/.test(path2)) speak(stage === "start" ? "diagnostic_started" : ok ? "diagnostic_ok" : "diagnostic_failed");
+      if (stage === "end" && ok && e.detail.passwordChanged) speak("password_changed");
+    });
+    document.addEventListener("service-log-copied", () => speak("service_log_copied"));
+    function telemetry() {
+      if (!isActive()) return;
+      const snap = window.__amStore?.snapshot;
+      if (snap?.session_id && snap.session_id !== window.__amStore?.session?.session?.session_id) return;
+      let state2 = "online";
+      const clients = snap?.clients?.data ?? snap?.clients, optical = snap?.optical?.data ?? snap?.optical, wan2 = snap?.wan?.data ?? snap?.wan;
+      if (Array.isArray(clients) && clients.some((c) => c.rssi != null && Number(c.rssi) < -75)) state2 = "weak_wifi";
+      if (Array.isArray(wan2) && wan2.some((w) => /pppoe/i.test(w.connection_type || "") && /disconnected|down|failed/i.test(w.status || ""))) state2 = "pppoe_issue";
+      const rx = optical?.rx_dbm ?? optical?.rx;
+      if (rx != null && Number.isFinite(Number(rx)) && (Number(rx) < -27 || Number(rx) > -8)) state2 = "optical_issue";
+      if (getWorld()?.environmentSystem?.sceneId !== "arena") {
+        getWorld()?.environmentSystem?.setDiagnostic(state2);
+        if (state2 !== "online") speak(state2);
+      }
+    }
+    document.addEventListener("device-snapshot", telemetry);
+    applyHUD();
+    if (settings.rememberMusic) loadMusicLibrary().then((items) => {
+      if (!items.length || audio.playlist.items.length) return;
+      const savedPosition = settings.position;
+      audio.setPlaylist(items, Math.max(0, items.findIndex((i) => i.path === settings.lastTrack)));
+      if (audio.element) audio.element.onloadedmetadata = () => audio.seek(savedPosition);
+      list2();
+    }).catch(() => {
+    });
+    return { entered() {
+      applyHUD();
+      if (getWorld()?.setScene && getWorld().sceneId !== settings.scene) setScene(settings.scene);
+      idleAt = Date.now();
+      speak("world_enter");
+      if (!settings.tutorialSeen) {
+        settings.tutorialSeen = true;
+        save();
+        show("world-menu");
+      }
+    }, exited() {
+      speak("world_exit");
+      persistTrack();
+      closeDialogs();
+      tv.destroy();
+      window.speechSynthesis?.cancel();
+      shell.classList.remove("world-hud-visible", "world-hud-hidden");
+    }, frame(detail) {
+      $("world-combat").hidden = !detail.combat;
+      if (detail.combat) {
+        const c = detail.combat;
+        $("world-combat").textContent = `Você ${c.hp}/100 · Roteador ${c.npcHp}/100 · Combo ${c.combo} ${c.result === "win" ? "— Vitória! R para revanche" : c.result === "lose" ? "— Derrota! R para revanche" : "· J/K soco · B bloqueio · Q esquiva"}`;
+      }
+      if (Date.now() - idleAt > 6e4) {
+        idleAt = Date.now();
+        speak("idle");
+      }
+      if (settings.debug) {
+        document.querySelector("#world-debug").textContent += ` · ${detail.drawCalls ?? "?"} draws · ${detail.triangles ?? "?"} tris · ${detail.loadedAssets ?? 0} GLB · ${detail.memory?.geometries ?? "?"} geometrias`;
+      }
+    }, dispose() {
+      clearTimeout(speechTimer);
+      tv.destroy();
+      document.removeEventListener("keydown", keydown, true);
+    } };
+  }
 
   // apps/access_manager/static/js/world/bridge.js
   function mountWorldBridge({ store: store2, theme, registry, navigate, suspend, resume }) {
@@ -892,6 +1730,10 @@
       document.querySelector("#world-music").setAttribute("aria-pressed", String(state2.active || ambient.active));
       updateSound();
     } });
+    const worldExperience = mountWorldExperience({ host, shell, audio, getWorld: () => world, isActive: () => active2, exit: () => exit(), openTerminal: () => {
+      const region = currentRegions.find((r) => r.routeId === "overview") || currentRegions[0];
+      if (region) openPanel(region);
+    }, notice: unavailable2 });
     function closePanel() {
       if (!active2 || !panel3) return;
       document.querySelector("#action-dialog")?.close();
@@ -976,6 +1818,7 @@
       if (active2) world.start();
     }
     function exit({ persist = true } = {}) {
+      worldExperience.exited();
       generation3++;
       active2 = false;
       entering = false;
@@ -1041,6 +1884,7 @@
         savePreference("experience", mode);
         await audio.loadInstalled(host.dataset.audioManifest);
         audio.notify();
+        worldExperience.entered();
       } catch (error) {
         world?.dispose();
         world = null;
@@ -1166,9 +2010,10 @@
     });
     host.addEventListener("world-frame", (e) => {
       const { player, hotspot, fps, visited, total } = e.detail;
-      document.querySelector("#world-prompt").textContent = hotspot ? `E · ${mode === "wasteland" ? "Acessar " + (hotspot.worldLabel || hotspot.label) : "Inspecionar " + hotspot.label}` : mode === "wasteland" ? "WASD · Shift · Espaço · E acessar · T terminal · V câmera · M mapa · L atendimento" : mode === "voxel" ? "WASD · Shift · Espaço · E interagir · F scanner · V câmera" : "WASD · Shift correr · Espaço pular · Arraste para olhar";
+      document.querySelector("#world-prompt").textContent = e.detail.interaction ? `[E] ${e.detail.interaction}` : mode !== "world3d" && hotspot ? `E · ${mode === "wasteland" ? "Acessar " + (hotspot.worldLabel || hotspot.label) : "Inspecionar " + hotspot.label}` : mode === "wasteland" ? "WASD · Shift · Espaço · E acessar · T terminal · V câmera · M mapa · L atendimento" : mode === "voxel" ? "WASD · Shift · Espaço · E interagir · F scanner · V câmera" : "WASD mover · E interagir · V câmera · M rádio · Esc menu";
       document.querySelector("#world-debug").textContent = `${fps} FPS · ${world.quality} · ${world.modelStatus || "Mascote procedural"}`;
       document.querySelector("#world-inventory").textContent = `Exploração: ${visited}/${total} regiões visitadas`;
+      worldExperience.frame(e.detail);
       document.querySelector("#field-sector").textContent = hotspot?.worldLabel || hotspot?.label || "Área de operações";
       if (ctx) {
         ctx.fillStyle = mode === "wasteland" ? "#0b120d" : host.dataset.layout === "juniper" ? "#e0f2fa" : "#e2f4d1";
@@ -1235,6 +2080,7 @@
       world?.dispose();
       audio.dispose();
       ambient.dispose();
+      worldExperience.dispose();
       modalObserver.disconnect();
       unsubscribeTelemetry();
       cache.clear();
@@ -1277,11 +2123,13 @@
     const key = cacheSession + ":" + (scope?.identity ?? "global") + ":" + path2;
     if (canCache && pending.has(key)) return pending.get(key);
     const start = performance.now(), epoch = revision, operationRoute = window.__amStore?.view, operationSession = window.__amStore?.session?.session?.session_id ?? null;
+    if (/\/diagnostics\//.test(path2)) document.dispatchEvent(new CustomEvent("world-operation", { detail: { stage: "start", path: path2 } }));
     let reported = false;
     const work = (async () => {
       const url = new URL(path2, window.location.origin);
       const res = await fetch(url, { credentials: "same-origin", ...fetchOptions, signal: read2 ? fetchOptions.signal || scope?.controller.signal : fetchOptions.signal, headers: { "Content-Type": "application/json", ...options.headers || {} } });
       const text2 = await res.text(), data = parseResponseBody(text2);
+      if (/\/diagnostics\/|\/password|\/wifi\/ssid/.test(path2)) document.dispatchEvent(new CustomEvent("world-operation", { detail: { stage: "end", path: path2, ok: res.ok && data?.success !== false, passwordChanged: method !== "GET" && (/password/.test(path2) || /"(?:password|new_password|senha|psk)"\s*:/.test(String(options.body || ""))) } }));
       reported = true;
       onResult?.(data, res.ok && data?.success !== false);
       if (operationSession === (window.__amStore?.session?.session?.session_id ?? null)) window.__amObserveOperation?.(path2, method, options.body, data, res.ok && data?.success !== false, operationRoute);
@@ -1301,6 +2149,7 @@
       }
       return data;
     })().catch((e) => {
+      if (!reported && /\/diagnostics\//.test(path2)) document.dispatchEvent(new CustomEvent("world-operation", { detail: { stage: "end", path: path2, ok: false } }));
       if (!scopeActive(scope) || isCancelled(e)) throw cancelled();
       if (!reported && operationSession === (window.__amStore?.session?.session?.session_id ?? null)) window.__amObserveOperation?.(path2, method, options.body, { status: "Resposta indisponível", error: { message: e.message } }, false, operationRoute);
       throw e;
