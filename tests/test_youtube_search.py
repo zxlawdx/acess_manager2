@@ -45,56 +45,92 @@ def test_extract_youtube_results_data_reads_innertube_video_renderer():
     }]
 
 
-def test_search_youtube_prefers_ytdlp_without_touching_direct_http(monkeypatch):
+def test_search_youtube_prefers_proxy_index_before_ytdlp(monkeypatch):
     calls = {}
-
-    class FakeYDL:
-        def __init__(self, options):
-            calls['options'] = options
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-        def extract_info(self, query, download=False):
-            calls['query'] = query
-            calls['download'] = download
-            return {
-                'entries': [{
-                    'id': 'dQw4w9WgXcQ',
-                    'title': 'Criando jogos',
-                    'channel': 'Canal yt-dlp',
-                    'duration': 605,
-                    'thumbnail': 'https://i.ytimg.com/test.jpg',
-                }],
-            }
-
-    class ForbiddenSession:
-        def __init__(self):
-            raise AssertionError('HTTP fallback must not run when yt-dlp succeeds')
-
-    monkeypatch.setattr(youtube.yt_dlp, 'YoutubeDL', FakeYDL)
-    monkeypatch.setattr(youtube.requests, 'Session', ForbiddenSession)
-
-    results = youtube.search_youtube('Criando jogos', limit=8)
-
-    assert calls['query'] == 'ytsearch8:Criando jogos'
-    assert calls['download'] is False
-    assert calls['options']['extract_flat'] is True
-    assert calls['options']['skip_download'] is True
-    assert results == [{
+    expected = [{
         'videoId': 'dQw4w9WgXcQ',
         'title': 'Criando jogos',
-        'channel': 'Canal yt-dlp',
+        'channel': 'Canal proxy',
         'duration': '10:05',
         'thumbnail': 'https://i.ytimg.com/test.jpg',
     }]
 
+    class FakeCookies:
+        def set(self, *args, **kwargs):
+            calls['cookie'] = (args, kwargs)
 
-def test_search_youtube_falls_back_to_innertube_when_ytdlp_fails(monkeypatch):
+    class FakeSession:
+        def __init__(self):
+            self.headers = {}
+            self.cookies = FakeCookies()
+
+        def close(self):
+            calls['closed'] = True
+
+    def proxy_search(session, query, limit):
+        calls['proxy'] = (session, query, limit)
+        return expected
+
+    def forbidden_ytdlp(*args, **kwargs):
+        raise AssertionError('yt-dlp must not run when proxy/index search succeeds')
+
+    monkeypatch.setattr(youtube.requests, 'Session', FakeSession)
+    monkeypatch.setattr(youtube, '_search_invidious', proxy_search)
+    monkeypatch.setattr(youtube, '_search_ytdlp', forbidden_ytdlp)
+
+    results = youtube.search_youtube('Criando jogos', limit=8)
+
+    assert calls['proxy'][1:] == ('Criando jogos', 8)
+    assert calls['closed'] is True
+    assert results == expected
+
+
+def test_search_youtube_falls_back_to_ytdlp_when_proxy_index_fails(monkeypatch):
     calls = {}
+
+    class FakeCookies:
+        def set(self, *args, **kwargs):
+            calls['cookie'] = (args, kwargs)
+
+    class FakeSession:
+        def __init__(self):
+            self.headers = {}
+            self.cookies = FakeCookies()
+
+        def close(self):
+            calls['closed'] = True
+
+    def fail_proxy(session, query, limit):
+        calls['proxy'] = (query, limit)
+        raise RuntimeError('proxy/index temporarily unavailable')
+
+    def ytdlp_search(query, limit):
+        calls['ytdlp'] = (query, limit)
+        return [{
+            'videoId': 'dQw4w9WgXcQ',
+            'title': 'Criando jogos',
+            'channel': 'Canal yt-dlp',
+            'duration': '10:05',
+            'thumbnail': 'https://i.ytimg.com/test.jpg',
+        }]
+
+    monkeypatch.setattr(youtube.requests, 'Session', FakeSession)
+    monkeypatch.setattr(youtube, '_search_invidious', fail_proxy)
+    monkeypatch.setattr(youtube, '_search_ytdlp', ytdlp_search)
+
+    results = youtube.search_youtube('Criando jogos', limit=8)
+
+    assert calls['proxy'] == ('Criando jogos', 8)
+    assert calls['ytdlp'] == ('Criando jogos', 8)
+    assert calls['closed'] is True
+    assert results[0]['channel'] == 'Canal yt-dlp'
+
+
+def test_search_youtube_falls_back_to_innertube_after_proxy_and_ytdlp_fail(monkeypatch):
+    calls = {}
+
+    def fail_proxy(session, query, limit):
+        raise RuntimeError('proxy/index temporarily unavailable')
 
     def fail_ytdlp(query, limit):
         raise RuntimeError('yt-dlp temporarily unavailable')
@@ -136,6 +172,7 @@ def test_search_youtube_falls_back_to_innertube_when_ytdlp_fails(monkeypatch):
         def close(self):
             calls['closed'] = True
 
+    monkeypatch.setattr(youtube, '_search_invidious', fail_proxy)
     monkeypatch.setattr(youtube, '_search_ytdlp', fail_ytdlp)
     monkeypatch.setattr(youtube.requests, 'Session', FakeSession)
     results = youtube.search_youtube('Criando jogos', limit=8)
