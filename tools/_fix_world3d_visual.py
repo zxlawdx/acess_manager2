@@ -8,12 +8,14 @@ if rule not in text:
 css.write_text(text, encoding='utf-8')
 
 # Third-person camera can place the center ray behind the avatar or an occluder.
-# Keep precise raycast selection first, then fall back to the nearest interaction
-# that is both in range and in front of the player's movement heading.
+# Keep precise raycast selection first, then fall back to an in-range interaction
+# in front of the player. Angular alignment intentionally dominates raw distance,
+# so a chair or moving NPC beside/behind the operator does not steal focus from
+# the computer/TV/router the character is walking toward.
 interactions = Path('apps/access_manager/static/js/world/interactions.js')
 text = interactions.read_text(encoding='utf-8')
 old_update = """ update(camera,player,occluders=[]){this.raycaster.setFromCamera({x:0,y:0},camera);const hits=this.raycaster.intersectObjects([...this.registry.objects,...occluders],true);let next=null;for(const hit of hits){const item=this.registry.fromObject(hit.object);if(!item)break;const p=item.object.getWorldPosition?item.object.getWorldPosition(item.object.position.clone()):item.object.position;if(Math.hypot(p.x-player.x,p.z-player.z)<=(item.distance||this.distance)&&item.enabled!==false)next=item;break;}if(next!==this.focus){this.focus=next;this.onFocus(next);}return next;}"""
-new_update = """ update(camera,player,occluders=[]){this.raycaster.setFromCamera({x:0,y:0},camera);const hits=this.raycaster.intersectObjects([...this.registry.objects,...occluders],true);let next=null;for(const hit of hits){const item=this.registry.fromObject(hit.object);if(!item)break;const p=item.object.getWorldPosition?item.object.getWorldPosition(item.object.position.clone()):item.object.position;if(Math.hypot(p.x-player.x,p.z-player.z)<=(item.distance||this.distance)&&item.enabled!==false)next=item;break;}if(!next&&player){let best=Infinity;for(const item of this.registry.items.values()){if(item.enabled===false||item.object.visible===false)continue;const p=item.object.getWorldPosition?item.object.getWorldPosition(item.object.position.clone()):item.object.position,d=Math.hypot(p.x-player.x,p.z-player.z),limit=item.distance||this.distance;if(d>limit)continue;const direction=Math.atan2(p.x-player.x,p.z-player.z),heading=Number.isFinite(player.heading)?player.heading:direction,angle=Math.abs(Math.atan2(Math.sin(direction-heading),Math.cos(direction-heading)));if(angle>Math.PI/3)continue;const score=d+angle*.75;if(score<best){best=score;next=item;}}}if(next!==this.focus){this.focus=next;this.onFocus(next);}return next;}"""
+new_update = """ update(camera,player,occluders=[]){this.raycaster.setFromCamera({x:0,y:0},camera);const hits=this.raycaster.intersectObjects([...this.registry.objects,...occluders],true);let next=null;for(const hit of hits){const item=this.registry.fromObject(hit.object);if(!item)break;const p=item.object.getWorldPosition?item.object.getWorldPosition(item.object.position.clone()):item.object.position;if(Math.hypot(p.x-player.x,p.z-player.z)<=(item.distance||this.distance)&&item.enabled!==false)next=item;break;}if(!next&&player){let best=Infinity;for(const item of this.registry.items.values()){if(item.enabled===false||item.object.visible===false)continue;const p=item.object.getWorldPosition?item.object.getWorldPosition(item.object.position.clone()):item.object.position,d=Math.hypot(p.x-player.x,p.z-player.z),limit=item.distance||this.distance;if(d>limit)continue;const direction=Math.atan2(p.x-player.x,p.z-player.z),heading=Number.isFinite(player.heading)?player.heading:direction,angle=Math.abs(Math.atan2(Math.sin(direction-heading),Math.cos(direction-heading)));if(angle>Math.PI/3)continue;const score=angle*4+d*.25;if(score<best){best=score;next=item;}}}if(next!==this.focus){this.focus=next;this.onFocus(next);}return next;}"""
 if old_update in text:
     text = text.replace(old_update, new_update, 1)
 elif new_update not in text:
@@ -45,5 +47,5 @@ unit = Path('tests/frontend/world-interactions.test.cjs')
 text = unit.read_text(encoding='utf-8')
 needle = "test('third-person interaction fallback keeps nearby forward targets usable',"
 if needle not in text:
-    text += "\n" + "test('third-person interaction fallback keeps nearby forward targets usable',()=>{const interactions=fs.readFileSync('apps/access_manager/static/js/world/interactions.js','utf8');assert.match(interactions,/if\\(!next&&player\\)/);assert.match(interactions,/Math\\.PI\\/3/);assert.match(interactions,/player\\.heading/);});\n"
+    text += "\n" + "test('third-person interaction fallback keeps nearby forward targets usable',()=>{const interactions=fs.readFileSync('apps/access_manager/static/js/world/interactions.js','utf8');assert.match(interactions,/if\\(!next&&player\\)/);assert.match(interactions,/Math\\.PI\\/3/);assert.match(interactions,/angle\\*4\\+d\\*\\.25/);assert.match(interactions,/player\\.heading/);});\n"
 unit.write_text(text, encoding='utf-8')
