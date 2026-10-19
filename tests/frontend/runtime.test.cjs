@@ -207,7 +207,19 @@ test('Juniper page retry is explicit and cancel only stops waiting',async()=>{
  x.w.fetch=async(url,options)=>{if(new URL(url).pathname==='/api/infrastructure/health'){attempts++;if(attempts===1)return {ok:true,status:200,text:async()=>JSON.stringify({success:false,error:{code:'CONNECTION_TIMEOUT',message:'Tempo esgotado',type:'timeout',retryable:true}})};await gate.promise;return {ok:true,status:200,text:async()=>JSON.stringify({data:[]})}}return original(url,options)};
  await x.click('juniperRadius');assert.equal(attempts,1);assert.match(d.querySelector('#workspace [role=alert]').textContent,/CONNECTION_TIMEOUT/);d.querySelector('[data-j-retry]').click();await x.wait();assert.equal(attempts,2);d.querySelector('[data-cancel-wait]').click();assert.match(d.querySelector('#workspace').textContent,/O comando remoto pode continuar/);gate.resolve();await x.wait();assert.ok(!d.querySelector('#workspace .skeleton'));x.w.close();
 });
-test('Wi-Fi password modal masks by default, copies on demand and clears its input on close',async()=>{const x=await boot();await x.click('wifi');let copied;x.w.navigator.clipboard={writeText:async value=>{copied=value}};x.w.document.querySelector('[data-reveal-wifi]').click();await x.wait();const input=x.w.document.querySelector('#wifi-revealed-password');assert.equal(input.type,'password');x.w.document.querySelector('[data-copy-wifi-password]').click();await x.wait();assert.equal(copied,'secret123');x.w.document.querySelector('[data-dismiss-wifi-password]').click();assert.equal(input.value,'');assert.equal(x.w.document.querySelector('#wifi-revealed-password'),null);x.w.close()});
+test('Wi-Fi password modal copies through the desktop backend and clears its input on close',async()=>{
+ const x=await boot();try{await x.click('wifi');let copied=null,browserCopies=0;const original=x.w.fetch;
+ x.w.navigator.clipboard={writeText:async()=>{browserCopies++}};
+ x.w.fetch=async(url,options)=>{if(new URL(url).pathname==='/api/system/clipboard'){copied={...options,body:JSON.parse(options.body)};return {ok:true,json:async()=>({success:true})}}return original(url,options)};
+ x.w.document.querySelector('[data-reveal-wifi]').click();await x.wait();const input=x.w.document.querySelector('#wifi-revealed-password');assert.equal(input.type,'password');
+ x.w.document.querySelector('[data-copy-wifi-password]').click();await x.wait();assert.equal(copied.body.text,'secret123');assert.equal(copied.method,'POST');assert.equal(copied.credentials,'same-origin');assert.equal(browserCopies,0);
+ x.w.document.querySelector('[data-dismiss-wifi-password]').click();assert.equal(input.value,'');assert.equal(x.w.document.querySelector('#wifi-revealed-password'),null);
+ }finally{x.w.close()}
+});
 
-
-test('service copy writes the formatted record through the same Clipboard API as Wi-Fi',async()=>{const x=await boot();let copied=null;x.w.navigator.clipboard={writeText:async value=>{copied=value}};x.w.document.querySelector('#service-current').click();x.w.document.querySelector('#service-dialog [data-copy="selected"]').click();await x.wait();assert.match(copied,/Atendimento iniciado/);assert.equal(x.w.document.querySelector('#service-dialog [data-status]').textContent,'Registro copiado.');x.w.close()});
+test('service copy sends the formatted record to the desktop backend without browser clipboard access',async()=>{
+ const x=await boot();try{let copied=null,browserCopies=0;const original=x.w.fetch;x.w.navigator.clipboard={writeText:async()=>{browserCopies++}};
+ x.w.fetch=async(url,options)=>{if(new URL(url).pathname==='/api/system/clipboard'){copied={...options,body:JSON.parse(options.body)};return {ok:true,json:async()=>({success:true})}}return original(url,options)};
+ x.w.document.querySelector('#service-current').click();x.w.document.querySelector('#service-dialog [data-copy="selected"]').click();await x.wait();assert.match(copied.body.text,/Atendimento iniciado/);assert.equal(copied.method,'POST');assert.equal(browserCopies,0);assert.equal(x.w.document.querySelector('#service-dialog [data-status]').textContent,'Registro copiado.');
+ }finally{x.w.close()}
+});
