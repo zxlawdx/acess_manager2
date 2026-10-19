@@ -10,6 +10,10 @@ speedtest-cli==2.1.3
 paramiko>=3.4,<4
 pyperclip>=1.9,<2
 
+# Usa o repositório nativo de certificados do SO (CryptoAPI no Windows),
+# importante em redes com inspeção HTTPS/CA corporativa confiada pelo sistema.
+truststore>=0.10.4,<0.11
+
 # Busca robusta do YouTube sem chave de API; usado apenas para metadados/ytsearch.
 yt-dlp==2026.8.19
 
