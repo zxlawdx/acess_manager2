@@ -32,6 +32,7 @@ const root=path.resolve(__dirname,'../..'),base=path.join(root,'apps/access_mana
   await page.locator('#world-menu-button').click();await page.locator('#world-scene').selectOption('arena');
   await page.locator('#world-menu').waitFor({state:'hidden'});await canvas.focus();await nextWorldFrame();
   await page.waitForFunction(()=>!document.querySelector('#world-combat').hidden);
+  assert.equal(await page.locator('#aero-world').getAttribute('data-camera'),'third');await page.keyboard.press('KeyV');assert.equal(await page.locator('#aero-world').getAttribute('data-camera'),'first');await page.keyboard.press('KeyV');assert.equal(await page.locator('#aero-world').getAttribute('data-camera'),'third');assert.match(await page.locator('#world-camera-status').textContent(),/Terceira pessoa/);
   await capture(`arena-${width}.png`);
   console.log(`${width}x${height}: full viewport, HUD, office, arena and overflow OK`);
  }
