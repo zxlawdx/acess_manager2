@@ -6,6 +6,7 @@ on:
       - fix/world3d-combat-youtube-tv
     paths:
       - .github/workflows/fix-world3d-pointer-temp.yml
+      - tools/_fix_world3d_visual.py
 
 permissions:
   contents: write
@@ -22,41 +23,17 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - name: Fix passive overlay and update embedded-TV smoke
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          css=Path('apps/access_manager/static/css/world.css')
-          text=css.read_text(encoding='utf-8')
-          rule='.world-experience-ui>.world-crosshair,.world-experience-ui>#world-connection,.world-experience-ui>#world-speech{pointer-events:none}\n'
-          if rule not in text:
-              text += '\n'+rule
-          css.write_text(text,encoding='utf-8')
-
-          test=Path('tests/visual/world-interactions.cjs')
-          text=test.read_text(encoding='utf-8')
-          old=""" await page.waitForFunction(()=>document.querySelector('#world-tv-status').textContent.includes('Esc volta'));
- assert.equal(await page.locator('#world-tv-player iframe').count(),1);await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelectorAll('#world-tv-player iframe').length===0);
- console.log('YouTube focus and iframe cleanup OK');"""
-          new=""" await page.waitForFunction(()=>document.querySelector('#world-tv-status').textContent.includes('Reproduzindo na televisão 3D'));
- assert.equal(await page.locator('.world-tv-surface iframe').count(),1);await page.keyboard.press('Escape');await page.locator('#world-tv').waitFor({state:'hidden'});assert.equal(await page.locator('.world-tv-surface iframe').count(),1);
- console.log('YouTube playback is embedded in the 3D TV and persists after closing search UI');"""
-          if old not in text:
-              if new not in text: raise SystemExit('old YouTube visual smoke block not found')
-          else:
-              text=text.replace(old,new,1)
-          test.write_text(text,encoding='utf-8')
-          PY
+      - name: Apply visual smoke patch
+        run: python tools/_fix_world3d_visual.py
       - run: npm ci
       - name: Verify 3D visual smoke
         run: node tests/visual/world-interactions.cjs
-      - name: Commit fix and remove temporary workflow
+      - name: Commit fix and remove temporary helpers
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          rm .github/workflows/fix-world3d-pointer-temp.yml
+          rm .github/workflows/fix-world3d-pointer-temp.yml tools/_fix_world3d_visual.py
           git add -A
           git commit -m 'test(world3d): cover embedded TV and passive overlays'
           git push origin HEAD:fix/world3d-combat-youtube-tv
