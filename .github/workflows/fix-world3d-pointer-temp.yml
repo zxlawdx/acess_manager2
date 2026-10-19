@@ -23,8 +23,10 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - name: Apply visual smoke patch
+      - name: Apply visual and third-person interaction patch
         run: python tools/_fix_world3d_visual.py
+      - name: Synchronize generated frontend bundle
+        run: python tools/sync_frontend.py
       - run: npm ci
       - name: Verify 3D visual smoke
         run: node tests/visual/world-interactions.cjs
@@ -35,5 +37,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           rm .github/workflows/fix-world3d-pointer-temp.yml tools/_fix_world3d_visual.py
           git add -A
-          git commit -m 'test(world3d): cover embedded TV and passive overlays'
+          git commit -m 'fix(world3d): keep third-person interactions and embedded TV stable'
           git push origin HEAD:fix/world3d-combat-youtube-tv
