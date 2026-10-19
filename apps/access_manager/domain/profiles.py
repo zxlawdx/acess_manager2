@@ -19,6 +19,8 @@ class NetworkProfile:
     wifi: dict[str, Any] = field(default_factory=dict)
     dns: dict[str, Any] = field(default_factory=dict)
     dhcp: dict[str, Any] = field(default_factory=dict)
+    wan: dict[str, Any] = field(default_factory=dict)
+    firewall: dict[str, Any] = field(default_factory=dict)
     extensions: dict[str, Any] = field(default_factory=dict, repr=False)
 
     @classmethod
@@ -33,7 +35,7 @@ class NetworkProfile:
             ]
             if legacy:
                 wifi['radios'] = legacy
-        known = {'name', 'description', 'wifi', 'dns', 'dhcp', 'extensions'}
+        known = {'name', 'description', 'wifi', 'dns', 'dhcp', 'wan', 'firewall', 'extensions'}
         extensions = deepcopy(value.get('extensions') or {})
         extensions.update({key: deepcopy(item) for key, item in value.items() if key not in known})
         return cls(
@@ -42,6 +44,8 @@ class NetworkProfile:
             wifi=wifi,
             dns=deepcopy(value.get("dns") or {}),
             dhcp=deepcopy(value.get("dhcp") or {}),
+            wan=deepcopy(value.get("wan") or extensions.pop("wan", {}) or {}),
+            firewall=deepcopy(value.get("firewall") or extensions.pop("firewall", {}) or {}),
             extensions=extensions,
         )
 
@@ -53,6 +57,8 @@ class NetworkProfile:
             "wifi": deepcopy(self.wifi),
             "dns": deepcopy(self.dns),
             "dhcp": deepcopy(self.dhcp),
+            "wan": deepcopy(self.wan),
+            "firewall": deepcopy(self.firewall),
         }
 
 

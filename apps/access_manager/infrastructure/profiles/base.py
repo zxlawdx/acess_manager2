@@ -70,4 +70,9 @@ class BaseProfileTranslator:
                 label="DHCP",
             ))
 
+        for connection in profile.wan.get('connections') or []:
+            if connection.get('id') is not None and connection.get('config'):
+                operations.append(ProfileOperation(feature='configuration_surfaces', method='set_profile_wan', args=(connection,), label='WAN '+str(connection['id'])))
+        if profile.firewall:
+            operations.append(ProfileOperation(feature='firewall', method='set_firewall', args=(dict(profile.firewall),), label='Firewall'))
         return operations

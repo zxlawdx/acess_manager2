@@ -67,3 +67,5 @@
 @media(max-width:780px){#world-combat{top:54px;max-width:94%;font-size:11px}.world-combat-actions button{font-size:10px;padding:5px}.world-youtube-result{grid-template-columns:90px 1fr}.world-youtube-result img{width:90px}}
 
 .world-experience-ui>.world-crosshair,.world-experience-ui>#world-connection,.world-experience-ui>#world-speech{pointer-events:none}
+
+#world-camera-status{position:absolute;bottom:12px;left:12px;pointer-events:none;font-size:12px;max-width:calc(100% - 24px)}

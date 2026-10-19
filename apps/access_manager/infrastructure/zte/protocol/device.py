@@ -354,7 +354,7 @@ class ZTE:
                 "rssi": cliente.get("RSSI"),
                 "snr": cliente.get("SNR"),
                 "noise": cliente.get("NOISE"),
-                "modo": cliente.get("CurrentMode"),
+                "modo": next((cliente[k] for k in ("CurrentMode","sta_mode","Mode","Standard","OperatingStandard","PhyMode","PHYMode") if cliente.get(k)), None),
                 "largura": cliente.get("BAND"),
                 "mcs": cliente.get("MCS"),
                 "rx_rate": cliente.get("RxRate"),

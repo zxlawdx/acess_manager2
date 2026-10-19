@@ -237,9 +237,9 @@ def clients(zte, feature):
                 id=first('_InstID','InstanceID','ID'),connection_type=kind,
                 interface=first('Interface','Layer2Interface','InterfaceName','PhyPortName','Port'),
                 ssid=first('ESSID','SSID'),band=first('Band'),rssi=first('RSSI'),snr=first('SNR'),
-                rx_rate=first('RxRate'),tx_rate=first('TxRate'),link_time=first('LinkTime'),
+                rx_rate=first('RxRate','RXRate'),tx_rate=first('TxRate','TXRate'),link_time=first('LinkTime'),
                 rx_bytes=first('RXBytes'),tx_bytes=first('TXBytes'),
-                noise=first('Noise'),mode=first('Mode'),bandwidth=first('BandWidth','Bandwidth'),mcs=first('MCS'),connect_time=first('ConnectTime'),
+                noise=first('Noise','NOISE'),mode=first('CurrentMode','sta_mode','Mode','Standard','OperatingStandard','PhyMode','PHYMode'),bandwidth=first('BandWidth','Bandwidth'),mcs=first('MCS'),connect_time=first('ConnectTime'),
                 source_endpoint=candidate.tag,source_object=name,source_kind=feature,
                 presence='known_lease' if feature == 'dhcp_leases' else 'observed_access_list'))
     return result

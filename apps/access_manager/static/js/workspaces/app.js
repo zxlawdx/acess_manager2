@@ -39,7 +39,7 @@ const juniperRoutes=Object.fromEntries(Object.keys(juniper.titles).map(key=>[key
 const views = {
   ...juniperRoutes,overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
   traffic, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
-  wan:{render:network.wan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
+  wan:{render:network.wan,mount:network.mountWan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
 };
 
 function syncContext() {

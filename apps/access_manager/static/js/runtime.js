@@ -100,7 +100,7 @@
   function clientDiagnostic(e) {
     const d = object(e.data), c = object(d.cliente || d.client || d);
     const tests2 = Array.isArray(d.testes) ? d.testes : [], p = tests2.find((t) => /^Ping a partir/.test(t.teste || ""))?.resultado;
-    return join([`${e.result === "Dados observados" ? "Registradas informações" : "Diagnóstico específico realizado"} no dispositivo ${scalar(e.target) || scalar(c.Hostname) || "selecionado"}.`, ...["Hostname", "IPv4", "IPv6", "IP", "MAC", "Banda", "SSID", "Interface"].map((k) => line(k, c[k])), line("RSSI", c.RSSI, " dBm"), line("SNR", c.SNR, " dB"), p ? ping(p, c.IP || c.IPv4) : "", number(c, "RSSI") !== void 0 ? Number(c.RSSI) < -70 ? "Sinal fraco no momento da leitura; distância ou interferência podem estar contribuindo." : "Sinal adequado no momento da leitura; isso não comprova acesso à internet." : "", tests2.some((t) => t.teste === "Tabela de clientes" && t.resultado === "Presente") ? "Dispositivo presente na tabela de clientes." : "", tests2.some((t) => t.teste === "Tabela de clientes" && t.resultado === "Ausente") ? "Dispositivo ausente na tabela consultada." : "", p && number(p, "received") === 0 ? "A ausência de resposta pode decorrer de firewall, isolamento ou standby." : "", ...tests2.filter((t) => t.teste === "Ping" && typeof t.resultado === "string").map((t) => `Ping não concluído: ${t.resultado}`)]);
+    return join([`${e.result === "Dados observados" ? "Registradas informações" : "Diagnóstico específico realizado"} no dispositivo ${scalar(e.target) || scalar(c.Hostname) || "selecionado"}.`, ...["Hostname", "IPv4", "IPv6", "IP", "MAC", "Banda", "SSID", "Interface", "Padrão Wi-Fi", "Ruído", "MCS", "Largura do canal", "Taxa RX", "Taxa TX", "Canal do rádio", "Tempo conectado"].map((k) => line(k, c[k])), line("RSSI", c.RSSI, " dBm"), line("SNR", c.SNR, " dB"), String(c["Padrão Wi-Fi"] || "").startsWith("Wi-Fi 5") ? "Cliente negociou Wi-Fi 5 (802.11ac); isso pode limitar throughput em relação ao Wi-Fi 6, mas não comprova falha." : "", p ? ping(p, c.IP || c.IPv4) : "", number(c, "RSSI") !== void 0 ? Number(c.RSSI) < -70 ? "Sinal fraco no momento da leitura; distância ou interferência podem estar contribuindo." : "Sinal adequado no momento da leitura; isso não comprova acesso à internet." : "", tests2.some((t) => t.teste === "Tabela de clientes" && t.resultado === "Presente") ? "Dispositivo presente na tabela de clientes." : "", tests2.some((t) => t.teste === "Tabela de clientes" && t.resultado === "Ausente") ? "Dispositivo ausente na tabela consultada." : "", p && number(p, "received") === 0 ? "A ausência de resposta pode decorrer de firewall, isolamento ou standby." : "", ...tests2.filter((t) => t.teste === "Ping" && typeof t.resultado === "string").map((t) => `Ping não concluído: ${t.resultado}`)]);
   }
   var pathFor = (e) => e.path || { "Identificação do equipamento": "/api/device", "Leitura WAN": "/api/device/wan", "Sinal óptico": "/api/device/optical", "Clientes observados": "/api/device/clients", "Consulta de assinante": "/api/infrastructure/subscribers/lookup", "Ping": "/api/device/diagnostics/ping", "Traceroute": "/api/device/diagnostics/traceroute", "Acesso CPE": "/api/infrastructure/subscribers/connect-cpe", system: "/api/infrastructure/system", resources: "/api/infrastructure/resources", interfaces: "/api/infrastructure/interfaces" }[e.action] || "";
   function humanEvent(e, { secrets = false } = {}) {
@@ -1072,7 +1072,7 @@
   }
   function normalizeSettings(raw = {}) {
     if (!raw || typeof raw !== "object") raw = {};
-    return { version: 1, scene: ["aero", "office", "arena"].includes(raw.scene) ? raw.scene : "aero", hud: ["visible", "auto", "hidden"].includes(raw.hud) ? raw.hud : "auto", tts: raw.tts === true, debug: raw.debug === true, tutorialSeen: raw.tutorialSeen === true, repeat: ["off", "track", "playlist"].includes(raw.repeat) ? raw.repeat : "playlist", shuffle: raw.shuffle === true, order: ["name", "path", "date"].includes(raw.order) ? raw.order : "name", recursive: raw.recursive !== false, rememberMusic: raw.rememberMusic === true, lastTrack: String(raw.lastTrack || ""), position: Number.isFinite(Number(raw.position)) ? Math.max(0, Number(raw.position)) : 0, youtube: String(raw.youtube || "").slice(0, 400), profanity: ["off", "moderado", "livre/local"].includes(raw.profanity) ? raw.profanity : "off", arenaDifficulty: ["easy", "normal"].includes(raw.arenaDifficulty) ? raw.arenaDifficulty : "normal", dialogue: normalizeDialogue(raw.dialogue) };
+    return { version: 1, cameras: Object.fromEntries(["aero", "office", "arena"].filter((k) => ["first", "third"].includes(raw.cameras?.[k])).map((k) => [k, raw.cameras[k]])), scene: ["aero", "office", "arena"].includes(raw.scene) ? raw.scene : "aero", hud: ["visible", "auto", "hidden"].includes(raw.hud) ? raw.hud : "auto", tts: raw.tts === true, debug: raw.debug === true, tutorialSeen: raw.tutorialSeen === true, repeat: ["off", "track", "playlist"].includes(raw.repeat) ? raw.repeat : "playlist", shuffle: raw.shuffle === true, order: ["name", "path", "date"].includes(raw.order) ? raw.order : "name", recursive: raw.recursive !== false, rememberMusic: raw.rememberMusic === true, lastTrack: String(raw.lastTrack || ""), position: Number.isFinite(Number(raw.position)) ? Math.max(0, Number(raw.position)) : 0, youtube: String(raw.youtube || "").slice(0, 400), profanity: ["off", "moderado", "livre/local"].includes(raw.profanity) ? raw.profanity : "off", arenaDifficulty: ["easy", "normal"].includes(raw.arenaDifficulty) ? raw.arenaDifficulty : "normal", dialogue: normalizeDialogue(raw.dialogue) };
   }
   function readWorldSettings() {
     let raw = {};
@@ -1142,10 +1142,10 @@
     const input = String(value2 || "").trim();
     return /^[\w-]{11}$/.test(input) || /^(PL|UU|OLAK5uy_)[\w-]{10,}$/.test(input) || /^https?:\/\//i.test(input);
   }
-  async function searchYouTube(query2) {
+  async function searchYouTube(query2, { signal } = {}) {
     const q = String(query2 || "").trim();
     if (q.length < 2) throw new Error("Digite pelo menos 2 caracteres para pesquisar no YouTube.");
-    const res = await fetch(new URL("/api/media/youtube/search", location.origin), { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: q }) });
+    const res = await fetch(new URL("/api/media/youtube/search", location.origin), { signal, method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: q }) });
     let data = {};
     try {
       data = await res.json();
@@ -1244,16 +1244,18 @@
 
   // apps/access_manager/static/js/world/experience.js
   function mountWorldExperience({ host, shell, audio, getWorld, isActive, exit, openTerminal, notice }) {
+    const lifecycle = new AbortController();
+    const listen = (target, type, callback, capture = false) => target.addEventListener(type, callback, { signal: lifecycle.signal, capture });
     let settings = readWorldSettings(), dialogue = new DialogueManager(settings.dialogue), idleAt = 0, lastMusicSave = 0, libraryGeneration = 0;
     const save = () => {
-      settings = writeWorldSettings(settings);
+      settings = writeWorldSettings({ ...settings, cameras: readWorldSettings().cameras });
     };
     const root2 = document.createElement("div");
     root2.className = "world-experience-ui";
     root2.innerHTML = `
   <span class="world-crosshair" aria-hidden="true">+</span>
   <button id="world-menu-button" class="world-compact" type="button">☰ Menu · Esc</button>
-  <span id="world-connection" class="world-compact">● Sessão conectada</span>
+  <output id="world-camera-status" class="world-compact">Câmera: Primeira pessoa · V</output><span id="world-connection" class="world-compact">● Sessão conectada</span>
   <output id="world-speech" role="status" hidden></output>
   <div id="world-combat" hidden><output id="world-combat-status"></output><div class="world-combat-actions"><button type="button" data-combat-action="light">J · Soco</button><button type="button" data-combat-action="heavy">K · Golpe forte</button><button type="button" data-combat-action="block">B · Bloquear</button><button type="button" data-combat-action="dodge">Q · Esquivar</button><button type="button" data-combat-action="taunt">T · Provocar</button><button type="button" data-combat-action="reset">R · Revanche</button></div></div>
   <dialog id="world-menu" class="world-dialog"><div class="world-dialog-head"><h2>Access World</h2><button data-world-close type="button">Voltar · Esc</button></div>
@@ -1288,7 +1290,12 @@
   </dialog>`;
     host.append(root2);
     const $ = (id) => root2.querySelector("#" + id), dialogs = [...root2.querySelectorAll("dialog")], tv = new YouTubeTV(null, $("world-tv-status"));
-    let speechTimer, lastTtsAt = 0;
+    let speechTimer, lastTtsAt = 0, searchController;
+    const abortSearch = () => {
+      searchController?.abort();
+      searchController = null;
+    };
+    $("world-tv").addEventListener("close", abortSearch, { signal: lifecycle.signal });
     function speak(trigger, preview = false) {
       if (!isActive() && !preview) return;
       const text2 = dialogue.choose(trigger, { preview, profanity: settings.profanity });
@@ -1660,7 +1667,10 @@
           await playYouTubeSelection(value2);
           return;
         }
-        const results = await searchYouTube(value2);
+        abortSearch();
+        searchController = new AbortController();
+        const results = await searchYouTube(value2, { signal: searchController.signal });
+        if (!isActive() || !$("world-tv").open) return;
         paintYouTubeResults(results);
         $("world-tv-status").textContent = results.length ? `${results.length} resultado(s). Escolha um vídeo para reproduzir na TV 3D.` : "Nenhum vídeo encontrado.";
       } catch (error) {
@@ -1697,8 +1707,8 @@
       }
       idleAt = Date.now();
     };
-    document.addEventListener("keydown", keydown, true);
-    host.addEventListener("world-interaction", (e) => {
+    listen(document, "keydown", keydown, true);
+    listen(host, "world-interaction", (e) => {
       switch (e.detail.kind) {
         case "dialogue":
           speak(e.detail.trigger);
@@ -1731,20 +1741,20 @@
       }
     });
     let connected = false;
-    document.addEventListener("app-context-ready", () => {
+    listen(document, "app-context-ready", () => {
       const next = Boolean(window.__amStore?.session?.connected);
       if (next !== connected) {
         speak(next ? "device_connected" : "device_disconnected");
         connected = next;
       }
     });
-    document.addEventListener("world-operation", (e) => {
+    listen(document, "world-operation", (e) => {
       if (!isActive() || getWorld()?.environmentSystem?.sceneId === "arena") return;
       const { stage, path: path2, ok } = e.detail;
       if (/diagnostic/.test(path2)) speak(stage === "start" ? "diagnostic_started" : ok ? "diagnostic_ok" : "diagnostic_failed");
       if (stage === "end" && ok && e.detail.passwordChanged) speak("password_changed");
     });
-    document.addEventListener("service-log-copied", () => speak("service_log_copied"));
+    listen(document, "service-log-copied", () => speak("service_log_copied"));
     function telemetry() {
       if (!isActive()) return;
       const snap = window.__amStore?.snapshot;
@@ -1760,7 +1770,7 @@
         if (state2 !== "online") speak(state2);
       }
     }
-    document.addEventListener("device-snapshot", telemetry);
+    listen(document, "device-snapshot", telemetry);
     applyHUD();
     if (settings.rememberMusic) loadMusicLibrary().then((items) => {
       if (!items.length || audio.playlist.items.length) return;
@@ -1781,6 +1791,7 @@
         show("world-menu");
       }
     }, exited() {
+      abortSearch();
       speak("world_exit");
       persistTrack();
       closeDialogs();
@@ -1802,9 +1813,12 @@
         document.querySelector("#world-debug").textContent += ` · ${detail.drawCalls ?? "?"} draws · ${detail.triangles ?? "?"} tris · ${detail.loadedAssets ?? 0} GLB · ${detail.memory?.geometries ?? "?"} geometrias`;
       }
     }, dispose() {
+      abortSearch();
+      lifecycle.abort();
       clearTimeout(speechTimer);
       tv.destroy();
-      document.removeEventListener("keydown", keydown, true);
+      audio.onChange = oldChange;
+      root2.remove();
     } };
   }
 
@@ -2945,9 +2959,18 @@
     topology: () => topology
   });
 
+  // apps/access_manager/static/js/shared/wifi-standard.js
+  var wifiStandard = (r) => r.wifi_standard ? `${r.wifi_generation ? "Wi-Fi " + r.wifi_generation + " · " : ""}${r.wifi_standard}` : "Não informado";
+
   // apps/access_manager/static/js/service/client-diagnostic.js
   function clientObservations(client, present2, ping2) {
     const observations = [];
+    if (client.wifi_standard) observations.push("Cliente negociou " + wifiStandard(client) + ".");
+    if (client.wifi_generation === 5) observations.push("Wi-Fi 5 pode limitar throughput em relação ao Wi-Fi 6, mas não comprova falha.");
+    const rates = [client.rx_rate, client.tx_rate].map(Number).filter((v) => Number.isFinite(v) && v > 0);
+    const low = rates.length && Math.min(...rates) < 30;
+    if (low && Number(client.rssi) >= -65) observations.push("Sinal adequado com taxa baixa: investigar largura do canal, MCS, interferência e congestionamento.");
+    if (low && client.wifi_generation === 4 && /2[.,]4/.test(client.band || client.banda || "") && Number(client.rssi) < -70) observations.push("Wi-Fi 4 em 2.4 GHz, RSSI fraco e taxa baixa: combinação que pode ser um gargalo.");
     const rssi = Number(client.rssi);
     if (client.rssi != null && Number.isFinite(rssi)) observations.push(rssi < -70 ? "RSSI fraco: possível distância ou interferência; confirmar no local." : "RSSI adequado; não comprova qualidade da conexão nem exclui interferência.");
     if (present2 === false) observations.push("Ausente na tabela atual; pode não estar conectado ao SSID esperado.");
@@ -2955,7 +2978,7 @@
     if (ping2 === false && present2 === true) observations.push("Sem resposta ao ping: firewall, isolamento ou standby são possibilidades.");
     return observations.join(" ");
   }
-  var details = (r) => ({ Hostname: r.hostname || r.nome, IPv4: r.ip || r.ipv4, IPv6: Array.isArray(r.ipv6_addresses) ? r.ipv6_addresses.join(", ") : r.ipv6_addresses || r.ipv6, MAC: r.mac, Banda: r.band || r.banda, SSID: r.ssid, Interface: r.interface || r.port, RSSI: r.rssi, SNR: r.snr, "RX bytes": r.rx_bytes, "TX bytes": r.tx_bytes, "Taxa RX": r.rx_rate, "Taxa TX": r.tx_rate, "Tempo conectado": r.uptime || r.connected_time, Fabricante: r.manufacturer || r.vendor, Estado: r.status ?? r.online, Lease: r.lease });
+  var details = (r) => ({ Hostname: r.hostname || r.nome, IPv4: r.ip || r.ipv4, IPv6: Array.isArray(r.ipv6_addresses) ? r.ipv6_addresses.join(", ") : r.ipv6_addresses || r.ipv6, MAC: r.mac, "Padrão Wi-Fi": wifiStandard(r), "Ruído": r.noise, MCS: r.mcs, "Largura do canal": r.bandwidth || r.largura, "Canal do rádio": r.radio_channel ?? r.channel, Banda: r.band || r.banda, SSID: r.ssid, Interface: r.interface || r.port, RSSI: r.rssi, SNR: r.snr, "RX bytes": r.rx_bytes, "TX bytes": r.tx_bytes, "Taxa RX": r.rx_rate, "Taxa TX": r.tx_rate, "Tempo conectado": r.uptime || r.connected_time || r.connect_time, Fabricante: r.manufacturer || r.vendor, Estado: r.status ?? r.online, Lease: r.lease });
   function openClientDiagnostic(client) {
     const target = client.hostname || client.nome || client.ip || client.mac || "Cliente";
     const d = dialog("Diagnóstico do dispositivo", `${kv(details(client))}<div class="inline-actions"><button class="button primary" data-test-client>Diagnosticar dispositivo / Testar conexão</button><button class="button" data-add-client>Adicionar ao atendimento</button><button class="button" data-find-client>Localizar no mundo</button></div><div data-client-result role="status"></div>`);
@@ -3007,7 +3030,10 @@
             const list2 = Array.isArray(radios2) ? radios2 : radios2?.radios || [];
             const band2 = current.band || current.banda;
             const radio = band2 ? list2.find((r) => String(r.band || r.banda).replace(/[^0-9.]/g, "") === String(band2).replace(/[^0-9.]/g, "")) : null;
-            if (radio) tests2.push({ teste: "Rádio relacionado", banda: band2, canal: radio.channel ?? radio.canal, largura: radio.bandwidth ?? radio.largura });
+            if (radio) {
+              current = { ...current, radio_channel: radio.channel ?? radio.canal };
+              tests2.push({ teste: "Rádio relacionado", banda: band2, canal: radio.channel ?? radio.canal, largura: radio.bandwidth ?? radio.largura });
+            }
           } catch (error) {
             tests2.push({ teste: "Rádio", resultado: error.message });
           }
@@ -3033,9 +3059,9 @@
   };
   var connection = (r) => pick2(r, "connection_type", "tipo", "interface");
   var band = (r) => pick2(r, "band", "banda");
-  var columns = [{ label: "Status", render: status2 }, { label: "Hostname", render: (r) => `<button class="icon-button" data-client="${rows2.indexOf(r)}">${esc(pick2(r, "hostname", "nome"))}</button>` }, { label: "IPv4", keys: ["ip", "ipv4"] }, { label: "IPv6", keys: ["ipv6"] }, { label: "MAC", keys: ["mac"] }, { label: "Conexão", render: connection }, { label: "SSID / porta", keys: ["ssid", "port", "interface"] }, { label: "Banda", render: band }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }, { label: "RX / TX", render: (r) => `${esc(pick2(r, "rx_rate"))} / ${esc(pick2(r, "tx_rate"))}` }];
+  var columns = [{ label: "Status", render: status2 }, { label: "Hostname", render: (r) => `<button class="icon-button" data-client="${rows2.indexOf(r)}">${esc(pick2(r, "hostname", "nome"))}</button>` }, { label: "IPv4", keys: ["ip", "ipv4"] }, { label: "IPv6", keys: ["ipv6"] }, { label: "MAC", keys: ["mac"] }, { label: "Conexão", render: connection }, { label: "SSID / porta", keys: ["ssid", "port", "interface"] }, { label: "Banda", render: band }, { label: "Padrão Wi-Fi", render: (r) => esc(wifiStandard(r)) }, { label: "RSSI", keys: ["rssi"] }, { label: "SNR", keys: ["snr"] }, { label: "RX / TX", render: (r) => `${esc(pick2(r, "rx_rate"))} / ${esc(pick2(r, "tx_rate"))}` }];
   function cards(data) {
-    return `<div class="client-cards">${data.map((r) => `<button class="client-card" data-client="${rows2.indexOf(r)}"><strong>${esc(pick2(r, "hostname", "nome"))}</strong><span class="mono tech-address">${esc(pick2(r, "ip"))}</span><small>${esc(connection(r))} · ${esc(band(r))}</small>${status2(r)}</button>`).join("")}</div>`;
+    return `<div class="client-cards">${data.map((r) => `<button class="client-card" data-client="${rows2.indexOf(r)}"><strong>${esc(pick2(r, "hostname", "nome"))}</strong><span class="mono tech-address">${esc(pick2(r, "ip"))}</span><small>${esc(connection(r))} · ${esc(band(r))}</small><small>${r.wifi_mode_family ? `<b>${esc(r.wifi_mode_family)}</b> · ` : ""}${esc(wifiStandard(r))}</small>${status2(r)}</button>`).join("")}</div>`;
   }
   function topology(data, device = "Equipamento", register = true) {
     if (register) rows2 = data;
@@ -3060,18 +3086,19 @@
     if (!Array.isArray(rows2)) rows2 = [];
     const ssids = [...new Set(rows2.map((r) => r.ssid).filter(Boolean))];
     const warnings = [...new Set(rows2.flatMap((r) => r.collection_warnings || []))];
-    return `${warnings.map((w) => `<p class="notice warning">${esc(w)}</p>`).join("")}<section class="panel"><div class="toolbar"><input id="client-search" placeholder="Buscar hostname, IP ou MAC" aria-label="Buscar clientes"><select id="client-filter" aria-label="Conexão"><option value="">Todas as conexões</option><option>Wi-Fi</option><option>Ethernet</option><option>Mesh</option></select><select id="client-band" aria-label="Banda"><option value="">Todas as bandas</option><option value="2.4">2.4 GHz</option><option value="5">5 GHz</option></select><select id="client-ssid" aria-label="SSID"><option value="">Todos os SSIDs</option>${ssids.map((s) => `<option>${esc(s)}</option>`).join("")}</select><select id="client-view" aria-label="Visualização"><option value="table">Tabela</option><option value="cards">Cards</option><option value="topology">Topologia</option></select></div><div id="client-results"></div></section>`;
+    return `${warnings.map((w) => `<p class="notice warning">${esc(w)}</p>`).join("")}<section class="panel"><div class="toolbar"><input id="client-search" placeholder="Buscar hostname, IP ou MAC" aria-label="Buscar clientes"><select id="client-filter" aria-label="Conexão"><option value="">Todas as conexões</option><option>Wi-Fi</option><option>Ethernet</option><option>Mesh</option></select><select id="client-band" aria-label="Banda"><option value="">Todas as bandas</option><option value="2.4">2.4 GHz</option><option value="5">5 GHz</option></select><select id="client-ssid" aria-label="SSID"><option value="">Todos os SSIDs</option>${ssids.map((s) => `<option>${esc(s)}</option>`).join("")}</select><select id="client-standard" aria-label="Padrão Wi-Fi"><option value="">Todos os padrões Wi-Fi</option><option value="4">Wi-Fi 4 / N</option><option value="5">Wi-Fi 5 / AC</option><option value="6">Wi-Fi 6 / AX</option><option value="7">Wi-Fi 7 / BE</option><option value="unknown">Não informado</option></select><select id="client-view" aria-label="Visualização"><option value="table">Tabela</option><option value="cards">Cards</option><option value="topology">Topologia</option></select></div><div id="client-results"></div></section>`;
   }
   function mount() {
     const paint = () => {
       const q = document.querySelector("#client-search").value.toLowerCase(), type = document.querySelector("#client-filter").value, b = document.querySelector("#client-band").value, ssid = document.querySelector("#client-ssid").value, view = document.querySelector("#client-view").value;
-      const filtered = rows2.filter((r) => (!q || [r.hostname, r.ip, r.ipv6, r.mac].some((v) => String(v || "").toLowerCase().includes(q))) && (!type || String(connection(r)).includes(type)) && (!b || String(band(r)).replace(",", ".").includes(b)) && (!ssid || r.ssid === ssid));
+      const standard = document.querySelector("#client-standard").value;
+      const filtered = rows2.filter((r) => (!standard || (standard === "unknown" ? !r.wifi_standard : String(r.wifi_generation) === standard)) && (!q || [r.hostname, r.ip, r.ipv6, r.mac].some((v) => String(v || "").toLowerCase().includes(q))) && (!type || String(connection(r)).includes(type)) && (!b || String(band(r)).replace(",", ".").includes(b)) && (!ssid || r.ssid === ssid));
       const all = rows2;
       document.querySelector("#client-results").innerHTML = view === "table" ? table(columns, filtered) : view === "cards" ? cards(filtered) : topology(filtered, "Equipamento", false);
       rows2 = all;
       mountDetails();
     };
-    document.querySelectorAll("#client-search,#client-filter,#client-band,#client-ssid,#client-view").forEach((e) => e.addEventListener("input", paint));
+    document.querySelectorAll("#client-search,#client-filter,#client-band,#client-ssid,#client-standard,#client-view").forEach((e) => e.addEventListener("input", paint));
     paint();
   }
 
@@ -3327,11 +3354,41 @@
     patch(host, template.content);
   }
 
+  // apps/access_manager/static/js/shared/field-spec.js
+  var firewallLevels = [{ value: "Low", label: "Baixo" }, { value: "Middle", label: "Médio (recomendado)" }, { value: "High", label: "Alto" }];
+  function fieldControl(f) {
+    const control = f.control || (f.secret ? "password" : f.options ? "select" : f.type === "bool" ? "boolean" : f.type || "text");
+    const options = control === "boolean" ? [{ value: "true", label: "Habilitado" }, { value: "false", label: "Desabilitado" }] : f.options;
+    let value2 = control === "boolean" ? String(f.value === true || f.value === 1 || f.value === "1" || f.value === "true") : String(f.value ?? "");
+    if (typeof f.value === "boolean" && options?.some((o) => o.value === "1")) value2 = f.value ? "1" : "0";
+    const attrs = `name="${esc(f.key)}" ${f.disabled || options && options.length === 0 ? "disabled" : ""} ${f.required ? "required" : ""}`;
+    if (options || control === "select") return `<select ${attrs}>${(options || []).some((o) => String(o.value) === value2) ? "" : `<option value="" disabled selected>Não informado pelo equipamento</option>`}${(options || []).map((o) => `<option value="${esc(o.value)}" ${String(o.value) === value2 ? "selected" : ""}>${esc(o.label ?? o.value)}</option>`).join("")}</select>`;
+    return `<input ${attrs} type="${["password", "number"].includes(control) ? control : control === "vlan" ? "number" : "text"}" value="${f.secret ? "" : esc(value2)}" autocomplete="${f.secret ? "new-password" : "off"}" ${["min", "max", "step", "placeholder"].filter((k) => f[k] != null).map((k) => `${k}="${esc(f[k])}"`).join(" ")}>`;
+  }
+  function bindFieldConditions(form, fields3) {
+    const update = () => {
+      for (const f of fields3) {
+        if (!f.visibleWhen) continue;
+        const condition = f.visibleWhen, source = fields3.find((s) => condition.key && s.key === condition.key || condition.intent_key && s.intent_key === condition.intent_key), parent = source && form.elements.namedItem(source.key), input = form.elements.namedItem(f.key), container = input?.closest(".field");
+        if (!parent || !container) continue;
+        const hidden = !(condition.values || [condition.equals]).map(String).includes(String(parent.value));
+        container.hidden = hidden;
+        const checkbox2 = container.querySelector("[data-change]");
+        if (checkbox2) checkbox2.disabled = hidden || Boolean(f.disabled);
+        input.disabled = hidden || Boolean(f.disabled) || checkbox2 && !checkbox2.checked;
+      }
+    };
+    form.addEventListener("input", update);
+    form.addEventListener("change", update);
+    update();
+    return update;
+  }
+
   // apps/access_manager/static/js/shared/forms.js
   function editConfig(title, path2, fields3, extra = {}) {
     const serviceId = service.activeSession, operationRoute = window.__amStore?.view;
     const supported = fields3.filter((f) => f.value !== void 0 && f.value !== null && f.value !== "—");
-    const d = dialog(title, `<form class="form-grid">${supported.map((f) => `<div class="field"><label>${esc(f.label)}</label>${f.options ? `<select name="${esc(f.key)}" ${f.options.length ? "" : "disabled"}><option value="${esc(f.value)}">${esc(f.value)}</option>${f.options.filter((o) => String(o.value) !== String(f.value)).map((o) => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join("")}</select>` : f.type === "bool" ? `<select name="${esc(f.key)}"><option value="true" ${f.value === true || f.value === "1" ? "selected" : ""}>Ativo</option><option value="false" ${f.value === false || f.value === "0" ? "selected" : ""}>Inativo</option></select>` : `<input name="${esc(f.key)}" value="${esc(f.value)}" type="${f.type || "text"}">`}</div>`).join("")}<div class="dialog-footer"><button class="button primary">Aplicar alterações</button></div></form>`);
+    const d = dialog(title, `<form class="form-grid">${supported.map((f) => `<div class="field"><label>${esc(f.label)}</label>${fieldControl(f)}${f.help ? `<small>${esc(f.help)}</small>` : ""}</div>`).join("")}<div class="dialog-footer"><button class="button primary">Aplicar alterações</button></div></form>`);
     let oldPassword = "Não disponível neste firmware/login";
     let closed = false;
     const isWifi = path2 === "/api/device/wifi/ssid";
@@ -3360,21 +3417,24 @@
     };
     const form = d.querySelector("form");
     const original = new FormData(form);
+    bindFieldConditions(form, supported);
     let submitting = false;
     form.onsubmit = async (e) => {
       e.preventDefault();
       if (submitting) return;
       const values = new FormData(form), config = {};
       for (const f of supported) {
+        if (form.elements.namedItem(f.key)?.disabled) continue;
         if (values.get(f.key) !== original.get(f.key)) {
           const v = values.get(f.key);
-          config[f.key] = f.options ? String(v) : f.type === "bool" ? v === "true" : f.type === "number" ? Number(v) : String(v);
+          config[f.key] = f.options ? String(v) : f.type === "bool" || f.control === "boolean" ? v === "true" : f.type === "number" || f.control === "number" || f.control === "vlan" ? Number(v) : String(v);
         }
       }
       if (!Object.keys(config).length) {
         toast("Nenhuma alteração.");
         return;
       }
+      if (!window.confirm("Prévia das alterações\n" + Object.entries(config).map(([key, value2]) => `${supported.find((f) => f.key === key)?.label || key}: ${supported.find((f) => f.key === key)?.secret || key === "password" ? "Segredo temporário alterado" : `${original.get(key)} → ${value2}`}`).join("\n"))) return;
       const payload = extra.ssid_id ? { ssid_id: extra.ssid_id, config } : { ...extra, ...config };
       const b = form.querySelector("button");
       b.disabled = true;
@@ -3479,12 +3539,188 @@
     Promise.allSettled([load("ssids"), load("radios")]).then(() => timing("wifi.load.total", start));
   }
 
+  // apps/access_manager/static/js/shared/dns-presets.js
+  var dnsPresetKinds = ["Padrão da operadora", "Filtro adulto", "IPTV / operacional", "Personalizado"];
+  async function openDnsPresets() {
+    const d = dialog("Presets DNS", `<p>DNS upstream. O DNS distribuído via DHCP e os hosts estáticos são configurações separadas. Nenhum endereço é sugerido automaticamente.</p><div data-presets>Carregando presets…</div><form id="dns-preset-form" class="form-grid"><div class="field"><label>Categoria</label><select name="kind">${dnsPresetKinds.map((k) => `<option>${esc(k)}</option>`).join("")}</select></div><div class="field"><label>Nome</label><input name="name" required maxlength="100"></div><div class="field"><label>Descrição</label><input name="description" maxlength="400"></div>${["ipv4_1", "ipv4_2", "ipv6_1", "ipv6_2"].map((k) => `<div class="field"><label>${esc(k.replace("_", " · "))}</label><input name="${k}" autocomplete="off"></div>`).join("")}<button class="button" type="submit">Salvar preset</button></form><div data-preview></div>`);
+    d.classList.add("profile-dialog");
+    const host = d.querySelector("[data-presets]"), out = d.querySelector("[data-preview]");
+    let profiles2 = [];
+    async function load() {
+      profiles2 = (await request("/api/profiles", { scope: d._requestScope })).filter((p) => p.dns_preset);
+      if (!d.open) return;
+      host.innerHTML = `<div class="field"><label>Preset cadastrado</label><select data-preset><option value="">Selecione…</option>${profiles2.map((p, i) => `<option value="${i}">${esc(p.name)} · ${esc(p.dns_preset)}</option>`).join("")}</select></div><button type="button" class="button" data-prepare>Prévia do DNS</button>`;
+      host.querySelector("[data-prepare]").onclick = async () => {
+        const index = host.querySelector("select").value;
+        if (index === "") return;
+        const selected2 = profiles2[Number(index)], profile = { name: selected2.name, dns: selected2.dns };
+        try {
+          const p = await request("/api/profiles/preview", { scope: d._requestScope, method: "POST", body: JSON.stringify({ profile }) });
+          if (!d.open) return;
+          out.innerHTML = p.operations.map((op) => `<p>${esc(op.support)} · ${esc(op.evidence)} · ${op.will_apply ? "Aplicar" : "Pular"}</p>${table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["current"] }, { label: "Desejado", keys: ["desired"] }], op.changes)}`).join("") + `<p>A alteração pode interromper a resolução de nomes.</p><button type="button" class="button primary" ${p.applicable ? "" : "disabled"}>Confirmar e aplicar preset DNS</button>`;
+          out.querySelector("button").onclick = async (e) => {
+            e.currentTarget.disabled = true;
+            try {
+              const result = await request("/api/profiles/apply", { scope: d._requestScope, method: "POST", body: JSON.stringify({ profile }) });
+              if (d.open) out.textContent = `${result.verified} verificada(s), ${result.uncertain} incerta(s), ${result.failed} falha(s). Não reenviar automaticamente.`;
+            } catch (error) {
+              if (!isCancelled(error)) toast(error.message);
+            }
+          };
+        } catch (error) {
+          if (!isCancelled(error)) toast(error.message);
+        }
+      };
+    }
+    d.querySelector("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.currentTarget), dns = {};
+      for (const key of ["ipv4_1", "ipv4_2", "ipv6_1", "ipv6_2"]) {
+        const value2 = String(fd.get(key) || "").trim();
+        if (value2) dns[key] = value2;
+      }
+      if (!Object.keys(dns).length) {
+        toast("Cadastre pelo menos um endereço DNS.");
+        return;
+      }
+      const b = e.currentTarget.querySelector("button");
+      b.disabled = true;
+      try {
+        await request("/api/profiles", { scope: d._requestScope, method: "POST", body: JSON.stringify({ name: "DNS · " + String(fd.get("name")).trim(), description: String(fd.get("description") || ""), dns_preset: String(fd.get("kind")), dns }) });
+        await load();
+        toast("Preset DNS salvo.");
+      } catch (error) {
+        if (!isCancelled(error)) toast(error.message);
+      } finally {
+        b.disabled = false;
+      }
+    };
+    try {
+      await load();
+    } catch (error) {
+      if (d.open) host.textContent = error.message;
+    }
+  }
+
+  // apps/access_manager/static/js/shared/wan-preset.js
+  var standardWanPreset = { name: "internet_tr069", mode: "route", service_list: "INTERNET_TR069", mtu: "1492", link_mode: "PPP", transport_type: "PPPoE", auth_type: "Auto", trigger: "AlwaysOn", nat: "1", vlan_enabled: "1", vlan_id: "2000", priority: "0" };
+  function suggestWanPreset(form, fields3, inputName, checkName) {
+    for (const f of fields3) {
+      const key = f.intent_key;
+      if (!(key in standardWanPreset)) continue;
+      const input = form.elements.namedItem(inputName(f));
+      if (!input) continue;
+      const value2 = standardWanPreset[key];
+      if (input.tagName === "SELECT" && ![...input.options].some((o) => o.value === value2)) continue;
+      input.value = value2;
+      const check = form.querySelector(`[${checkName.attr}="${checkName.value(f)}"]`);
+      if (check && !check.disabled) check.checked = true;
+    }
+    form.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  // apps/access_manager/static/js/shared/configuration-surfaces.js
+  var surfaceHost = () => `<section class="panel"><h2>Configurações de rede e serviços</h2><p class="muted">Formulários específicos do firmware, com leitura, prévia e confirmação antes de aplicar.</p><div id="configuration-surfaces" role="status">Carregando configurações disponíveis…</div></section>`;
+  async function mountSurfaces() {
+    const host = document.querySelector("#configuration-surfaces");
+    if (!host) return;
+    const scope = currentScope();
+    try {
+      const catalog = await request("/api/device/configuration/catalog", { scope });
+      if (!scopeActive(scope) || !host.isConnected) return;
+      host.innerHTML = `<div class="field"><label>Configuração</label><select id="surface-feature"><option value="">Selecione…</option>${catalog.map((s) => `<option value="${esc(s.id)}">${esc(s.category)} · ${esc(s.title)}</option>`).join("")}</select></div><div id="surface-current"></div>`;
+      host.querySelector("select").onchange = async (event) => {
+        const feature = event.target.value, out = host.querySelector("#surface-current");
+        if (!feature) {
+          out.innerHTML = "";
+          return;
+        }
+        const stamp = feature;
+        out.innerHTML = '<p class="muted">Lendo configuração atual…</p>';
+        try {
+          const data = await request("/api/device/configuration/read", { scope, method: "POST", body: JSON.stringify({ feature }) });
+          if (!scopeActive(scope) || host.querySelector("select").value !== stamp) return;
+          out.innerHTML = (data.instances || []).map((row, i) => `<section class="panel"><h3>${esc(row.label)}</h3>${row.missing?.length ? `<p class="notice warning">Campos ainda não retornados pelo equipamento: ${row.missing.map(esc).join(", ")}.</p>` : ""}<button class="button" data-surface-instance="${i}">Editar / visualizar</button></section>`).join("") || '<p class="muted">Nenhuma instância reconhecida nesta sessão.</p>';
+          out.querySelectorAll("[data-surface-instance]").forEach((b) => b.onclick = () => editSurface(catalog.find((s) => s.id === feature), data.instances[Number(b.dataset.surfaceInstance)]));
+        } catch (e) {
+          if (scopeActive(scope) && !isCancelled(e) && host.querySelector("select").value === stamp) out.innerHTML = `<p class="notice warning">${esc(e.message)}</p>`;
+        }
+      };
+    } catch (e) {
+      if (scopeActive(scope) && !isCancelled(e)) host.textContent = e.message;
+    }
+  }
+  function editSurface(feature, row) {
+    const d = dialog(feature.title, `<div class="profile-content"><form id="surface-form"><p class="muted">Marque apenas os campos que deseja alterar. Campos não selecionados serão preservados.</p><div class="field"><label>Operação</label><select name="operation">${(row.actions || ["update"]).map((a) => `<option value="${a}">${{ update: "Editar", create: "Criar", delete: "Excluir" }[a]}</option>`).join("")}</select></div>${feature.id === "wan_crud" ? '<p><button type="button" class="button" data-wan-preset>Sugerir configuração padrão</button></p><p class="muted">Sugestão editável: internet_tr069, Routing, INTERNET_TR069, PPP/PPPoE, Auto, sempre ligado, MTU 1492, NAT, VLAN 2000/0. IPv6 mantém as opções atuais do firmware. Revise todos os valores antes de gerar a prévia.</p>' : ""}<div class="form-grid">${row.fields.map((f) => `<div class="field"><label><input type="checkbox" data-change="${esc(f.key)}" ${f.select && !f.options?.length ? "disabled" : ""}> ${esc(f.group ? f.group + " · " : "")}${esc(f.label)}</label>${fieldControl({ ...f, control: f.options?.length || f.select ? "select" : f.control || (f.secret ? "password" : "text") })}${f.help ? `<small>${esc(f.help)}</small>` : ""}</div>`).join("")}</div></form><div id="surface-preview"></div></div>`, `<button type="submit" form="surface-form" class="button primary">Gerar prévia</button>`);
+    d.classList.add("profile-dialog");
+    const form = d.querySelector("form");
+    const syncFields = () => {
+      for (const checkbox2 of form.querySelectorAll("[data-change]")) {
+        const input = form.elements.namedItem(checkbox2.dataset.change);
+        if (input) input.disabled = checkbox2.disabled || !checkbox2.checked;
+      }
+    };
+    syncFields();
+    form.addEventListener("input", syncFields);
+    form.addEventListener("change", syncFields);
+    bindFieldConditions(form, row.fields);
+    d.querySelector("[data-wan-preset]")?.addEventListener("click", () => suggestWanPreset(form, row.fields, (f) => f.key, { attr: "data-change", value: (f) => f.key }));
+    form.addEventListener("input", () => {
+      d.querySelector("#surface-preview").replaceChildren();
+    });
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const changes2 = {};
+      for (const checkbox2 of form.querySelectorAll("[data-change]:checked:not(:disabled)")) changes2[checkbox2.dataset.change] = form.elements.namedItem(checkbox2.dataset.change).value;
+      const out = d.querySelector("#surface-preview");
+      out.innerHTML = '<p class="muted">Preparando prévia…</p>';
+      try {
+        const preview = await request("/api/device/configuration/preview", { scope: d._requestScope, method: "POST", body: JSON.stringify({ feature: feature.id, instance: row.id, changes: changes2, action: form.elements.namedItem("operation").value }) });
+        if (!d.open) return;
+        out.innerHTML = table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["before"] }, { label: "Novo", keys: ["after"] }], preview.changes || []) + `<p class="notice warning">A alteração pode interromper a conexão. A prévia expira em ${esc(preview.expires_in_seconds)} segundos.</p><div class="field"><label>Digite APLICAR para confirmar</label><input id="surface-confirm" autocomplete="off"></div><button type="button" class="button danger" id="surface-apply">Aplicar configuração</button>`;
+        out.querySelector("button").onclick = async (e) => {
+          e.currentTarget.disabled = true;
+          try {
+            const result = await request("/api/device/configuration/apply", { scope: d._requestScope, method: "POST", body: JSON.stringify({ nonce: preview.nonce, confirmation: out.querySelector("input").value }) });
+            if (!d.open) return;
+            out.innerHTML = `<p class="notice ${result.uncertain ? "warning" : ""}">${esc(result.detail || result.message || (result.verified ? "Alteração verificada." : result.uncertain ? "Sem confirmação; não reenviar automaticamente." : "Comando enviado; verificação manual necessária."))}</p>`;
+            toast("Operação concluída. Confira o resultado.");
+          } catch (err) {
+            if (!isCancelled(err)) toast(err.message);
+          }
+        };
+      } catch (e) {
+        if (d.open && !isCancelled(e)) out.innerHTML = `<p class="notice warning">${esc(e.message)}</p>`;
+      }
+    };
+  }
+  async function mountWan() {
+    const host = document.querySelector("#wan-editor");
+    if (!host) return;
+    const scope = currentScope();
+    try {
+      const catalog = await request("/api/device/configuration/catalog", { scope });
+      const feature = catalog.find((f) => f.id === "wan_crud" || /wan/i.test(f.id) && f.category === "WAN");
+      if (!feature) {
+        host.textContent = "Somente leitura neste firmware/login";
+        return;
+      }
+      const data = await request("/api/device/configuration/read", { scope, method: "POST", body: JSON.stringify({ feature: feature.id }) });
+      if (!scopeActive(scope) || !host.isConnected) return;
+      const rows3 = (data.instances || []).filter((r) => r.id !== "new");
+      host.innerHTML = rows3.map((r, i) => `<section class="panel"><h3>${esc(r.label)}</h3><p class="muted">Estado atual · ${r.fields.filter((f) => !f.secret && f.value != null).slice(0, 8).map((f) => `${esc(f.label)}: ${esc(f.value)}`).join(" · ")}</p><button class="button" data-wan-edit="${i}">Editar conexão WAN / PPPoE</button></section>`).join("") || "Não disponível neste firmware/login.";
+      host.querySelectorAll("[data-wan-edit]").forEach((b) => b.onclick = () => editSurface(feature, { ...rows3[Number(b.dataset.wanEdit)], actions: ["update"] }));
+    } catch (e) {
+      if (scopeActive(scope) && !isCancelled(e)) host.textContent = e.message;
+    }
+  }
+
   // apps/access_manager/static/js/workspaces/views/network.js
   var dhcpData;
   var dnsData;
   async function wan() {
     const data = await request("/api/device/wan");
-    return data.map((r) => `<section class="panel"><h2>${esc(r.name || "Conexão WAN")}</h2><div class="split"><article><h3>Status da conexão</h3>${fields2([["Estado", r.status], ["Tipo", r.connection_type], ["IPv4", r.ipv4], ["IPv6", r.ipv6], ["Gateway", r.gateway], ["VLAN", r.vlan]])}</article><article><h3>Autenticação e rede</h3>${fields2([["Usuário PPPoE", r.username], ["Serviço", r.service], ["DNS", r.dns], ["MTU", r.mtu], ["NAT", bool(r.nat)], ["Uptime", r.uptime], ["Prefixo IPv6", r.prefix]])}</article></div>${fields2([["Recebido", formatBytes(r.rx_bytes)], ["Enviado", formatBytes(r.tx_bytes)]])}<details><summary>Detalhes técnicos</summary>${kv(r.advanced || {})}</details></section>`).join("");
+    return '<section class="panel"><h2>Editar WAN / PPPoE</h2><div id="wan-editor">Lendo formulários disponíveis…</div></section>' + data.map((r) => `<section class="panel"><h2>${esc(r.name || "Conexão WAN")}</h2><div class="split"><article><h3>Status da conexão</h3>${fields2([["Estado", r.status], ["Tipo", r.connection_type], ["IPv4", r.ipv4], ["IPv6", r.ipv6], ["Gateway", r.gateway], ["VLAN", r.vlan]])}</article><article><h3>Autenticação e rede</h3>${fields2([["Usuário PPPoE", r.username], ["Serviço", r.service], ["DNS", r.dns], ["MTU", r.mtu], ["NAT", bool(r.nat)], ["Uptime", r.uptime], ["Prefixo IPv6", r.prefix]])}</article></div>${fields2([["Recebido", formatBytes(r.rx_bytes)], ["Enviado", formatBytes(r.tx_bytes)]])}<details><summary>Detalhes técnicos</summary>${kv(r.advanced || {})}</details></section>`).join("");
   }
   async function lan() {
     const d = await request("/api/device/lan");
@@ -3500,9 +3736,10 @@
     if (!scopeActive(scope)) throw cancelled();
     dhcpData = results[0].status === "fulfilled" ? results[0].value : null;
     dnsData = results[1].status === "fulfilled" ? results[1].value : null;
-    return `<div class="split">${dhcpData ? `<section class="panel"><h2>DHCP</h2>${fields2([["Servidor", bool(dhcpData.enabled)], ["IP da LAN", dhcpData.lan_ip], ["Máscara", dhcpData.mask], ["Início do pool", dhcpData.pool_start], ["Fim do pool", dhcpData.pool_end], ["Lease (segundos)", dhcpData.lease_seconds], ["DNS primário", dhcpData.dns1], ["DNS secundário", dhcpData.dns2]])}</section>` : '<section class="panel">DHCP não disponível nesta sessão.</section>'}${dnsData ? `<section class="panel"><h2>DNS</h2>${fields2([["Domínio", dnsData.domain_name], ["DNS IPv4 primário", dnsData.ipv4_1], ["DNS IPv4 secundário", dnsData.ipv4_2], ["DNS IPv6 primário", dnsData.ipv6_1], ["DNS IPv6 secundário", dnsData.ipv6_2]])}</section>` : '<section class="panel">DNS não disponível nesta sessão.</section>'}</div><div class="toolbar"><button class="button" id="edit-dhcp" ${dhcpData && cap("dhcp").enabled?.write ? "" : "disabled"}>Editar DHCP</button><button class="button" id="edit-dns" ${dnsData && cap("dns").enabled?.write ? "" : "disabled"}>Editar DNS</button></div>${table([{ label: "Hostname", keys: ["hostname", "Name", "name"] }, { label: "IP", keys: ["ip", "IPAddr", "IPAddress"] }, { label: "MAC", keys: ["mac", "MACAddr", "MACAddress"] }], dhcpData?.leases || [], "Nenhum lease retornado.")}<section class="panel"><div class="panel-header"><h2>Reservas DHCP</h2><button id="new-reservation" class="button" ${cap("dhcp_reservations").enabled?.write ? "" : "disabled"}>Adicionar</button></div></section>${table([{ label: "Reserva", keys: ["name", "Name"] }, { label: "IP", keys: ["ip", "IPAddr"] }, { label: "MAC", keys: ["mac", "MACAddr"] }, { label: "Ações", render: (r) => cap("dhcp_reservations").enabled?.write ? `<div class="inline-actions"><button class="button" data-edit-reservation="${esc(r.id)}">Editar</button><button class="button danger" data-delete-reservation="${esc(r.id)}">Excluir</button></div>` : "Somente leitura" }], dhcpData?.reservations || [], "Nenhuma reserva retornada.")}${dnsHosts()}`;
+    return `<div class="split">${dhcpData ? `<section class="panel"><h2>DHCP</h2>${fields2([["Servidor", bool(dhcpData.enabled)], ["IP da LAN", dhcpData.lan_ip], ["Máscara", dhcpData.mask], ["Início do pool", dhcpData.pool_start], ["Fim do pool", dhcpData.pool_end], ["Lease (segundos)", dhcpData.lease_seconds], ["DNS primário", dhcpData.dns1], ["DNS secundário", dhcpData.dns2]])}</section>` : '<section class="panel">DHCP não disponível nesta sessão.</section>'}${dnsData ? `<section class="panel"><h2>DNS</h2>${fields2([["Domínio", dnsData.domain_name], ["DNS IPv4 primário", dnsData.ipv4_1], ["DNS IPv4 secundário", dnsData.ipv4_2], ["DNS IPv6 primário", dnsData.ipv6_1], ["DNS IPv6 secundário", dnsData.ipv6_2]])}</section>` : '<section class="panel">DNS não disponível nesta sessão.</section>'}</div><div class="toolbar"><button class="button" id="edit-dhcp" ${dhcpData && cap("dhcp").enabled?.write ? "" : "disabled"}>Editar DHCP</button><button class="button" id="dns-presets" ${cap("dns").enabled?.write ? "" : "disabled"}>Aplicar preset DNS</button><button class="button" id="edit-dns" ${dnsData && cap("dns").enabled?.write ? "" : "disabled"}>Editar DNS</button></div>${table([{ label: "Hostname", keys: ["hostname", "Name", "name"] }, { label: "IP", keys: ["ip", "IPAddr", "IPAddress"] }, { label: "MAC", keys: ["mac", "MACAddr", "MACAddress"] }], dhcpData?.leases || [], "Nenhum lease retornado.")}<section class="panel"><div class="panel-header"><h2>Reservas DHCP</h2><button id="new-reservation" class="button" ${cap("dhcp_reservations").enabled?.write ? "" : "disabled"}>Adicionar</button></div></section>${table([{ label: "Reserva", keys: ["name", "Name"] }, { label: "IP", keys: ["ip", "IPAddr"] }, { label: "MAC", keys: ["mac", "MACAddr"] }, { label: "Ações", render: (r) => cap("dhcp_reservations").enabled?.write ? `<div class="inline-actions"><button class="button" data-edit-reservation="${esc(r.id)}">Editar</button><button class="button danger" data-delete-reservation="${esc(r.id)}">Excluir</button></div>` : "Somente leitura" }], dhcpData?.reservations || [], "Nenhuma reserva retornada.")}${dnsHosts()}<section class="panel"><h2>IPTV / multicast</h2><p>Não disponível neste firmware/login.</p><p class="muted">Sem contrato operacional comprovado de IGMP proxy/snooping nesta sessão. Revise VLAN e serviço na WAN; DNS operacional pode ser cadastrado nos presets. Nenhum ajuste ALG ou multicast será enviado automaticamente.</p></section>`;
   }
   function mountDhcpDns() {
+    document.querySelector("#dns-presets").onclick = openDnsPresets;
     mountReservations();
     mountDnsHosts();
     document.querySelector("#edit-dns").onclick = () => editConfig("Editar DNS", "/api/device/dns", [{ key: "domain_name", label: "Domínio", value: dnsData.domain_name }, { key: "ipv4_1", label: "DNS IPv4 primário", value: dnsData.ipv4_1 }, { key: "ipv4_2", label: "DNS IPv4 secundário", value: dnsData.ipv4_2 }, { key: "ipv6_1", label: "DNS IPv6 primário", value: dnsData.ipv6_1 }, { key: "ipv6_2", label: "DNS IPv6 secundário", value: dnsData.ipv6_2 }]);
@@ -3602,6 +3839,7 @@
   var profiles_exports = {};
   __export(profiles_exports, {
     mount: () => mount4,
+    previewAndApply: () => previewAndApply,
     render: () => render4
   });
   var state = { attendant: null, active: null, profiles: [] };
@@ -3641,9 +3879,9 @@
   }
   async function edit(profile = {}) {
     const opened = performance.now(), savedRadios = profile.wifi?.radios || (profile.wifi?.radio ? [profile.wifi.radio] : []), dns = profile.dns || {}, hosts = dns.hosts || [];
-    let radios2 = [], radiosReady = false;
+    let radios2 = [], radiosReady = false, wanRows = [];
     const dhcpWritable = Boolean(cap("dhcp").enabled?.write);
-    const d = dialog(profile.name ? "Editar configuração" : "Nova configuração", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome da configuração", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><div id="profile-radios"><section class="profile-section" role="status"><h3>Wi-Fi</h3><p class="muted">Carregando capabilities e opções do equipamento…</p><div class="skeleton"></div></section></div><section class="profile-section"><h3>DNS</h3><div class="form-grid">${field("Domínio", "domain_name", dns.domain_name)}${field("DNS IPv4 1", "ipv4_1", dns.ipv4_1 ?? dns.primary)}${field("DNS IPv4 2", "ipv4_2", dns.ipv4_2 ?? dns.secondary)}${field("DNS IPv6 1", "ipv6_1", dns.ipv6_1)}${field("DNS IPv6 2", "ipv6_2", dns.ipv6_2)}</div></section><section class="profile-section"><div class="panel-header"><h3>Nomes de servidor / Static DNS Hosts</h3><button type="button" class="button" id="add-profile-host">+ ADICIONAR</button></div><div id="profile-host-list">${hosts.map((h) => `<div class="toolbar"><input name="host-name" aria-label="Nome do host" value="${esc(h.name ?? h.nome ?? "")}"><input name="host-ip" aria-label="IP do host" value="${esc(h.ip ?? "")}"><button type="button" class="button" data-remove-host>Remover</button></div>`).join("")}</div></section>${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time, "number")}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">SALVAR PERFIL</button>`);
+    const d = dialog(profile.name ? "Editar configuração" : "Nova configuração", `<div class="profile-content"><form id="profile-form"><section class="profile-section"><div class="form-grid">${field("Nome da configuração", "name", profile.name)}${field("Descrição", "description", profile.description)}</div></section><div id="profile-radios"><section class="profile-section" role="status"><h3>Wi-Fi</h3><p class="muted">Carregando capabilities e opções do equipamento…</p><div class="skeleton"></div></section></div><section class="profile-section"><h3>WAN / PPPoE</h3><p class="muted">Vinculado à instância WAN atual; usuário e senha PPPoE não são salvos. Marque apenas os campos desejados.</p><div id="profile-wan">Carregando formulários disponíveis…</div></section><section class="profile-section"><h3>Firewall</h3>${checkbox("Incluir firewall", "include-firewall", Object.keys(profile.firewall || {}).length > 0)}<div class="form-grid">${choice("Habilitado", "firewall-enabled", String(profile.firewall?.enabled ?? true), [{ value: "true", label: "Sim" }, { value: "false", label: "Não" }])}${choice("Nível do firewall", "firewall-level", profile.firewall?.level || "", [{ value: "", label: "Preservar nível atual" }, ...firewallLevels])}</div></section><section class="profile-section"><h3>DNS</h3><div class="form-grid">${field("Domínio", "domain_name", dns.domain_name)}${field("DNS IPv4 1", "ipv4_1", dns.ipv4_1 ?? dns.primary)}${field("DNS IPv4 2", "ipv4_2", dns.ipv4_2 ?? dns.secondary)}${field("DNS IPv6 1", "ipv6_1", dns.ipv6_1)}${field("DNS IPv6 2", "ipv6_2", dns.ipv6_2)}</div></section><section class="profile-section"><div class="panel-header"><h3>Nomes de servidor / Static DNS Hosts</h3><button type="button" class="button" id="add-profile-host">+ ADICIONAR</button></div><div id="profile-host-list">${hosts.map((h) => `<div class="toolbar"><input name="host-name" aria-label="Nome do host" value="${esc(h.name ?? h.nome ?? "")}"><input name="host-ip" aria-label="IP do host" value="${esc(h.ip ?? "")}"><button type="button" class="button" data-remove-host>Remover</button></div>`).join("")}</div></section>${dhcpWritable ? `<section class="profile-section"><h3>DHCP</h3><div class="form-grid">${field("Início do pool", "pool-start", profile.dhcp?.min_address)}${field("Fim do pool", "pool-end", profile.dhcp?.max_address)}${field("Lease time (segundos)", "lease", profile.dhcp?.lease_time, "number")}${field("DNS primário do DHCP", "dhcp-dns1", profile.dhcp?.dns1)}${field("DNS secundário do DHCP", "dhcp-dns2", profile.dhcp?.dns2)}</div></section>` : ""}</form></div>`, `<button type="button" class="button" data-cancel-profile>Cancelar</button><button type="submit" form="profile-form" class="button primary" id="save-profile">SALVAR PERFIL</button>`);
     d.classList.add("profile-dialog");
     d.addEventListener("close", () => d.classList.remove("profile-dialog"), { once: true });
     d.querySelector("[data-cancel-profile]").onclick = () => d.close();
@@ -3662,6 +3900,23 @@
       paint(savedRadios);
       if (d.open) d.querySelector("#profile-radios").insertAdjacentHTML("afterbegin", `<p class="notice warning">${esc(e.message)}</p>`);
     } });
+    request("/api/device/configuration/catalog", { scope: d._requestScope }).then(async (catalog) => {
+      const surface = catalog.find((f) => ["wan_crud", "wan_connection"].includes(f.id));
+      if (!surface) throw new Error("Não disponível neste firmware/login.");
+      const data = await request("/api/device/configuration/read", { scope: d._requestScope, method: "POST", body: JSON.stringify({ feature: surface.id }) });
+      if (!d.open) return;
+      wanRows = data.instances.filter((r) => r.id !== "new");
+      d.querySelector("#profile-wan").innerHTML = wanRows.map((r, i) => {
+        const stored = (profile.wan?.connections || []).find((c) => String(c.id) === String(r.id))?.config || {};
+        return `<section class="profile-section"><h4>${esc(r.label)}</h4><button type="button" class="button" data-profile-wan-preset="${i}">Sugerir configuração padrão</button><div class="form-grid">${r.fields.filter((f) => f.intent_key && !f.secret && f.intent_key !== "username").map((f) => `<div class="field"><label><input type="checkbox" name="wan-include-${i}-${esc(f.intent_key)}" ${f.intent_key in stored ? "checked" : ""}> ${esc(f.group || "WAN")} · ${esc(f.label)}</label>${fieldControl({ ...f, key: `wan-${i}-${f.intent_key}`, value: stored[f.intent_key] ?? f.value, control: f.options?.length ? "select" : f.control })}</div>`).join("")}</div></section>`;
+      }).join("");
+      d.querySelectorAll("[data-profile-wan-preset]").forEach((b) => b.onclick = () => {
+        const i = Number(b.dataset.profileWanPreset);
+        suggestWanPreset(form, wanRows[i].fields, (f) => `wan-${i}-${f.intent_key}`, { attr: "name", value: (f) => `wan-include-${i}-${f.intent_key}` });
+      });
+    }).catch(() => {
+      if (d.open) d.querySelector("#profile-wan").textContent = "Não disponível neste firmware/login. Perfis WAN existentes serão preservados.";
+    });
     const wireHosts = () => d.querySelectorAll("[data-remove-host]").forEach((b) => b.onclick = () => b.parentElement.remove());
     wireHosts();
     d.querySelector("#add-profile-host").onclick = () => {
@@ -3698,7 +3953,16 @@
       delete nextDns.servers;
       delete nextDns.primary;
       delete nextDns.secondary;
-      const payload = { ...profile, name: String(fd.get("name") || "").trim(), description: String(fd.get("description") || ""), wifi, dns: nextDns, dhcp }, button2 = d.querySelector("#save-profile");
+      const wan2 = wanRows.length ? { connections: wanRows.flatMap((r, i) => {
+        const config = {};
+        for (const f of r.fields) {
+          const key = f.intent_key;
+          if (key && fd.get(`wan-include-${i}-${key}`)) config[key] = String(fd.get(`wan-${i}-${key}`) ?? "");
+        }
+        return Object.keys(config).length ? [{ id: r.id, config }] : [];
+      }) } : profile.wan || {};
+      const firewall = fd.get("include-firewall") ? { enabled: fd.get("firewall-enabled") === "true", ...fd.get("firewall-level") ? { level: String(fd.get("firewall-level")) } : {} } : {};
+      const payload = { ...profile, wan: wan2, firewall, name: String(fd.get("name") || "").trim(), description: String(fd.get("description") || ""), wifi, dns: nextDns, dhcp }, button2 = d.querySelector("#save-profile");
       button2.disabled = true;
       try {
         await request("/api/profiles", { method: "POST", scope: d._requestScope, body: JSON.stringify(payload) });
@@ -3719,12 +3983,13 @@
   async function previewAndApply(name) {
     try {
       const preview = await request("/api/profiles/preview", { method: "POST", body: JSON.stringify({ name }) });
-      const d = dialog("Preview da configuração", `<p>${preview.applicable} operação(ões) aplicáveis; ${preview.skipped} serão ignoradas por capability.</p>${table([{ label: "Operação", keys: ["label"] }, { label: "Suporte", keys: ["support"] }, { label: "Ação", render: (o) => o.will_apply ? "APLICAR" : "PULAR" }], preview.operations)}${preview.operations.map((op) => `<section class="panel"><h3>${esc(op.label)}</h3>${table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["current"] }, { label: "Novo", keys: ["desired"] }], op.changes || [])}</section>`).join("")}${(preview.profile?.wifi?.ssids || []).map((s) => `<div class="field"><label>Nova senha de ${esc(s.ssid || s.id)} (opcional; não é persistida)</label><input type="password" data-transient-ssid="${esc(s.id)}" autocomplete="new-password" minlength="8"></div>`).join("")}`, `<button class="button primary" data-apply ${preview.applicable ? "" : "disabled"}>APLICAR PERFIL</button>`);
+      const d = dialog("Preview da configuração", `<p>${preview.applicable} operação(ões) aplicáveis; ${preview.skipped} serão ignoradas por capability.</p>${table([{ label: "Operação", keys: ["label"] }, { label: "Suporte", keys: ["support"] }, { label: "Evidência", keys: ["evidence"] }, { label: "Impacto", keys: ["impact"] }, { label: "Ação", render: (o) => o.will_apply ? "APLICAR" : "PULAR" }], preview.operations)}${preview.operations.map((op) => `<section class="panel"><h3>${esc(op.label)}</h3>${table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["current"] }, { label: "Novo", keys: ["desired"] }], op.changes || [])}</section>`).join("")}${(preview.profile?.wan?.connections || []).map((c) => `<div class="field"><label>Nova senha PPPoE da WAN ${esc(c.id)} (opcional; não persistida)</label><input type="password" data-transient-wan="${esc(c.id)}" autocomplete="new-password"></div>`).join("")}${(preview.profile?.wifi?.ssids || []).map((s) => `<div class="field"><label>Nova senha de ${esc(s.ssid || s.id)} (opcional; não é persistida)</label><input type="password" data-transient-ssid="${esc(s.id)}" autocomplete="new-password" minlength="8"></div>`).join("")}`, `<button class="button primary" data-apply ${preview.applicable ? "" : "disabled"}>APLICAR PERFIL</button>`);
       d.querySelector("[data-apply]").onclick = async (event) => {
         event.currentTarget.disabled = true;
         try {
           const secrets = {};
           for (const input of d.querySelectorAll("[data-transient-ssid]")) if (input.value) secrets[input.dataset.transientSsid] = input.value;
+          for (const input of d.querySelectorAll("[data-transient-wan]")) if (input.value) secrets["wan:" + input.dataset.transientWan] = input.value;
           const result = await request("/api/profiles/apply", { method: "POST", body: JSON.stringify({ name, secrets }) });
           d.close();
           resultDialog(result);
@@ -3922,68 +4187,6 @@
     refresh();
   }
 
-  // apps/access_manager/static/js/shared/configuration-surfaces.js
-  var surfaceHost = () => `<section class="panel"><h2>Configurações de rede e serviços</h2><p class="muted">Formulários específicos do firmware, com leitura, prévia e confirmação antes de aplicar.</p><div id="configuration-surfaces" role="status">Carregando configurações disponíveis…</div></section>`;
-  async function mountSurfaces() {
-    const host = document.querySelector("#configuration-surfaces");
-    if (!host) return;
-    const scope = currentScope();
-    try {
-      const catalog = await request("/api/device/configuration/catalog", { scope });
-      if (!scopeActive(scope) || !host.isConnected) return;
-      host.innerHTML = `<div class="field"><label>Configuração</label><select id="surface-feature"><option value="">Selecione…</option>${catalog.map((s) => `<option value="${esc(s.id)}">${esc(s.category)} · ${esc(s.title)}</option>`).join("")}</select></div><div id="surface-current"></div>`;
-      host.querySelector("select").onchange = async (event) => {
-        const feature = event.target.value, out = host.querySelector("#surface-current");
-        if (!feature) {
-          out.innerHTML = "";
-          return;
-        }
-        const stamp = feature;
-        out.innerHTML = '<p class="muted">Lendo configuração atual…</p>';
-        try {
-          const data = await request("/api/device/configuration/read", { scope, method: "POST", body: JSON.stringify({ feature }) });
-          if (!scopeActive(scope) || host.querySelector("select").value !== stamp) return;
-          out.innerHTML = (data.instances || []).map((row, i) => `<section class="panel"><h3>${esc(row.label)}</h3>${row.missing?.length ? `<p class="notice warning">Campos ainda não retornados pelo equipamento: ${row.missing.map(esc).join(", ")}.</p>` : ""}<button class="button" data-surface-instance="${i}">Editar / visualizar</button></section>`).join("") || '<p class="muted">Nenhuma instância reconhecida nesta sessão.</p>';
-          out.querySelectorAll("[data-surface-instance]").forEach((b) => b.onclick = () => editSurface(catalog.find((s) => s.id === feature), data.instances[Number(b.dataset.surfaceInstance)]));
-        } catch (e) {
-          if (scopeActive(scope) && !isCancelled(e) && host.querySelector("select").value === stamp) out.innerHTML = `<p class="notice warning">${esc(e.message)}</p>`;
-        }
-      };
-    } catch (e) {
-      if (scopeActive(scope) && !isCancelled(e)) host.textContent = e.message;
-    }
-  }
-  function editSurface(feature, row) {
-    const d = dialog(feature.title, `<div class="profile-content"><form id="surface-form"><p class="muted">Marque apenas os campos que deseja alterar. Campos não selecionados serão preservados.</p><div class="field"><label>Operação</label><select name="operation">${(row.actions || ["update"]).map((a) => `<option value="${a}">${{ update: "Editar", create: "Criar", delete: "Excluir" }[a]}</option>`).join("")}</select></div><div class="form-grid">${row.fields.map((f) => `<div class="field"><label><input type="checkbox" data-change="${esc(f.key)}" ${f.select && !f.options?.length ? "disabled" : ""}> ${esc(f.label)}</label>${f.options?.length || f.select ? `<select ${f.select && !f.options?.length ? "disabled" : ""} name="${esc(f.key)}">${(f.options?.length ? f.options : [{ value: f.value ?? "", label: f.value ?? "Opções não disponíveis" }]).map((o) => `<option value="${esc(o.value)}" ${String(o.value) === String(f.value) ? "selected" : ""}>${esc(o.label)}</option>`).join("")}</select>` : `<input name="${esc(f.key)}" type="${f.secret ? "password" : "text"}" value="${f.secret ? "" : esc(f.value ?? "")}" autocomplete="${f.secret ? "new-password" : "off"}" ${f.secret ? 'placeholder="Manter valor atual"' : ""}>`}</div>`).join("")}</div></form><div id="surface-preview"></div></div>`, `<button type="submit" form="surface-form" class="button primary">Gerar prévia</button>`);
-    d.classList.add("profile-dialog");
-    const form = d.querySelector("form");
-    form.onsubmit = async (event) => {
-      event.preventDefault();
-      const changes2 = {};
-      for (const checkbox2 of form.querySelectorAll("[data-change]:checked")) changes2[checkbox2.dataset.change] = form.elements.namedItem(checkbox2.dataset.change).value;
-      const out = d.querySelector("#surface-preview");
-      out.innerHTML = '<p class="muted">Preparando prévia…</p>';
-      try {
-        const preview = await request("/api/device/configuration/preview", { scope: d._requestScope, method: "POST", body: JSON.stringify({ feature: feature.id, instance: row.id, changes: changes2, action: form.elements.namedItem("operation").value }) });
-        if (!d.open) return;
-        out.innerHTML = table([{ label: "Campo", keys: ["field"] }, { label: "Atual", keys: ["before"] }, { label: "Novo", keys: ["after"] }], preview.changes || []) + `<p class="notice warning">A alteração pode interromper a conexão. A prévia expira em ${esc(preview.expires_in_seconds)} segundos.</p><div class="field"><label>Digite APLICAR para confirmar</label><input id="surface-confirm" autocomplete="off"></div><button type="button" class="button danger" id="surface-apply">Aplicar configuração</button>`;
-        out.querySelector("button").onclick = async (e) => {
-          e.currentTarget.disabled = true;
-          try {
-            const result = await request("/api/device/configuration/apply", { scope: d._requestScope, method: "POST", body: JSON.stringify({ nonce: preview.nonce, confirmation: out.querySelector("input").value }) });
-            if (!d.open) return;
-            out.innerHTML = `<p class="notice ${result.uncertain ? "warning" : ""}">${esc(result.detail || result.message || (result.verified ? "Alteração verificada." : result.uncertain ? "Sem confirmação; não reenviar automaticamente." : "Comando enviado; verificação manual necessária."))}</p>`;
-            toast("Operação concluída. Confira o resultado.");
-          } catch (err) {
-            if (!isCancelled(err)) toast(err.message);
-          }
-        };
-      } catch (e) {
-        if (d.open && !isCancelled(e)) out.innerHTML = `<p class="notice warning">${esc(e.message)}</p>`;
-      }
-    };
-  }
-
   // apps/access_manager/static/js/workspaces/views/management.js
   var definitions = [{ feature: "dmz", title: "DMZ", fields: [["enabled", "Habilitado", "bool"], ["internal_client", "IP do cliente"]] }, { feature: "upnp", title: "UPnP", fields: [["enabled", "Habilitado", "bool"]] }, { feature: "tr069", title: "TR-069", fields: [["url", "URL ACS"]] }, { feature: "firewall", title: "Firewall", fields: [["enabled", "Habilitado", "bool"], ["level", "Nível"]] }];
   var loaded = {};
@@ -4014,7 +4217,7 @@
     mountArtifacts();
     document.querySelectorAll("[data-config]").forEach((b2) => b2.onclick = () => {
       const definition = definitions.find((d) => d.feature === b2.dataset.config), data = loaded[definition.feature];
-      editConfig("Editar " + definition.title, "/api/device/" + definition.feature, definition.fields.map(([key, label, type]) => ({ key, label, type, value: data[key] })));
+      editConfig("Editar " + definition.title, "/api/device/" + definition.feature, definition.fields.map(([key, label, type]) => ({ key, label, type, value: data[key], ...definition.feature === "firewall" && key === "level" ? { control: "select", options: window.__amStore?.session?.session?.vendor === "zte" ? firewallLevels : [{ value: data[key], label: data[key] }], disabled: window.__amStore?.session?.session?.vendor !== "zte", help: window.__amStore?.session?.session?.vendor === "zte" ? "" : "Somente leitura neste firmware/login; níveis ZTE não são enviados a outro fabricante." } : {} })));
     });
     const b = document.querySelector("#reboot-button");
     if (!b || b.disabled) return;
@@ -4427,7 +4630,7 @@
     traffic: traffic_exports,
     diagnostics: { render: diagnostics2, mount: mountDiagnostics2 },
     deployment: { render: deployment },
-    wan: { render: wan },
+    wan: { render: wan, mount: mountWan },
     lan: { render: lan },
     dhcpdns: { render: dhcpdns, mount: mountDhcpDns }
   };

@@ -48,7 +48,10 @@ class DeviceCommandBus:
     def reboot(self): return self.execute('reboot','reboot')
     def set_ssid(self, ssid_id, config): return self.execute('wifi','set_ssid_config',ssid_id,config)
     def set_wifi_radio(self, config): return self.execute('wifi_radio','set_wifi_radio',config)
-    def set_dns(self, config): return self.execute('dns','set_dns',config)
+    def set_dns(self, config):
+        from apps.access_manager.application.services.profiles import ProfileService
+        ProfileService._validate_dns(config)
+        return self.execute('dns','set_dns',config)
     def set_dhcp(self, config): return self.execute('dhcp','set_dhcp',config)
     def ping(self, config): return normalize_diagnostic('ping', self.execute('diagnostics','ping',config))
     def traceroute(self, config): return normalize_diagnostic('traceroute', self.execute('diagnostics','traceroute',config))

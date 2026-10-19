@@ -520,6 +520,19 @@ class ZTEProvider:
         self._speedtest.servers=result.get('servers') or []
         return {'servers':self._speedtest.servers}
 
+    def set_profile_wan(self, connection):
+        # Reuse the same one-shot preflight/write/readback as the firmware editor.
+        surface=next((r['id'] for r in self.surface_catalog() if r['id'] in {'wan_crud','wan_connection'}),None)
+        if surface is None:raise ValueError('WAN não disponível neste firmware/login')
+        view=self.surface_read(surface)
+        row=next((r for r in view['instances'] if str(r['id'])==str(connection['id'])),None)
+        if row is None:raise ValueError('Conexão WAN não encontrada nesta sessão')
+        mapping={f['intent_key']:f['key'] for f in row['fields'] if f.get('intent_key')}
+        config=dict(connection['config'])
+        if set(config)-set(mapping):raise ValueError('Campo WAN fora do contrato atual')
+        preview=self.surface_preview({'feature':surface,'instance':str(connection['id']),'changes':{mapping[key]:value for key,value in config.items()}})
+        return self.surface_apply({'nonce':preview['nonce'],'confirmation':'APLICAR'})
+
     def surface_catalog(self): return self._surfaces.catalog()
     def surface_read(self, feature): return self._surfaces.inspect(self._need(),feature)
     def surface_preview(self, config): return self._surfaces.preview(self._need(),self.host,config['feature'],config['instance'],config.get('changes') or {},config.get('action','update'))
