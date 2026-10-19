@@ -277,6 +277,34 @@
     addEntry({ ...route ? { route } : {}, path: url, method, read: read2, ok, input: redact(input), category, action, target: input.host || input.ip || input.ssid_id || input.band || "Equipamento", observations, result: ok ? read2 ? "Leitura concluída" : data?.verified === true ? "Confirmado por leitura" : "Resposta recebida; verificar resultado abaixo" : "Falha", data: Array.isArray(safe) ? { quantidade: data.length, registros: safe } : safe, ...!read2 ? { after: redact(input) } : {} });
   }
 
+  // apps/access_manager/static/js/shared/clipboard.js
+  var ClipboardError = class extends Error {
+    constructor(message) {
+      super(message);
+      this.name = "ClipboardError";
+    }
+  };
+  async function copyText(value2) {
+    const text2 = String(value2 ?? "");
+    if (!text2) throw new ClipboardError("Nada para copiar.");
+    let response;
+    try {
+      response = await fetch(new URL("/api/system/clipboard", window.location.origin), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text2 })
+      });
+    } catch (error) {
+      throw new ClipboardError("Não foi possível acessar o clipboard do desktop.");
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.success === false) {
+      throw new ClipboardError(data?.error?.message || "Não foi possível copiar para a área de transferência.");
+    }
+    return true;
+  }
+
   // apps/access_manager/static/js/service/panel.js
   var exitPolicyKey = "accessManager.serviceLog.exitPolicy";
   var readExitPolicy = () => {
@@ -374,12 +402,15 @@
     };
     panel3.querySelectorAll("[data-copy]").forEach((b) => b.onclick = async () => {
       const text2 = formatService({ secrets, mode: b.dataset.copy === "technical" ? "technical" : panel3.querySelector("[data-mode]").value, markdown: b.dataset.copy === "markdown" });
+      b.disabled = true;
       try {
-        await navigator.clipboard.writeText(text2);
+        await copyText(text2);
         status3("Registro copiado.");
       } catch {
         selectRecordForManualCopy(panel3);
         status3("Não foi possível copiar automaticamente. O registro foi selecionado; pressione Ctrl+C.");
+      } finally {
+        b.disabled = false;
       }
     });
     panel3.querySelector("[data-export]").onclick = () => {
@@ -1140,7 +1171,6 @@
       document.querySelector("#world-inventory").textContent = `Exploração: ${visited}/${total} regiões visitadas`;
       document.querySelector("#field-sector").textContent = hotspot?.worldLabel || hotspot?.label || "Área de operações";
       if (ctx) {
-        ctx.clearRect(0, 0, 180, 180);
         ctx.fillStyle = mode === "wasteland" ? "#0b120d" : host.dataset.layout === "juniper" ? "#e0f2fa" : "#e2f4d1";
         ctx.fillRect(0, 0, 180, 180);
         ctx.font = "13px sans-serif";
@@ -2434,12 +2464,16 @@
           password.type = password.type === "password" ? "text" : "password";
           e.currentTarget.textContent = password.type === "password" ? "Mostrar" : "Ocultar";
         };
-        modal.querySelector("[data-copy-wifi-password]").onclick = async () => {
+        modal.querySelector("[data-copy-wifi-password]").onclick = async (e) => {
+          const button2 = e.currentTarget;
+          button2.disabled = true;
           try {
-            await navigator.clipboard.writeText(password.value);
+            await copyText(password.value);
             toast("Senha copiada.");
           } catch {
             toast("Não foi possível copiar.");
+          } finally {
+            button2.disabled = false;
           }
         };
         modal.querySelector("[data-dismiss-wifi-password]").onclick = () => modal.close();
