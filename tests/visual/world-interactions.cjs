@@ -6,7 +6,10 @@ const root=path.resolve(__dirname,'../..'),base=path.join(root,'apps/access_mana
  const page=await browser.newPage();await page.addInitScript(()=>localStorage.setItem('accessManager.world.quality','low'));const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.error(m.text())});let worldRequests=0;page.on('request',req=>{if(req.url().endsWith('world-runtime.js'))worldRequests++});
 
  if(process.env.ACCESS_MANAGER_QA_CPU_THROTTLE){const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:Number(process.env.ACCESS_MANAGER_QA_CPU_THROTTLE)});}
- const shots=path.join(root,'docs/qa/world-interactions');fs.mkdirSync(shots,{recursive:true});
+ const shots=path.join(root,'docs/qa/world-interactions');
+ // CI verifies geometry/contrast and behavior; image recording is a separate optional QA artifact.
+ const recordImages=process.env.ACCESS_MANAGER_QA_SCREENSHOTS==='1'||(!process.env.CI&&process.env.ACCESS_MANAGER_QA_SCREENSHOTS!=='0');
+ const capture=async name=>{if(recordImages){fs.mkdirSync(shots,{recursive:true});await page.screenshot({path:path.join(shots,name),animations:'disabled',timeout:90000});}};
  const baseURL='http://127.0.0.1:'+server.address().port;
  const nextWorldFrame=()=>page.evaluate(()=>new Promise(resolve=>document.querySelector('#aero-world').addEventListener('world-frame',()=>resolve(),{once:true})));
  const canvas=page.locator('#aero-world>canvas').first();
@@ -21,13 +24,15 @@ const root=path.resolve(__dirname,'../..'),base=path.join(root,'apps/access_mana
   assert.equal(await page.locator('#aero-world').evaluate(e=>{const r=e.getBoundingClientRect();return r.x===0&&r.y===0&&r.width===innerWidth&&r.height===innerHeight}),true,'world fills the actual app viewport');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.locator('#world-menu-button').click();await page.locator('#world-scene').selectOption('office');
+  await page.locator('#world-menu').waitFor({state:'hidden'});await canvas.focus();await nextWorldFrame();
   await page.waitForFunction(()=>document.querySelector('#aero-world').dataset.interaction!==undefined);
-  await page.screenshot({path:path.join(shots,`office-${width}.png`)});
+  await capture(`office-${width}.png`);
   await page.keyboard.press('KeyH');assert.equal(await page.locator('.app-shell').evaluate(e=>e.classList.contains('world-hud-visible')),true);
   await page.keyboard.press('KeyH');assert.equal(await page.locator('.app-shell').evaluate(e=>e.classList.contains('world-hud-visible')),false);
   await page.locator('#world-menu-button').click();await page.locator('#world-scene').selectOption('arena');
+  await page.locator('#world-menu').waitFor({state:'hidden'});await canvas.focus();await nextWorldFrame();
   await page.waitForFunction(()=>!document.querySelector('#world-combat').hidden);
-  await page.screenshot({path:path.join(shots,`arena-${width}.png`)});
+  await capture(`arena-${width}.png`);
   console.log(`${width}x${height}: full viewport, HUD, office, arena and overflow OK`);
  }
  // Actual keyboard combat does not issue any API mutation.
@@ -48,14 +53,14 @@ const root=path.resolve(__dirname,'../..'),base=path.join(root,'apps/access_mana
  await page.waitForFunction(()=>document.querySelector('#world-radio-track').textContent==='01.wav');
  await page.locator('#world-next').click();await page.waitForFunction(()=>document.querySelector('#world-radio-track').textContent==='02.wav');await page.locator('#world-prev').click();
  await page.locator('#world-repeat').selectOption('track');await page.locator('#world-shuffle').check();await page.locator('#world-radio-volume').fill('0.2');
- assert.equal(await page.locator('#world-radio').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(233, 245, 246)');await page.screenshot({path:path.join(shots,'playlist-1920.png')});
+ assert.equal(await page.locator('#world-radio').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(233, 245, 246)');await capture('playlist-1920.png');
  await page.keyboard.press('Escape');await page.locator('#world-radio').waitFor({state:'hidden'});
  // Dialogue editor stores literal strings and the configured trigger runs on real re-entry.
  await page.locator('#world-menu-button').click();await page.locator('#world-open-dialogue').click();
  await page.locator('#world-lines input[type=text]').first().fill('Vindo trabalhar de novo, law?');await page.locator('#world-lines input[type=text]').first().dispatchEvent('change');
  await page.locator('#world-dialogue-mode').selectOption('sequential');await page.locator('#world-dialogue-cooldown').fill('0');await page.locator('#world-dialogue-cooldown').dispatchEvent('change');
  await page.locator('#world-preview-line').click();assert.equal(await page.locator('#world-line-preview').textContent(),'Vindo trabalhar de novo, law?');
- await page.screenshot({path:path.join(shots,'dialogue-1920.png')});await page.keyboard.press('Escape');
+ await capture('dialogue-1920.png');await page.keyboard.press('Escape');
  // Official YouTube API is stubbed only at its external boundary, to make smoke deterministic offline.
  await page.evaluate(()=>{window.YT={Player:class{constructor(el,options){const iframe=document.createElement('iframe');iframe.title='YouTube';el.replaceWith(iframe);this.iframe=iframe;setTimeout(()=>options.events.onReady(),0);}getIframe(){return this.iframe}destroy(){this.iframe.remove()}}};});
  await page.locator('#world-menu-button').click();await page.locator('#world-open-tv').click();await page.locator('#world-youtube-url').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');await page.locator('#world-tv-form button[type=submit]').click();

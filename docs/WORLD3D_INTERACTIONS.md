@@ -77,3 +77,5 @@ node tests/visual/world-interactions.cjs
 ```
 
 O smoke visual usa Chromium com WebGL e fixtures de equipamento, sem chamar roteadores reais. A variável `ACCESS_MANAGER_CHROMIUM` pode selecionar o executável local e `ACCESS_MANAGER_BROWSER_LIBS` suas bibliotecas. Evidências e limitações estão em `docs/qa/world-interactions/REPORT.md`.
+
+No CI, o smoke verifica layout/contraste e comportamento sem gravar imagens. Para registrar capturas explicitamente, execute com `ACCESS_MANAGER_QA_SCREENSHOTS=1`; `ACCESS_MANAGER_QA_SCREENSHOTS=0` desativa somente a gravação. A lógica de teste permanece a mesma.
