@@ -1,0 +1,45 @@
+name: Temporary Final World3D Sync
+
+on:
+  push:
+    branches:
+      - fix/world3d-combat-youtube-tv
+    paths:
+      - .github/workflows/sync-world3d-final-temp.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/world3d-combat-youtube-tv
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Synchronize generated bundles
+        run: python tools/sync_frontend.py
+      - name: Validate frontend and world smoke
+        run: |
+          npm test
+          node tests/visual/world-interactions.cjs
+          python tools/sync_frontend.py --check
+          git diff --check
+      - name: Commit generated bundles and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          rm .github/workflows/sync-world3d-final-temp.yml
+          git add -A
+          git commit -m 'build: sync final world3d interaction fix'
+          git push origin HEAD:fix/world3d-combat-youtube-tv
