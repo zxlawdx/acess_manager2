@@ -6,6 +6,11 @@ from urllib.parse import quote_plus
 
 import requests
 
+try:
+    import yt_dlp
+except Exception:  # pragma: no cover - dependency fallback for source-only runs
+    yt_dlp = None
+
 _ASSIGNMENT = re.compile(r'(?:var\s+ytInitialData|ytInitialData|window\["ytInitialData"\])\s*=\s*')
 _VIDEO_ID = re.compile(r'^[A-Za-z0-9_-]{11}$')
 _WEB_CLIENT_VERSION = '2.20260708.00.00'
@@ -21,6 +26,20 @@ def _text(node):
     return ''.join(str(run.get('text', '')) for run in node.get('runs', []) if isinstance(run, dict))
 
 
+def _duration_text(value):
+    if value in (None, ''):
+        return ''
+    if isinstance(value, str) and ':' in value:
+        return value
+    try:
+        seconds = max(0, int(float(value)))
+    except (TypeError, ValueError):
+        return str(value)
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    return f'{hours}:{minutes:02d}:{secs:02d}' if hours else f'{minutes}:{secs:02d}'
+
+
 def _video(renderer):
     video_id = str(renderer.get('videoId') or '')
     if not _VIDEO_ID.fullmatch(video_id):
@@ -34,6 +53,27 @@ def _video(renderer):
         'title': _text(renderer.get('title')) or 'Vídeo do YouTube',
         'channel': _text(renderer.get('ownerText')) or _text(renderer.get('shortBylineText')) or _text(renderer.get('longBylineText')),
         'duration': _text(renderer.get('lengthText')),
+        'thumbnail': thumbnail,
+    }
+
+
+def _video_from_ytdlp(entry):
+    if not isinstance(entry, dict):
+        return None
+    video_id = str(entry.get('id') or entry.get('video_id') or '')
+    if not _VIDEO_ID.fullmatch(video_id):
+        return None
+    thumbnail = str(entry.get('thumbnail') or '')
+    if not thumbnail:
+        thumbs = entry.get('thumbnails') or []
+        thumbnail = next((str(item.get('url')) for item in reversed(thumbs) if isinstance(item, dict) and item.get('url')), '')
+    if not thumbnail:
+        thumbnail = f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg'
+    return {
+        'videoId': video_id,
+        'title': str(entry.get('title') or 'Vídeo do YouTube'),
+        'channel': str(entry.get('channel') or entry.get('uploader') or entry.get('channel_id') or ''),
+        'duration': _duration_text(entry.get('duration')),
         'thumbnail': thumbnail,
     }
 
@@ -68,12 +108,43 @@ def extract_youtube_results(page: str, limit: int = 8):
     return extract_youtube_results_data(data, limit=limit)
 
 
+def _search_ytdlp(query: str, limit: int):
+    if yt_dlp is None:
+        raise RuntimeError('yt-dlp não está disponível no runtime.')
+    cap = max(1, min(int(limit), 20))
+    options = {
+        'quiet': True,
+        'no_warnings': True,
+        'skip_download': True,
+        'extract_flat': True,
+        'ignoreerrors': True,
+        'cachedir': False,
+        'socket_timeout': 10,
+        'retries': 1,
+        'playlistend': cap,
+    }
+    with yt_dlp.YoutubeDL(options) as ydl:
+        info = ydl.extract_info(f'ytsearch{cap}:{query}', download=False)
+    entries = (info or {}).get('entries') or []
+    results, seen = [], set()
+    for entry in entries:
+        item = _video_from_ytdlp(entry)
+        if not item or item['videoId'] in seen:
+            continue
+        seen.add(item['videoId'])
+        results.append(item)
+        if len(results) >= cap:
+            break
+    if not results:
+        raise ValueError('A busca do yt-dlp não retornou vídeos.')
+    return results
+
+
 def _configure_session(session):
     session.headers.update({
         'User-Agent': _USER_AGENT,
         'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.7',
     })
-    # Avoid the consent interstitial when the fallback HTML endpoint is used.
     try:
         session.cookies.set('SOCS', 'CAI', domain='.youtube.com', secure=True)
     except Exception:
@@ -92,7 +163,6 @@ def _search_innertube(session, query: str, limit: int):
             },
         },
         'query': query,
-        # Same videos-only filter used by mature YouTube clients such as yt-dlp.
         'params': _VIDEO_SEARCH_PARAMS,
     }
     response = session.post(
@@ -132,13 +202,20 @@ def search_youtube(query: str, limit: int = 8):
     if len(query) < 2:
         raise ValueError('Digite pelo menos 2 caracteres para pesquisar no YouTube.')
 
-    session = _configure_session(requests.Session())
     errors = []
+
+    # Primary path: reuse yt-dlp's maintained YoutubeSearch extractor instead of
+    # duplicating YouTube's private search protocol. Several mature desktop and
+    # media apps use the same ytsearchN:<query> flow with extract_flat metadata.
     try:
-        # The old implementation scraped only /results HTML. That endpoint is
-        # frequently consented, throttled or served without ytInitialData in
-        # embedded/desktop runtimes. Use YouTube's own InnerTube search first,
-        # then keep the HTML path only as a compatibility fallback.
+        return _search_ytdlp(query, limit)
+    except Exception as exc:
+        errors.append(exc)
+
+    # Compatibility fallbacks stay available for environments where yt-dlp is
+    # missing or temporarily blocked, but they are no longer the main path.
+    session = _configure_session(requests.Session())
+    try:
         for strategy in (_search_innertube, _search_html):
             try:
                 return strategy(session, query, limit)
