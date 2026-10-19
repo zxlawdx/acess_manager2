@@ -66,10 +66,11 @@ const root=path.resolve(__dirname,'../..'),base=path.join(root,'apps/access_mana
  console.log('Dialogue editor and literal preview OK');
  // Official YouTube API is stubbed only at its external boundary, to make smoke deterministic offline.
  await page.evaluate(()=>{window.YT={Player:class{constructor(el,options){const iframe=document.createElement('iframe');iframe.title='YouTube';el.replaceWith(iframe);this.iframe=iframe;setTimeout(()=>options.events.onReady(),0);}getIframe(){return this.iframe}destroy(){this.iframe.remove()}}};});
+ await page.locator('#world-menu-button').click();await page.locator('#world-scene').selectOption('office');await page.locator('#world-menu').waitFor({state:'hidden'});await canvas.focus();await nextWorldFrame();
  await page.locator('#world-menu-button').click();await page.locator('#world-open-tv').click();await page.locator('#world-youtube-url').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');await page.locator('#world-tv-form button[type=submit]').click();
- await page.waitForFunction(()=>document.querySelector('#world-tv-status').textContent.includes('Esc volta'));
- assert.equal(await page.locator('#world-tv-player iframe').count(),1);await page.keyboard.press('Escape');await page.waitForFunction(()=>document.querySelectorAll('#world-tv-player iframe').length===0);
- console.log('YouTube focus and iframe cleanup OK');
+ await page.waitForFunction(()=>document.querySelector('#world-tv-status').textContent.includes('Reproduzindo na televisão 3D'));
+ assert.equal(await page.locator('.world-tv-surface iframe').count(),1);await page.keyboard.press('Escape');await page.locator('#world-tv').waitFor({state:'hidden'});assert.equal(await page.locator('.world-tv-surface iframe').count(),1);
+ console.log('YouTube playback is embedded in the 3D TV and persists after closing search UI');
  await page.locator('#world-menu-button').click();await page.locator('#world-scene').selectOption('office');
  // Look ahead and walk into interaction distance; E is routed through the central raycast manager.
  await page.locator('#world-menu').waitFor({state:'hidden'});await canvas.focus();await nextWorldFrame();await page.keyboard.down('KeyW');try{await page.waitForFunction(()=>window.__worldQA?.z<6.3,null,{timeout:60000});}finally{await page.keyboard.up('KeyW');}
