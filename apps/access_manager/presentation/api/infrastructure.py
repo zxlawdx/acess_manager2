@@ -13,13 +13,13 @@ def subscriber_context(context=None):
     return safe(lambda:queries.infrastructure('juniper_'+str(config.get('kind')),'subscriber_context',config))
 
 @api.post('/infrastructure/interfaces')
-def infrastructure_interfaces(context=None):return safe(lambda:queries.infrastructure('juniper_interfaces','get_juniper_interfaces',body(context)))
+def infrastructure_interfaces(context=None):return safe(lambda:queries.infrastructure('interfaces','get_interfaces',body(context)))
 
 @api.post('/infrastructure/interfaces/detail')
-def infrastructure_interface(context=None):return safe(lambda:queries.infrastructure('juniper_interface','get_juniper_interface',body(context)))
+def infrastructure_interface(context=None):return safe(lambda:queries.infrastructure('interface','get_interface',body(context)))
 
 @api.post('/infrastructure/system')
-def infrastructure_system(context=None):return safe(lambda:queries.infrastructure('device','get_juniper_system',body(context)))
+def infrastructure_system(context=None):return safe(lambda:queries.infrastructure('device','get_system',body(context)))
 
 @api.post('/infrastructure/chassis')
 def infrastructure_chassis(context=None):return safe(lambda:queries.infrastructure('juniper_chassis','get_juniper_chassis',body(context)))
@@ -28,13 +28,28 @@ def infrastructure_chassis(context=None):return safe(lambda:queries.infrastructu
 def infrastructure_resources(context=None):return safe(lambda:queries.infrastructure('juniper_resources','get_juniper_resources',body(context)))
 
 @api.post('/infrastructure/diagnostics')
-def infrastructure_diagnostics(context=None):return safe(lambda:queries.infrastructure('juniper_'+str(body(context).get('kind')),'juniper_diagnostic',body(context)))
+def infrastructure_diagnostics(context=None):return safe(lambda:queries.infrastructure('diagnostics','diagnostic',body(context)))
 
 @api.post('/infrastructure/health')
-def infrastructure_health(context=None):return safe(lambda:queries.infrastructure('juniper_health','get_juniper_health',body(context)))
+def infrastructure_health(context=None):return safe(lambda:queries.infrastructure('health','get_health',body(context)))
 
 @api.post('/infrastructure/interfaces/link')
-def infrastructure_link(context=None):return safe(lambda:queries.infrastructure('juniper_'+str(body(context).get('kind')),'get_juniper_link',body(context)))
+def infrastructure_link(context=None):return safe(lambda:queries.infrastructure('link','get_link',body(context)))
 
 @api.post('/infrastructure/operations')
 def infrastructure_operations(context=None):return safe(lambda:queries.infrastructure('device','get_operation_log',body(context)))
+
+@api.post('/infrastructure/diagnostics/start')
+def diagnostic_start(context=None):
+    from apps.access_manager.composition import diagnostic_orchestrator
+    return safe(lambda:diagnostic_orchestrator.start(body(context).get('query')))
+
+@api.post('/infrastructure/diagnostics/progress')
+def diagnostic_progress(context=None):
+    from apps.access_manager.composition import diagnostic_orchestrator
+    return safe(lambda:diagnostic_orchestrator.progress(body(context).get('id')))
+
+@api.post('/infrastructure/diagnostics/cancel')
+def diagnostic_cancel(context=None):
+    from apps.access_manager.composition import diagnostic_orchestrator
+    return safe(lambda:diagnostic_orchestrator.cancel(body(context).get('id')))

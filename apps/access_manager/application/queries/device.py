@@ -146,10 +146,16 @@ class DeviceQueryBus:
                 acquired=time.perf_counter()
                 token=operation.set({'request_id':request_id,'lock_wait_ms':round((acquired-started)*1000,2)})
                 try:
-                    if manager.provider.vendor!='juniper':raise ValueError('Consulta exclusiva do workspace Juniper.')
+                    if manager.provider.vendor not in {'juniper','huawei_bng'}:raise ValueError('Consulta requer infraestrutura conectada.')
                     if config.get('app_session_id') and config['app_session_id']!=manager.session.session_id:
                         from apps.access_manager.infrastructure.juniper.errors import JuniperError
                         raise JuniperError('STALE_SESSION')
+                    from apps.access_manager.application.services.infrastructure_reads import READS, read
+                    if method in READS:
+                        return read(manager.provider,method,config)
+                    if manager.provider.vendor=='huawei_bng' and method not in {'lookup_subscribers','get_subscriber','get_operation_log'}:
+                        from apps.access_manager.infrastructure.huawei_bng.errors import BngError
+                        raise BngError('PHYSICAL_VALIDATION_PENDING')
                     args=() if method in {'get_juniper_system','get_juniper_interfaces','get_juniper_chassis','get_juniper_resources','get_operation_log'} else (config.get('query'),) if method=='lookup_subscribers' else (config.get('session_id'),) if method=='get_subscriber' else (config.get('name'),) if method=='get_juniper_interface' else (config,)
                     manager.provider.capabilities.require_read(feature)
                     return getattr(manager.provider,method)(*args)

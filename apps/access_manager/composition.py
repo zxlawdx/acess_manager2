@@ -12,12 +12,14 @@ from apps.access_manager.infrastructure.history import HistoryRepository
 history=HistoryRepository()
 
 from apps.access_manager.infrastructure.providers.juniper import JuniperProvider
+from apps.access_manager.infrastructure.huawei_bng.provider import HuaweiNetEngineBngProvider
 juniper_provider=JuniperProvider()
+huawei_bng_provider=HuaweiNetEngineBngProvider()
 huawei_provider=HuaweiProvider(); zte_provider=ZTEProvider(); deployment_provider=DeploymentProvider()
 router=ProviderRouter(huawei_probe=HuaweiProvider.looks_like_huawei,huawei_models=HuaweiProvider.known_models())
 from apps.access_manager.application.infrastructure_sessions import InfrastructureSessions
 device_sessions=SessionManager(router,{'huawei':huawei_provider,'zte':zte_provider,'deployment':deployment_provider},history=history)
-infrastructure_sessions=SessionManager(router,{'juniper':juniper_provider})
+infrastructure_sessions=SessionManager(router,{'juniper':juniper_provider,'huawei_bng':huawei_bng_provider})
 sessions=InfrastructureSessions(device_sessions,infrastructure_sessions)
 commands=DeviceCommandBus(sessions); queries=DeviceQueryBus(sessions)
 
@@ -37,3 +39,9 @@ full_diagnostics=FullDiagnosticService(sessions,queries,commands,history)
 
 from apps.access_manager.application.services.mesh_port_forwarding import MeshPortForwardingService
 mesh_port_forwarding=MeshPortForwardingService(sessions)
+
+from apps.access_manager.application.services.diagnostic_orchestrator import DiagnosticOrchestrator
+diagnostic_orchestrator=DiagnosticOrchestrator(sessions)
+
+import atexit
+atexit.register(sessions.revoke_credential)

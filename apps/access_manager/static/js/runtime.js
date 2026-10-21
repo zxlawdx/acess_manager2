@@ -2606,7 +2606,7 @@
   }
   function subscribers() {
     ensureContext();
-    return `<div class="j-subscriber-grid"><section class="panel j-panel"><div class="j-panel-header"><h2>Assinantes</h2><span id="subscriber-count">${rows.length} resultados</span></div><form id="subscriber-search" class="j-toolbar"><label class="sr-only" for="subscriber-query">Contrato / usuário PPPoE / IP</label><input id="subscriber-query" name="query" required maxlength="80" value="${esc(query)}" placeholder="Buscar contrato, usuário PPPoE ou IP"><button class="button primary" type="submit">Buscar</button><button class="button" type="button" id="subscriber-cancel" disabled>Cancelar</button><button class="button" type="button" data-toggle-filters aria-expanded="false">Filtros</button></form><div id="subscriber-filters" class="j-toolbar" hidden><label>Estado <select id="subscriber-state"><option value="">Todos</option>${[...new Set(rows.map((r) => r.state).filter(Boolean))].map((s) => `<option>${esc(s)}</option>`).join("")}</select></label><button class="button" data-clear-filter>Limpar filtro</button></div><p id="subscriber-status" class="j-inline-status" role="status">${query ? "Atualizando a consulta…" : "Informe um contrato. Prefixos brd_, cdy_ e 364_; zeros preservados."}</p><div id="subscriber-candidates"></div><div id="subscriber-results"></div></section><aside id="subscriber-detail" class="panel j-detail" aria-label="Detalhes do assinante">${empty("Nenhuma sessão selecionada", "Escolha uma linha para consultar detalhes sem sair da lista.")}</aside></div>`;
+    return `<div class="j-subscriber-grid"><section class="panel j-panel"><div class="j-panel-header"><h2>Assinantes</h2><span id="subscriber-count">${rows.length} resultados</span></div><form id="subscriber-search" class="j-toolbar"><label class="sr-only" for="subscriber-query">Contrato / usuário PPPoE / IP</label><input id="subscriber-query" name="query" required maxlength="80" value="${esc(query)}" placeholder="Buscar contrato, usuário PPPoE ou IP"><button class="button primary" type="submit">Buscar</button><button class="button" type="button" id="subscriber-diagnose">Diagnóstico completo</button><button class="button" type="button" id="subscriber-cancel" disabled>Cancelar</button><button class="button" type="button" data-toggle-filters aria-expanded="false">Filtros</button></form><div id="subscriber-filters" class="j-toolbar" hidden><label>Estado <select id="subscriber-state"><option value="">Todos</option>${[...new Set(rows.map((r) => r.state).filter(Boolean))].map((s) => `<option>${esc(s)}</option>`).join("")}</select></label><button class="button" data-clear-filter>Limpar filtro</button></div><p id="subscriber-status" class="j-inline-status" role="status">${query ? "Atualizando a consulta…" : "Informe um contrato. Prefixos brd_, cdy_ e 364_; zeros preservados."}</p><button class="button" type="button" id="attendance-cancel" hidden>Cancelar diagnóstico</button><div id="attendance-diagnostic" role="status" aria-live="polite"></div><div id="subscriber-candidates"></div><div id="subscriber-results"></div></section><aside id="subscriber-detail" class="panel j-detail" aria-label="Detalhes do assinante">${empty("Nenhuma sessão selecionada", "Escolha uma linha para consultar detalhes sem sair da lista.")}</aside></div>`;
   }
   function unmountSubscribers() {
     controller?.abort();
@@ -2630,6 +2630,44 @@
     wireCopy(host);
   }
   function mountSubscribers() {
+    document.querySelector("#subscriber-diagnose").onclick = async () => {
+      const scope2 = currentScope(), button2 = document.querySelector("#subscriber-diagnose"), host = document.querySelector("#attendance-diagnostic");
+      button2.disabled = true;
+      try {
+        let job = await read("diagnostics/start", { query: document.querySelector("#subscriber-query").value }, scope2);
+        const cancel2 = document.querySelector("#attendance-cancel");
+        cancel2.hidden = false;
+        cancel2.onclick = () => read("diagnostics/cancel", { id: job.id }, scope2).catch((e) => toast(e.message));
+        while (scopeActive(scope2)) {
+          host.innerHTML = `<p>${esc(job.status)} · ${job.events.map((e) => esc(e.source + ": " + e.status)).join(" · ")}</p>`;
+          if (job.result) {
+            const triage = job.result.triage;
+            const stages = ["Cliente", "ONT / CPE", "GPON / PON", "VLAN / QinQ", "BNG / PPPoE", "AAA / RADIUS", "IPv4 / IPv6", "CGNAT / Core", "DNS / Internet"];
+            const observed = job.result.snapshot?.subscriber;
+            host.innerHTML += `<details><summary>Caminho do cliente e evidências</summary>${stages.map((name, index) => `<p>${esc(name)}: ${esc(index === 4 ? observed?.state || "UNKNOWN" : "UNKNOWN")}</p>`).join("")}<p>Coleta BNG: ${esc(job.result.snapshot?.subscriber_observed_at || "UNKNOWN")}</p></details>`;
+            host.innerHTML += `<h3>${esc(triage.status)}${triage.partial ? " · Parcial" : ""}</h3>` + triage.issues.map((i) => `<p><strong>${esc(i.title)}</strong> ${esc(i.suggested_action || "")}</p>`).join("") + `<p>Etapas sem evidência permanecem UNKNOWN.</p><button class="button" data-attendance-copy="technical">Copiar técnico</button> <button class="button" data-attendance-copy="customer">Copiar para cliente</button>`;
+            host.querySelectorAll("[data-attendance-copy]").forEach((b) => b.onclick = async () => {
+              try {
+                await navigator.clipboard.writeText(job.result.attendance[b.dataset.attendanceCopy]);
+                toast("Registro copiado.");
+              } catch {
+                toast("Não foi possível copiar.");
+              }
+            });
+          }
+          if (job.status !== "RUNNING") break;
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          if (!scopeActive(scope2)) break;
+          job = await read("diagnostics/progress", { id: job.id }, scope2);
+        }
+      } catch (error) {
+        if (scopeActive(scope2)) host.textContent = error.message;
+      } finally {
+        button2.disabled = false;
+        const cancel2 = document.querySelector("#attendance-cancel");
+        if (cancel2) cancel2.hidden = true;
+      }
+    };
     const form = document.querySelector("#subscriber-search"), scope = currentScope(), cancel = document.querySelector("#subscriber-cancel"), message = document.querySelector("#subscriber-status");
     drawResults();
     document.querySelector("[data-toggle-filters]").onclick = (e) => {
@@ -4637,7 +4675,7 @@
   function syncContext() {
     const s = store.session?.session;
     const connected = Boolean(store.session?.connected);
-    const infrastructure = s?.vendor === "juniper";
+    const infrastructure = ["juniper", "huawei_bng"].includes(s?.vendor);
     document.querySelector(".app-shell").classList.toggle("juniper-shell", infrastructure);
     document.querySelector("#action-dialog").classList.toggle("juniper-surface", infrastructure);
     document.querySelectorAll("#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group").forEach((element) => {
@@ -4672,8 +4710,8 @@
     document.dispatchEvent(new CustomEvent("app-context-ready"));
   }
   async function render9(name = store.view, background = false) {
-    if (store.session?.session?.vendor === "juniper" && !Object.hasOwn(juniperRoutes, name)) name = "juniperOverview";
-    else if (store.session?.session?.vendor !== "juniper" && Object.hasOwn(juniperRoutes, name)) name = "overview";
+    if (["juniper", "huawei_bng"].includes(store.session?.session?.vendor) && !Object.hasOwn(juniperRoutes, name)) name = "juniperOverview";
+    else if (!["juniper", "huawei_bng"].includes(store.session?.session?.vendor) && Object.hasOwn(juniperRoutes, name)) name = "overview";
     const scope = background ? currentScope() : beginView(name);
     if (!background) {
       views[store.view]?.unmount?.();
@@ -4763,6 +4801,7 @@
       password,
       https,
       model_hint: modelHint || null,
+      ...fd.get("vendor") === "huawei_bng" ? { vendor: "huawei_bng", port: fd.get("port") || null, ssh_port: Number(fd.get("ssh_port") || 22) } : {},
       ...fd.get("vendor") === "juniper" ? { vendor: "juniper", transport: fd.get("transport") || "netconf", port: fd.get("port") || null, ssh_port: fd.get("ssh_port"), netconf_port: fd.get("netconf_port") } : {}
     };
   }
@@ -4803,7 +4842,7 @@
       console.error("[Access Manager] Falha de conexão:", err);
     } finally {
       connectionBusy = false;
-      if (payload.vendor === "juniper") form.elements.password.value = "";
+      if (["juniper", "huawei_bng"].includes(payload.vendor)) form.elements.password.value = "";
       payload.password = "";
       if (button2) {
         button2.disabled = false;
@@ -4854,7 +4893,10 @@
     } catch {
     }
     const syncVendor = (event) => {
-      const juniper = form.elements.vendor.value === "juniper";
+      const juniper = ["juniper", "huawei_bng"].includes(form.elements.vendor.value);
+      const huawei = form.elements.vendor.value === "huawei_bng";
+      form.elements.transport.disabled = huawei;
+      if (huawei) form.elements.transport.value = "ssh";
       document.querySelector("#juniper-connection").hidden = !juniper;
       form.querySelector(".https-toggle").hidden = juniper;
       document.querySelector("#login-page").classList.toggle("infrastructure-login", juniper);
@@ -4868,9 +4910,9 @@
         if (event?.type === "change" || !form.elements.host.value) form.elements.host.value = infrastructureSettings.last_successful_host || infrastructureSettings.default_host || "";
         form.elements.ssh_port.value = infrastructureSettings.ssh_port || 22;
         form.elements.netconf_port.value = infrastructureSettings.netconf_port || 830;
-        form.elements.transport.value = infrastructureSettings.preferred_transport || "ssh";
+        form.elements.transport.value = huawei ? "ssh" : infrastructureSettings.preferred_transport || "ssh";
       }
-      document.querySelector(".connection-security").textContent = juniper ? "Use sua conta corporativa no Junos. A senha é descartada após cada tentativa." : "As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.";
+      document.querySelector(".connection-security").textContent = juniper ? "Use sua conta corporativa no concentrador. A senha é descartada após cada tentativa." : "As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.";
     };
     form.elements.vendor.onchange = syncVendor;
     syncVendor();
