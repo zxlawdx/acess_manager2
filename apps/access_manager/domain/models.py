@@ -9,6 +9,7 @@ class Vendor(StrEnum):
     HUAWEI = "huawei"
     ZTE = "zte"
     JUNIPER = "juniper"
+    HUAWEI_BNG = "huawei_bng"
     DEPLOYMENT = "deployment"
 
 class SessionMode(StrEnum):

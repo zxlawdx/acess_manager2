@@ -31,6 +31,9 @@ def _safe_text(error: BaseException, fallback: str) -> str:
     return value
 
 def classify(error: BaseException) -> PublicFailure | None:
+    from apps.access_manager.infrastructure.huawei_bng.errors import BngError
+    if isinstance(error,BngError):
+        return PublicFailure(error.code,'infrastructure',error.public_message,error.code in {'TIMEOUT','SSH_UNAVAILABLE'})
     from apps.access_manager.infrastructure.juniper.errors import JuniperError
     if isinstance(error,JuniperError):
         category='parser' if error.code in {'XML_PARSE_ERROR','XML_SHAPE_UNSUPPORTED','EMPTY_RESPONSE'} else 'transport' if error.code in {'SSH_UNAVAILABLE','NETCONF_UNAVAILABLE','SSH_COMMAND_FAILED'} else 'authentication' if error.code=='AUTHENTICATION_FAILED' else 'timeout' if error.code=='CONNECTION_TIMEOUT' else 'permission' if error.code=='PERMISSION_DENIED' else 'unconfirmed'

@@ -45,7 +45,7 @@ const views = {
 function syncContext() {
   const s = store.session?.session;
   const connected=Boolean(store.session?.connected);
-  const infrastructure=s?.vendor==='juniper';
+  const infrastructure=['juniper','huawei_bng'].includes(s?.vendor);
   document.querySelector('.app-shell').classList.toggle('juniper-shell',infrastructure);
   document.querySelector('#action-dialog').classList.toggle('juniper-surface',infrastructure);
   document.querySelectorAll('#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group').forEach(element=>{element.hidden=infrastructure?!element.hasAttribute('data-juniper-nav'):element.hasAttribute('data-juniper-nav')});
@@ -62,8 +62,8 @@ function syncContext() {
 }
 
 async function render(name = store.view,background=false) {
-  if(store.session?.session?.vendor==='juniper'&&!Object.hasOwn(juniperRoutes,name))name='juniperOverview';
-  else if(store.session?.session?.vendor!=='juniper'&&Object.hasOwn(juniperRoutes,name))name='overview';
+  if(['juniper','huawei_bng'].includes(store.session?.session?.vendor)&&!Object.hasOwn(juniperRoutes,name))name='juniperOverview';
+  else if(!['juniper','huawei_bng'].includes(store.session?.session?.vendor)&&Object.hasOwn(juniperRoutes,name))name='overview';
   const scope=background?currentScope():beginView(name);
   if(!background){views[store.view]?.unmount?.();const d=document.querySelector('#action-dialog');if(d?.open)d.close()}
   const state={generation:scope.generation,loading:true,error:null};viewStates.set(name,state);scope.controller.signal.addEventListener('abort',()=>{state.loading=false},{once:true});
@@ -120,6 +120,7 @@ function normalizeConnectionPayload(form) {
     password,
     https,
     model_hint: modelHint || null,
+    ...(fd.get('vendor')==='huawei_bng'?{vendor:'huawei_bng',port:fd.get('port')||null,ssh_port:Number(fd.get('ssh_port')||22)}:{}),
     ...(fd.get('vendor')==='juniper'?{vendor:'juniper',transport:fd.get('transport')||'netconf',port:fd.get('port')||null,ssh_port:fd.get('ssh_port'),netconf_port:fd.get('netconf_port')}:{}),
   };
 }
@@ -156,7 +157,7 @@ async function connectFromForm(event) {
     const password = form.querySelector('[name="password"]');
     if (password) password.value = '';
 
-    toast(`Conectado via ${payload.vendor==='juniper'?(s.session.protocol_family||'SSH'):(payload.https ? 'HTTPS' : 'HTTP')} em ${s.session.model || s.session.vendor || payload.host}.`);
+    toast(`Conectado via ${['juniper','huawei_bng'].includes(payload.vendor)?(s.session.protocol_family||'SSH'):(payload.https ? 'HTTPS' : 'HTTP')} em ${s.session.model || s.session.vendor || payload.host}.`);
     await render('overview');
     await loginExperience?.afterConnect(worldBridge);
   } catch (err) {
@@ -167,7 +168,7 @@ async function connectFromForm(event) {
     console.error('[Access Manager] Falha de conexão:', err);
   } finally {
     connectionBusy=false;
-    if(payload.vendor==='juniper')form.elements.password.value='';
+    if(['juniper','huawei_bng'].includes(payload.vendor))form.elements.password.value='';
     payload.password='';
     if (button) {
       button.disabled = false;
@@ -210,13 +211,13 @@ export async function mountApp() {
   if (!form) throw new Error('Formulário de conexão não foi encontrado.');
   form.addEventListener('submit', connectFromForm);
   try{infrastructureSettings=await request('/api/infrastructure/settings')}catch{}
-  const syncVendor=event=>{const juniper=form.elements.vendor.value==='juniper';document.querySelector('#juniper-connection').hidden=!juniper;form.querySelector('.https-toggle').hidden=juniper;
+  const syncVendor=event=>{const juniper=['juniper','huawei_bng'].includes(form.elements.vendor.value);const huawei=form.elements.vendor.value==='huawei_bng';form.elements.transport.disabled=huawei;form.elements.transport.querySelector('[value=ssh]').textContent=huawei?'SSH / CLI (Huawei VRP)':'SSH / XML';form.elements.netconf_port.disabled=huawei;document.querySelector('#netconf-port-field').hidden=huawei;if(huawei)form.elements.transport.value='ssh';document.querySelector('#juniper-connection').hidden=!juniper;form.querySelector('.https-toggle').hidden=juniper;
    document.querySelector('#login-page').classList.toggle('infrastructure-login',juniper);document.querySelector('#action-dialog').classList.toggle('juniper-surface',juniper);
    form.elements.password.autocomplete=juniper?'off':'current-password';form.elements.username.autocomplete=juniper?'off':'username';
    form.querySelector('[for=connection-host]').textContent=juniper?'Servidor':'IP ou IP:porta';
    form.querySelector('[for=connection-user]').textContent=juniper?'Usuário AD':'Usuário';form.querySelector('[for=connection-password]').textContent=juniper?'Senha AD':'Senha';
-   if(juniper){if(event?.type==='change'||!form.elements.host.value)form.elements.host.value=infrastructureSettings.last_successful_host||infrastructureSettings.default_host||'';form.elements.ssh_port.value=infrastructureSettings.ssh_port||22;form.elements.netconf_port.value=infrastructureSettings.netconf_port||830;form.elements.transport.value=infrastructureSettings.preferred_transport||'ssh'}
-   document.querySelector('.connection-security').textContent=juniper?'Use sua conta corporativa no Junos. A senha é descartada após cada tentativa.':'As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.'};
+   if(juniper){if(event?.type==='change'||!form.elements.host.value)form.elements.host.value=huawei?'':infrastructureSettings.last_successful_host||infrastructureSettings.default_host||'';form.elements.ssh_port.value=huawei?22:infrastructureSettings.ssh_port||22;form.elements.netconf_port.value=infrastructureSettings.netconf_port||830;form.elements.transport.value=huawei?'ssh':infrastructureSettings.preferred_transport||'ssh'}
+   document.querySelector('.connection-security').textContent=juniper?'Use sua conta corporativa no concentrador. A senha é descartada após cada tentativa.':'As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.'};
   form.elements.vendor.onchange=syncVendor;syncVendor();
   document.querySelector('#inspect-host-key').onclick=async()=>{
    try{const info=await request('/api/infrastructure/host-key',{method:'POST',body:JSON.stringify({host:store.session?.connected&&store.session.session?.vendor==='juniper'?store.session.session.host:form.elements.host.value,port:form.elements.transport.value==='netconf'?form.elements.netconf_port.value:form.elements.ssh_port.value})});
