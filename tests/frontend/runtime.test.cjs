@@ -107,7 +107,7 @@ test('Juniper partial candidate failures never present confirmed offline',async(
 
 test('connection offers explicit Juniper and all three transports without HTTP routing',async()=>{
  const x=await boot({'/api/session':{connected:false,session:null},'/api/infrastructure/system':{model:'mx204'}}),d=x.w.document,f=d.querySelector('#connect-form');
- assert.equal(f.elements.vendor.options.length,2);assert.equal(f.elements.transport.options.length,3);
+ assert.equal(f.elements.vendor.options.length,3);assert.equal(f.elements.transport.options.length,3);
  f.elements.vendor.value='juniper';f.elements.vendor.dispatchEvent(new x.w.Event('change'));assert.equal(d.querySelector('#juniper-connection').hidden,false);assert.equal(f.querySelector('.https-toggle').hidden,true);
  const original=x.w.fetch;x.w.fetch=async(url,options)=>new URL(url).pathname==='/api/session'&&options.method==='POST'?{ok:true,text:async()=>JSON.stringify({connected:true,session:{session_id:'j',vendor:'juniper',model:'mx204',protocol_family:'junos_netconf',capabilities:{}}})}:original(url,options);
  f.elements.host.value='example.invalid';f.elements.username.value='synthetic';f.elements.password.value='synthetic-only';f.elements.port.value='830';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.equal(d.querySelector('#login-page').hidden,true);assert.equal(f.elements.password.value,'');assert.equal(d.querySelector('[data-view=subscribers]').hidden,false);x.w.close();
@@ -237,4 +237,29 @@ test('WAN is edited through existing preview/apply endpoints, invalidates stale 
 test('station standard appears in table, cards, diagnostic and service record with generation filter',async()=>{
  const client={hostname:'AX phone',ip:'192.0.2.20',mac:'00:00:00:00:00:01',connection_type:'Wi-Fi',band:'5GHz',wifi_standard:'802.11ax',wifi_generation:6,wifi_mode_family:'AX',mcs:9,bandwidth:80,noise:-94,rssi:-55};
  const x=await boot({'/api/device/clients':[client,{hostname:'Unknown',connection_type:'Wi-Fi'}]});try{await x.click('clients');const d=x.w.document;assert.match(d.querySelector('#client-results').textContent,/Padrão Wi-Fi/);assert.match(d.querySelector('#client-results').textContent,/Wi-Fi 6 · 802.11ax/);const f=d.querySelector('#client-standard');f.value='6';f.dispatchEvent(new x.w.Event('input'));assert.doesNotMatch(d.querySelector('#client-results').textContent,/Unknown/);d.querySelector('[data-client]').click();assert.match(d.querySelector('#dialog-body').textContent,/Largura do canal/);assert.match(d.querySelector('#dialog-body').textContent,/802.11ax/);d.querySelector('[data-add-client]').click();d.querySelector('#action-dialog').close();d.querySelector('#service-current').click();assert.match(d.querySelector('[data-record]').textContent,/802.11ax/);}finally{x.w.close()}
+});
+
+
+test('Huawei BNG login forces SSH and clears AD credentials after failure',async()=>{
+ const x=await boot({'/api/session':{connected:false,session:null}}),d=x.w.document,f=d.querySelector('#connect-form');
+ f.elements.vendor.value='huawei_bng';f.elements.vendor.dispatchEvent(new x.w.Event('change'));
+ assert.equal(f.elements.transport.value,'ssh');assert.equal(f.elements.transport.disabled,true);
+ f.elements.host.value='example.invalid';f.elements.username.value='operator';f.elements.password.value='synthetic-only';
+ f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();
+ assert.equal(f.elements.password.value,'');
+ const call=x.calls.find(([path,options])=>path==='/api/session'&&options.method==='POST');
+ const payload=JSON.parse(call[1].body);assert.equal(payload.vendor,'huawei_bng');assert.equal(payload.ssh_port,22);
+ x.w.close();
+});
+
+test('attendance diagnosis renders progressive partial evidence and copy actions',async()=>{
+ const final={id:'diag-1',status:'COMPLETE',events:[{source:'bng',status:'PARTIAL'}],result:{triage:{status:'INFO',partial:true,issues:[{title:'IPv4 compartilhado via CGNAT',suggested_action:'Explicar CGNAT'}]},attendance:{technical:'CGNAT observado.',customer:'Vamos validar o acesso.'}}};
+ const x=await boot({...juniperBase,'/api/infrastructure/diagnostics/start':{id:'diag-1',status:'RUNNING',events:[{source:'bng',status:'PARTIAL'}]},'/api/infrastructure/diagnostics/progress':final});
+ await x.click('subscribers');const d=x.w.document;
+ d.querySelector('#subscriber-query').value='brd_1';d.querySelector('#subscriber-diagnose').click();await x.wait();
+ assert.match(d.querySelector('#attendance-diagnostic').textContent,/RUNNING.*PARTIAL/);
+ await new Promise(r=>setTimeout(r,550));
+ assert.match(d.querySelector('#attendance-diagnostic').textContent,/Parcial.*CGNAT/);
+ assert.equal(d.querySelectorAll('[data-attendance-copy]').length,2);
+ x.w.close();
 });
