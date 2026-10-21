@@ -38,12 +38,12 @@ test('Juniper has a complete terminal token set including primary-soft',()=>{
 });
 
 test('SSH host-key modal is isolated, centered and readable',()=>{
-  assert.match(vela,/\.juniper-surface\{[\s\S]*position:fixed!important/);
-  assert.match(vela,/\.juniper-surface\{[\s\S]*transform:translate\(-50%,-50%\)!important/);
-  assert.match(vela,/\.juniper-surface \.j-trust-alert\{[\s\S]*background:var\(--am-primary-soft\)!important/);
-  assert.match(vela,/\.juniper-surface \.j-kv>div\{[\s\S]*grid-template-columns:minmax\(150px,\.72fr\) minmax\(0,1\.28fr\)!important/);
-  assert.match(vela,/\.juniper-surface \.j-kv dd\{[\s\S]*word-break:break-all!important/);
-  assert.match(vela,/\.juniper-surface \.dialog-footer\{[\s\S]*background:#070907!important/);
+  assert.match(vela,/\.infrastructure-surface\{[\s\S]*position:fixed!important/);
+  assert.match(vela,/\.infrastructure-surface\{[\s\S]*transform:translate\(-50%,-50%\)!important/);
+  assert.match(vela,/\.infrastructure-surface \.j-trust-alert\{[\s\S]*background:var\(--am-primary-soft\)!important/);
+  assert.match(vela,/\.infrastructure-surface \.j-kv>div\{[\s\S]*grid-template-columns:minmax\(150px,\.72fr\) minmax\(0,1\.28fr\)!important/);
+  assert.match(vela,/\.infrastructure-surface \.j-kv dd\{[\s\S]*word-break:break-all!important/);
+  assert.match(vela,/\.infrastructure-surface \.dialog-footer\{[\s\S]*background:#070907!important/);
 });
 
 test('Juniper login resets the legacy 540px cap and collapses before fields clip',()=>{

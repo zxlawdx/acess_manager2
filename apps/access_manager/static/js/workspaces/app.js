@@ -6,6 +6,7 @@ import {mountWorldBridge} from '../world/bridge.js';
 import {request,beginView,scopeActive,isCancelled,currentScope} from '../services/api.js';
 import {store} from '../core/store.js';
 import * as juniper from './views/juniper.js';
+import * as huaweiBng from './views/huaweiBng.js';
 import * as overview from './views/overview.js';
 import * as clients from './views/clients.js';
 import * as wifi from './views/wifi.js';
@@ -24,6 +25,7 @@ let workspace = null;
 let connectionBusy=false;
 let worldBridge,loginExperience;
 let infrastructureSettings={};
+let huaweiConnectionSettings={};
 const viewStates=new Map();
 
 const meta = {juniperOverview:['JUNIPER','Visão geral'],subscribers:['JUNIPER','Assinantes PPPoE'],juniperInterfaces:['JUNIPER','Interfaces'],juniperSystem:['JUNIPER','Sistema'],juniperDiagnostics:['JUNIPER','Diagnóstico'],
@@ -36,8 +38,10 @@ const meta = {juniperOverview:['JUNIPER','Visão geral'],subscribers:['JUNIPER',
 Object.assign(meta,Object.fromEntries(Object.entries(juniper.titles).map(([key,[group,title]])=>[key,[`Infraestrutura / Juniper / ${group}`,title]])));
 meta.subscribers[1]='Assinantes PPPoE';
 const juniperRoutes=Object.fromEntries(Object.keys(juniper.titles).map(key=>[key,juniper.routeView(key)]));
+const huaweiBngRoutes=huaweiBng.routes;
+Object.assign(meta,Object.fromEntries(huaweiBng.navigation.flatMap(([group,items])=>items.map(([id,label])=>[id,[group,label]]))));
 const views = {
-  ...juniperRoutes,overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
+  ...juniperRoutes,...huaweiBngRoutes,overview, clients, wifi, profiles, management, capabilities, completeDiagnostics,
   traffic, diagnostics:{render:misc.diagnostics,mount:misc.mountDiagnostics}, deployment:{render:misc.deployment},
   wan:{render:network.wan,mount:network.mountWan}, lan:{render:network.lan}, dhcpdns:{render:network.dhcpdns,mount:network.mountDhcpDns}
 };
@@ -45,15 +49,23 @@ const views = {
 function syncContext() {
   const s = store.session?.session;
   const connected=Boolean(store.session?.connected);
-  const infrastructure=['juniper','huawei_bng'].includes(s?.vendor);
-  document.querySelector('.app-shell').classList.toggle('juniper-shell',infrastructure);
-  document.querySelector('#action-dialog').classList.toggle('juniper-surface',infrastructure);
-  document.querySelectorAll('#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group').forEach(element=>{element.hidden=infrastructure?!element.hasAttribute('data-juniper-nav'):element.hasAttribute('data-juniper-nav')});
+  const isJuniper=s?.vendor==='juniper',isHuaweiBng=s?.vendor==='huawei_bng';
+  const infrastructureVendor=isJuniper||isHuaweiBng;
+  document.querySelector('.app-shell').classList.toggle('infrastructure-shell',infrastructureVendor);
+  document.querySelector('.app-shell').classList.toggle('juniper-shell',isJuniper);
+  document.querySelector('.app-shell').classList.toggle('huawei-bng-shell',isHuaweiBng);
+  document.querySelector('#action-dialog').classList.toggle('infrastructure-surface',infrastructureVendor);
+  document.querySelector('#action-dialog').classList.toggle('juniper-surface',isJuniper);
+  document.querySelector('#ctx-module').textContent=isHuaweiBng?'/ Huawei / VRP BNG':isJuniper?'/ Juniper / Junos BNG':'';
+  document.querySelector('#juniper-help').hidden=!isJuniper;
+  document.querySelectorAll('#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group,#sidebar .infrastructure-nav-group').forEach(element=>{
+   element.hidden=element.hasAttribute('data-huawei-bng-nav')?!isHuaweiBng:element.hasAttribute('data-juniper-nav')?!isJuniper:infrastructureVendor;
+  });
   document.querySelector('#login-page').hidden=connected;
   document.querySelector('.app-shell').hidden=!connected;
   let back=document.querySelector('#return-subscriber');
   if(!back){back=document.createElement('button');back.id='return-subscriber';back.className='button';back.textContent='Voltar ao assinante';document.querySelector('#disconnect-button').before(back);back.onclick=async()=>{try{const s=await request('/api/session/select',{method:'POST',body:JSON.stringify({kind:'infrastructure'})});store.setSession(s);store.setCapabilities(s.session?.capabilities||{});syncContext();await render('subscribers')}catch(e){toast(e.message)}}}
-  back.hidden=infrastructure||!store.session?.infrastructure?.connected;
+  back.hidden=infrastructureVendor||!store.session?.infrastructure?.connected;
   const disconnect = document.querySelector('#disconnect-button');
   const updated = document.querySelector('#ctx-updated');
   if (disconnect) disconnect.disabled = !s;
@@ -62,8 +74,10 @@ function syncContext() {
 }
 
 async function render(name = store.view,background=false) {
-  if(['juniper','huawei_bng'].includes(store.session?.session?.vendor)&&!Object.hasOwn(juniperRoutes,name))name='juniperOverview';
-  else if(!['juniper','huawei_bng'].includes(store.session?.session?.vendor)&&Object.hasOwn(juniperRoutes,name))name='overview';
+  const vendor=store.session?.session?.vendor;
+  if(vendor==='huawei_bng')name=name==='subscribers'?'huaweiBngSubscribers':Object.hasOwn(huaweiBngRoutes,name)?name:'huaweiBngOverview';
+  else if(vendor==='juniper'&&!Object.hasOwn(juniperRoutes,name))name='juniperOverview';
+  else if(vendor!=='juniper'&&(Object.hasOwn(juniperRoutes,name)||Object.hasOwn(huaweiBngRoutes,name)))name='overview';
   const scope=background?currentScope():beginView(name);
   if(!background){views[store.view]?.unmount?.();const d=document.querySelector('#action-dialog');if(d?.open)d.close()}
   const state={generation:scope.generation,loading:true,error:null};viewStates.set(name,state);scope.controller.signal.addEventListener('abort',()=>{state.loading=false},{once:true});
@@ -72,7 +86,7 @@ async function render(name = store.view,background=false) {
   const [kicker,title] = meta[name] || meta.overview;
   const kickerEl = document.querySelector('#page-kicker');
   const titleEl = document.querySelector('#page-title');
-  if(kickerEl){if(Object.hasOwn(juniperRoutes,name))kickerEl.innerHTML=`<button class="j-crumb" data-juniper-route="juniperOverview">Infraestrutura</button> / <button class="j-crumb" data-juniper-route="juniperOverview">Juniper</button> / ${esc(juniper.titles[name][0])}`;else kickerEl.textContent=kicker}
+  if(kickerEl){if(Object.hasOwn(huaweiBngRoutes,name))kickerEl.textContent='Infraestrutura / Huawei BNG / VRP';else if(Object.hasOwn(juniperRoutes,name))kickerEl.innerHTML=`<button class="j-crumb" data-juniper-route="juniperOverview">Infraestrutura</button> / <button class="j-crumb" data-juniper-route="juniperOverview">Juniper</button> / ${esc(juniper.titles[name][0])}`;else kickerEl.textContent=kicker}
   if (titleEl) titleEl.textContent = title;
   document.querySelector('.page-heading').hidden=['overview','traffic','completeDiagnostics'].includes(name);
 
@@ -85,7 +99,7 @@ async function render(name = store.view,background=false) {
   if(!background)document.querySelector('.app-main').scrollTop=0;
   let waitTimer;
   if(!background){
-    workspace.innerHTML=Object.hasOwn(juniperRoutes,name)?'<section class="panel j-wait" role="status"><p data-wait-label>Consultando Juniper…</p><div class="skeleton"></div><button class="button" data-cancel-wait>Cancelar espera</button></section>':'<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
+    workspace.innerHTML=Object.hasOwn(huaweiBngRoutes,name)?'<section class="panel"><p>Consultando Huawei BNG…</p></section>':Object.hasOwn(juniperRoutes,name)?'<section class="panel j-wait" role="status"><p data-wait-label>Consultando Juniper…</p><div class="skeleton"></div><button class="button" data-cancel-wait>Cancelar espera</button></section>':'<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
     const cancel=workspace.querySelector('[data-cancel-wait]');
     if(cancel){waitTimer=setTimeout(()=>{if(scopeActive(scope)&&state.loading){const label=workspace.querySelector('[data-wait-label]');if(label)label.textContent='A consulta ainda está em andamento…'}},4000);cancel.onclick=()=>{scope.controller.abort();clearTimeout(waitTimer);workspace.innerHTML='<section class="panel j-wait"><p>Espera cancelada. O comando remoto pode continuar em execução.</p><button class="button" data-resume-read>Consultar novamente</button></section>';workspace.querySelector('[data-resume-read]').onclick=()=>render(name)}}
   }
@@ -149,6 +163,7 @@ async function connectFromForm(event) {
     }
 
     store.setSession(s);
+    if(payload.vendor==='huawei_bng'){huaweiConnectionSettings={...huaweiConnectionSettings,last_successful_host:payload.host,ssh_port:payload.ssh_port}}
     if(payload.vendor==='juniper'){infrastructureSettings={...infrastructureSettings,last_successful_host:payload.host,ssh_port:payload.ssh_port,netconf_port:payload.netconf_port,preferred_transport:payload.transport}}
     store.setCapabilities(s.session?.capabilities || {});
     syncContext();
@@ -187,14 +202,16 @@ export async function mountApp() {
   if (!workspace) throw new Error('Workspace do Access Manager não foi encontrado.');
 
   mountServicePanel(store);const theme=mountThemeProvider();loginExperience=mountLoginExperience(theme);
-  const routeRegistry=createRouteRegistry(views,juniper.navigation,juniper.worldActions);
+  const routeRegistry=createRouteRegistry(views,juniper.navigation,juniper.worldActions,huaweiBng.navigation);
   worldBridge=mountWorldBridge({store,theme,registry:routeRegistry,navigate:name=>render(name),suspend:()=>{views[store.view]?.unmount?.();beginView('world')},resume:()=>render(store.view)});
 
   let ordinal=0;
   document.querySelector('#sidebar').innerHTML=routerNavigation.map(([group,items])=>`<div class="nav-group">${esc(group)}</div>${items.map(([id,label],index)=>`<button class="nav" data-view="${id}">${String(++ordinal).padStart(2,'0')} <span>${esc(label)}</span></button>`).join('')}`).join('');
   const oldNav=document.querySelectorAll('[data-juniper-nav]');oldNav.forEach(n=>n.remove());
   document.querySelector('#sidebar').insertAdjacentHTML('afterbegin',juniper.navigation.map(([group,items],index)=>`<details class="juniper-nav-group" data-juniper-nav hidden ${index<2?'open':''}><summary>${esc(group)}</summary>${items.map(([route,label])=>`<button class="nav" data-juniper-nav data-view="${route}" hidden><span>${esc(label)}</span></button>`).join('')}</details>`).join(''));
+  document.querySelector('#sidebar').insertAdjacentHTML('afterbegin',huaweiBng.navigation.map(([group,items])=>`<details class="infrastructure-nav-group" data-huawei-bng-nav hidden open><summary>${esc(group)}</summary>${items.map(([id,label])=>`<button class="nav" data-huawei-bng-nav data-view="${id}" hidden>${esc(label)}</button>`).join('')}</details>`).join(''));
   document.querySelector('#juniper-help').onclick=()=>dialog('Ajuda · Juniper / Junos BNG','<p>Busque o contrato, selecione uma sessão e consulte detalhes sem sair da lista. Leituras avançadas são feitas sob demanda.</p><p>O acesso ao CPE usa credenciais separadas. Voltar ao assinante mantém a sessão Juniper; portas inacessíveis não confirmam assinante offline.</p>');
+  document.addEventListener('infrastructure-navigate',event=>render(event.detail));
   document.addEventListener('juniper-navigate',event=>render(event.detail));
   document.addEventListener('click',event=>{const b=event.target.closest('[data-juniper-route]');if(b)render(b.dataset.juniperRoute)});
   document.querySelectorAll('.nav').forEach(b => {
@@ -210,17 +227,18 @@ export async function mountApp() {
   const form = document.querySelector('#connect-form');
   if (!form) throw new Error('Formulário de conexão não foi encontrado.');
   form.addEventListener('submit', connectFromForm);
-  try{infrastructureSettings=await request('/api/infrastructure/settings')}catch{}
-  const syncVendor=event=>{const juniper=['juniper','huawei_bng'].includes(form.elements.vendor.value);const huawei=form.elements.vendor.value==='huawei_bng';form.elements.transport.disabled=huawei;form.elements.transport.querySelector('[value=ssh]').textContent=huawei?'SSH / CLI (Huawei VRP)':'SSH / XML';form.elements.netconf_port.disabled=huawei;document.querySelector('#netconf-port-field').hidden=huawei;if(huawei)form.elements.transport.value='ssh';document.querySelector('#juniper-connection').hidden=!juniper;form.querySelector('.https-toggle').hidden=juniper;
-   document.querySelector('#login-page').classList.toggle('infrastructure-login',juniper);document.querySelector('#action-dialog').classList.toggle('juniper-surface',juniper);
-   form.elements.password.autocomplete=juniper?'off':'current-password';form.elements.username.autocomplete=juniper?'off':'username';
-   form.querySelector('[for=connection-host]').textContent=juniper?'Servidor':'IP ou IP:porta';
-   form.querySelector('[for=connection-user]').textContent=juniper?'Usuário AD':'Usuário';form.querySelector('[for=connection-password]').textContent=juniper?'Senha AD':'Senha';
-   if(juniper){if(event?.type==='change'||!form.elements.host.value)form.elements.host.value=huawei?'':infrastructureSettings.last_successful_host||infrastructureSettings.default_host||'';form.elements.ssh_port.value=huawei?22:infrastructureSettings.ssh_port||22;form.elements.netconf_port.value=infrastructureSettings.netconf_port||830;form.elements.transport.value=huawei?'ssh':infrastructureSettings.preferred_transport||'ssh'}
-   document.querySelector('.connection-security').textContent=juniper?'Use sua conta corporativa no concentrador. A senha é descartada após cada tentativa.':'As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.'};
+  if(store.session?.session?.vendor!=='huawei_bng'){try{infrastructureSettings=await request('/api/infrastructure/settings')}catch{}}
+  try{huaweiConnectionSettings=await request('/api/infrastructure/settings/huawei_bng')}catch{}
+  const syncVendor=event=>{const vendor=form.elements.vendor.value;const isJuniper=vendor==='juniper';const isHuaweiBng=vendor==='huawei_bng';const infrastructureVendor=isJuniper||isHuaweiBng;const settings=isHuaweiBng?huaweiConnectionSettings:infrastructureSettings;form.elements.transport.closest('.field').hidden=isHuaweiBng;form.elements.transport.disabled=isHuaweiBng;form.elements.transport.querySelector('[value=ssh]').textContent=isHuaweiBng?'SSH / CLI (Huawei VRP)':'SSH / XML';form.elements.netconf_port.disabled=isHuaweiBng;document.querySelector('#netconf-port-field').hidden=isHuaweiBng;if(isHuaweiBng)form.elements.transport.value='ssh';document.querySelector('#infrastructure-connection').hidden=!infrastructureVendor;form.querySelector('.https-toggle').hidden=infrastructureVendor;
+   document.querySelector('#login-page').classList.toggle('infrastructure-login',infrastructureVendor);document.querySelector('#action-dialog').classList.toggle('infrastructure-surface',infrastructureVendor);document.querySelector('#action-dialog').classList.toggle('juniper-surface',isJuniper);
+   form.elements.password.autocomplete=infrastructureVendor?'off':'current-password';form.elements.username.autocomplete=infrastructureVendor?'off':'username';
+   form.querySelector('[for=connection-host]').textContent=infrastructureVendor?'Servidor':'IP ou IP:porta';
+   form.querySelector('[for=connection-user]').textContent=infrastructureVendor?'Usuário AD':'Usuário';form.querySelector('[for=connection-password]').textContent=infrastructureVendor?'Senha AD':'Senha';
+   if(infrastructureVendor){if(event?.type==='change'||!form.elements.host.value)form.elements.host.value=settings.last_successful_host||settings.default_host||'';form.elements.ssh_port.value=settings.ssh_port||22;form.elements.netconf_port.value=isJuniper?(settings.netconf_port||830):'';form.elements.transport.value=isHuaweiBng?'ssh':settings.preferred_transport||'ssh'}
+   document.querySelector('.connection-security').textContent=infrastructureVendor?'Use sua conta corporativa no concentrador. A senha é descartada após cada tentativa.':'As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.'};
   form.elements.vendor.onchange=syncVendor;syncVendor();
   document.querySelector('#inspect-host-key').onclick=async()=>{
-   try{const info=await request('/api/infrastructure/host-key',{method:'POST',body:JSON.stringify({host:store.session?.connected&&store.session.session?.vendor==='juniper'?store.session.session.host:form.elements.host.value,port:form.elements.transport.value==='netconf'?form.elements.netconf_port.value:form.elements.ssh_port.value})});
+   try{const info=await request('/api/infrastructure/host-key',{method:'POST',body:JSON.stringify({host:store.session?.connected&&['juniper','huawei_bng'].includes(store.session.session?.vendor)?store.session.session.host:form.elements.host.value,port:form.elements.transport.value==='netconf'?form.elements.netconf_port.value:form.elements.ssh_port.value})});
     const d=dialog('Identidade SSH do servidor',`<div class="j-trust-body"><div class="j-trust-alert ${info.status==='HOST_KEY_CHANGED'?'changed':''}" role="alert"><strong>${info.status==='HOST_KEY_CHANGED'?'A chave SSH apresentada pelo servidor mudou':info.status==='HOST_KEY_TRUSTED'?'Chave SSH reconhecida':'Primeiro acesso a este servidor'}</strong><p>Compare a impressão digital com uma fonte confiável antes de aceitar. Uma chave alterada bloqueia a conexão.</p></div><dl class="j-kv"><div><dt>Servidor</dt><dd>${esc(info.host)}:${esc(info.port)}</dd></div><div><dt>Algoritmo</dt><dd>${esc(info.algorithm||'—')}</dd></div><div><dt>Fingerprint apresentado</dt><dd>${esc(info.fingerprint)}</dd></div>${info.previous_fingerprints.length?`<div><dt>Fingerprints anteriores</dt><dd>${info.previous_fingerprints.map(esc).join(', ')}</dd></div>`:''}</dl></div>`,`<button class="button primary" data-trust-key>Confirmei a identidade — confiar nesta chave</button>`);
     d.querySelector('[data-trust-key]').onclick=async event=>{event.currentTarget.disabled=true;try{await request('/api/infrastructure/host-key/trust',{method:'POST',body:JSON.stringify({...info,confirm:true})});d.close();toast('Chave confiável para este servidor e porta.')}catch(e){toast(e.message);if(d.open)event.currentTarget.disabled=false}};
    }catch(e){toast(e.message)}

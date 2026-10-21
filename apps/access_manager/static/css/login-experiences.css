@@ -38,7 +38,7 @@ html[data-experience-theme=aero] #login-page .connection-content .brand{font-siz
 @media(max-width:700px){.experience-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* Explicit second row keeps all session actions inside the header on desktop. */
 @media(min-width:781px) and (max-width:1600px){
- .app-shell,.app-shell.juniper-shell{grid-template-rows:84px minmax(0,1fr)!important}
+ .app-shell,.app-shell.infrastructure-shell{grid-template-rows:84px minmax(0,1fr)!important}
  .app-shell .app-topbar.context-bar{height:84px!important;min-height:84px!important;align-content:center!important;flex-wrap:wrap!important;gap:6px!important;box-sizing:border-box}
  .app-shell #aero-world{top:84px}.app-shell #world-notice{top:86px}.app-shell #world-close-panel{top:96px}.world-mode.world-panel-open>.layout{top:138px}
  .app-shell .context-bar .context-meta{display:none!important}.app-shell .context-bar .theme-control{font-size:0}.app-shell .context-bar .theme-control select{font-size:11px!important}

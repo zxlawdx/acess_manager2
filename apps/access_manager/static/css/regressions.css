@@ -130,7 +130,7 @@
   padding:clamp(24px,3vw,36px)!important;
 }
 #login-page.infrastructure-login #connect-form,
-#login-page.infrastructure-login #juniper-connection,
+#login-page.infrastructure-login #infrastructure-connection,
 #login-page.infrastructure-login .field,
 #login-page.infrastructure-login .password-field{
   min-width:0!important;
@@ -184,7 +184,7 @@
   #login-page.infrastructure-login .connection-content{
     padding:18px 14px 28px!important;
   }
-  #login-page.infrastructure-login #juniper-connection .form-grid{
+  #login-page.infrastructure-login #infrastructure-connection .form-grid{
     grid-template-columns:minmax(0,1fr)!important;
   }
   #login-page.infrastructure-login .password-field{
