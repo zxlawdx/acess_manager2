@@ -24,6 +24,10 @@ class TriageEvidence:
     value: Any
     expected: Any = None
     origin: str = "device_snapshot"
+    timestamp: str | None = None
+    command_or_reader: str | None = None
+    confidence: str | None = None
+    kind: str = "FACT"
 
     def public(self) -> dict[str, Any]:
         return asdict(self)
@@ -338,6 +342,39 @@ def evaluate_snapshot(
     if isinstance(device, dict):
         resource_values = [device.get("cpu_percent"), device.get("memory_percent"), device.get("temperature_c")]
         coverage["resources"] = TriageStatus.OK.value if any(value is not None for value in resource_values) else TriageStatus.UNKNOWN.value
+
+    subscriber = snapshot.get("subscriber")
+    if "subscriber" in snapshot:
+        coverage["subscriber"] = "OK" if subscriber else "UNKNOWN"
+    if isinstance(subscriber, dict):
+        from apps.access_manager.domain.addressing import classify_address
+        def evidence(key, expected=None):
+            return TriageEvidence("bng", key, subscriber.get(key), expected,
+                origin="subscriber_detail", timestamp=snapshot.get("subscriber_observed_at") or checked_at,
+                command_or_reader="subscriber_detail", confidence="high")
+        state = str(subscriber.get("state") or "").upper()
+        if state == "OFFLINE":
+            issues.append(TriageIssue("PPPOE_OFFLINE", "PPPOE", TriageStatus.CRITICAL,
+                "Sessão PPPoE offline", "O BNG informou estado offline; a causa ainda não foi estabelecida.",
+                (evidence("state", "ONLINE"),), "Validar acesso óptico, VLAN e autenticação AAA."))
+        if classify_address(subscriber.get("ipv4_address")) == "CGNAT_SHARED":
+            issues.append(TriageIssue("CGNAT_SHARED", "IP", TriageStatus.INFO,
+                "IPv4 compartilhado via CGNAT",
+                "Port forwarding somente na ONT não garante acessibilidade direta da Internet. A localização do NAT não foi determinada.",
+                (evidence("ipv4_address"),), "Explicar CGNAT e verificar alternativas de acesso externo."))
+        expected = _number(snapshot.get("expected_down_mbps"))
+        applied = _number(subscriber.get("rate_down"))
+        if expected is not None and applied is not None and applied < expected:
+            issues.append(TriageIssue("QOS_RATE_LIMIT_TOO_LOW", "QOS", TriageStatus.WARNING,
+                "Velocidade aplicada abaixo da esperada", "Comparação com a velocidade informada neste atendimento, em Mbps.",
+                (evidence("rate_down", expected),), "Verificar o perfil QoS aplicado no concentrador."))
+
+    incident = snapshot.get("incident")
+    if isinstance(incident, dict) and incident.get("code") == "POSSIBLE_COLLECTIVE_INCIDENT":
+        issues.append(TriageIssue("POSSIBLE_COLLECTIVE_INCIDENT", "INFRASTRUCTURE", TriageStatus.WARNING,
+            "Possível incidente coletivo", f"{incident['count']} assinantes relacionados nas observações locais. Não confirma uma massiva.",
+            (TriageEvidence("local_observations", "outer_vlan", incident.get("outer_vlan"),
+                confidence="medium", kind="INFERENCE"),), "Escalar à equipe de rede para validar o domínio de falha."))
 
     partial = bool(errors) or any(value in {TriageStatus.UNKNOWN.value, TriageStatus.UNSUPPORTED.value} for value in coverage.values())
     status = _severity_result(issues, partial)

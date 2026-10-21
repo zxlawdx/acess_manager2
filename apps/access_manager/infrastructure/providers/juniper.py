@@ -127,6 +127,9 @@ class JuniperProvider:
                 'family':self._facts.get('family'),'junos_os':self._facts.get('os'),
                 'connection_states':['AUTHENTICATED','IDENTIFIED','READY'] if self.connected else []}
     def get_device_info(self):return dict(self._facts)
+    def get_system(self):
+        return self.get_juniper_system()
+
     def get_juniper_system(self):
         result=dict(self._facts)
         try:result['uptime_seconds']=self._read('uptime',parsers.uptime)
@@ -134,7 +137,10 @@ class JuniperProvider:
         result['capabilities']=self.capabilities.public();result['evidence']=dict(self._evidence);result['health']=self.connection_metadata()
         return result
     def lookup_subscribers(self,query):
-        q=SubscriberQuery.parse(query);deadline=time.monotonic()+getattr(getattr(self.transport,'timeouts',None),'lookup',24);results=[];sessions=[]
+        q=SubscriberQuery.parse(query)
+        if q.kind in {'MAC','ONT_SERIAL','USER_ID'}:
+            raise ValueError('Tipo de consulta ainda não suportado neste provider.')
+        deadline=time.monotonic()+getattr(getattr(self.transport,'timeouts',None),'lookup',24);results=[];sessions=[]
         for candidate in q.candidates:
             try:
                 left=deadline-time.monotonic()

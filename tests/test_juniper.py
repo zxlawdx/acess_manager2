@@ -46,7 +46,7 @@ def provider():
  ('192.0.2.1',('192.0.2.1',)),('2001:db8::1',('2001:db8::1',))])
 def test_queries(query,candidates):assert SubscriberQuery.parse(query).candidates==candidates
 
-@pytest.mark.parametrize('query',['brd_','abc_123','123;show configuration','brd_1|show','../','1\nshow version','$(id)','１２３'])
+@pytest.mark.parametrize('query',['brd_','123;show configuration','brd_1|show','../','1\nshow version','$(id)','１２３'])
 def test_invalid_queries(query):
     with pytest.raises(ValueError):SubscriberQuery.parse(query)
 
