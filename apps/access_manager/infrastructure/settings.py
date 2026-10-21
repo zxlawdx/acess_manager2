@@ -14,7 +14,7 @@ class InfrastructureSettings:
 
     @classmethod
     def validate(cls, rows):
-        from apps.access_manager.infrastructure.providers.juniper import JuniperProvider
+        from apps.access_manager.infrastructure.common.endpoint import normalize_ssh_target
         if not isinstance(rows,list) or len(rows)>32: raise ValueError('Lista de concentradores inválida.')
         result=[];seen=set()
         for row in rows:
@@ -26,8 +26,8 @@ class InfrastructureSettings:
             seen.add(identity)
             if row.get('vendor') not in {'huawei_bng','juniper'} or row.get('auth','ad')!='ad': raise ValueError('Provider inválido.')
             host=row.get('host','');port=row.get('ssh_port',22)
-            if host: host,port=JuniperProvider.target(host,port)
-            else: _,port=JuniperProvider.target('example.invalid',port)
+            if host: host,port=normalize_ssh_target(host,port)
+            else: _,port=normalize_ssh_target('example.invalid',port)
             result.append({'id':identity,'label':str(row.get('label',identity))[:100],
                 'vendor':row['vendor'],'platform':str(row.get('platform',''))[:64],
                 'role':'bng','host':host,'ssh_port':port,'auth':'ad','enabled':bool(row.get('enabled',True))})

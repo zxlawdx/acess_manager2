@@ -10,7 +10,7 @@ def subscriber_detail(context=None):return safe(lambda:queries.infrastructure('s
 @api.post('/infrastructure/subscribers/context')
 def subscriber_context(context=None):
     config=body(context)
-    return safe(lambda:queries.infrastructure('juniper_'+str(config.get('kind')),'subscriber_context',config))
+    return safe(lambda:queries.infrastructure('subscriber_context','subscriber_context',config))
 
 @api.post('/infrastructure/interfaces')
 def infrastructure_interfaces(context=None):return safe(lambda:queries.infrastructure('interfaces','get_interfaces',body(context)))
@@ -22,10 +22,10 @@ def infrastructure_interface(context=None):return safe(lambda:queries.infrastruc
 def infrastructure_system(context=None):return safe(lambda:queries.infrastructure('device','get_system',body(context)))
 
 @api.post('/infrastructure/chassis')
-def infrastructure_chassis(context=None):return safe(lambda:queries.infrastructure('juniper_chassis','get_juniper_chassis',body(context)))
+def infrastructure_chassis(context=None):return safe(lambda:queries.infrastructure('chassis','get_chassis',body(context)))
 
 @api.post('/infrastructure/resources')
-def infrastructure_resources(context=None):return safe(lambda:queries.infrastructure('juniper_resources','get_juniper_resources',body(context)))
+def infrastructure_resources(context=None):return safe(lambda:queries.infrastructure('resources','get_resources',body(context)))
 
 @api.post('/infrastructure/diagnostics')
 def infrastructure_diagnostics(context=None):return safe(lambda:queries.infrastructure('diagnostics','diagnostic',body(context)))

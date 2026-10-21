@@ -2,7 +2,7 @@
 from threading import RLock
 import ipaddress
 import time
-from apps.access_manager.infrastructure.juniper.errors import JuniperError
+from apps.access_manager.domain.infrastructure_errors import InfrastructureSessionError
 
 
 class InfrastructureSessions:
@@ -69,15 +69,15 @@ class InfrastructureSessions:
         with self.operation_lock, self.infrastructure.operation_lock:
             status = self.infrastructure.status()
             if not status['connected'] or config.get('app_session_id') != status['session']['session_id']:
-                raise JuniperError('STALE_SESSION')
+                raise InfrastructureSessionError()
             row = self.infrastructure.provider.get_subscriber(config.get('session_id'))
             if row['session_id'] != config.get('session_id') or row['username'] != config.get('username') or row['ipv4_address'] != config.get('ipv4_address'):
-                raise JuniperError('STALE_SESSION')
+                raise InfrastructureSessionError()
             try:
                 host = str(ipaddress.IPv4Address(row['ipv4_address']))
             except (ValueError, TypeError):
                 raise ValueError('Assinante sem IPv4 de gerenciamento.') from None
-            self.context = {'source': getattr(self.infrastructure.provider,'vendor','juniper') + '_subscriber', 'contract': row.get('contract'),
+            self.context = {'source': getattr(self.infrastructure.provider,'vendor','infrastructure') + '_subscriber', 'contract': row.get('contract'),
                             'subscriber_username': row['username'], 'subscriber_session_id': row['session_id'],
                             'host': host, 'port': 80, 'protocol': 'auto', 'vendor': 'auto',
                             'app_session_id': status['session']['session_id'], 'refreshed_at': time.time(),'reachability':'SUBSCRIBER_IP_RESOLVED'}

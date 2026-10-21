@@ -9,6 +9,7 @@ from apps.access_manager.infrastructure.juniper import parsers
 from apps.access_manager.infrastructure.juniper.output import JunosCommandResult
 from apps.access_manager.infrastructure.juniper.settings import JuniperSettings
 from apps.access_manager.infrastructure.juniper.trust import HostTrust
+from apps.access_manager.domain.infrastructure_errors import InfrastructureSessionError
 
 
 class Manager:
@@ -56,7 +57,7 @@ def test_device_disconnect_preserves_infrastructure():
 def test_stale_identity_never_reaches_cpe(change):
     sessions,device,infra=setup();draft=sessions.draft(config());infra.row.update(change)
     # Real provider rejects a changed ID. Coordinator also independently checks it.
-    with pytest.raises(JuniperError):sessions.connect_cpe(login(draft))
+    with pytest.raises(InfrastructureSessionError):sessions.connect_cpe(login(draft))
     assert not device.calls and infra.online
 
 

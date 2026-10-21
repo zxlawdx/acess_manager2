@@ -139,7 +139,7 @@ class DeviceQueryBus:
         config=config or {}
         manager=getattr(self.sessions,'infrastructure',self.sessions)
         from uuid import uuid4
-        from apps.access_manager.infrastructure.juniper.observability import operation
+        from apps.access_manager.infrastructure.common.observability import operation
         started=time.perf_counter();request_id=uuid4().hex
         try:
             with manager.operation_lock:
@@ -148,19 +148,13 @@ class DeviceQueryBus:
                 try:
                     if manager.provider.vendor not in {'juniper','huawei_bng'}:raise ValueError('Consulta requer infraestrutura conectada.')
                     if config.get('app_session_id') and config['app_session_id']!=manager.session.session_id:
-                        from apps.access_manager.infrastructure.juniper.errors import JuniperError
-                        raise JuniperError('STALE_SESSION')
-                    from apps.access_manager.application.services.infrastructure_reads import READS, read
-                    if method in READS:
-                        return read(manager.provider,method,config)
-                    if manager.provider.vendor=='huawei_bng' and method not in {'lookup_subscribers','get_subscriber','get_operation_log'}:
-                        from apps.access_manager.infrastructure.huawei_bng.errors import BngError
-                        raise BngError('PHYSICAL_VALIDATION_PENDING')
-                    args=() if method in {'get_juniper_system','get_juniper_interfaces','get_juniper_chassis','get_juniper_resources','get_operation_log'} else (config.get('query'),) if method=='lookup_subscribers' else (config.get('session_id'),) if method=='get_subscriber' else (config.get('name'),) if method=='get_juniper_interface' else (config,)
-                    manager.provider.capabilities.require_read(feature)
-                    return getattr(manager.provider,method)(*args)
+                        from apps.access_manager.domain.infrastructure_errors import InfrastructureSessionError
+                        raise InfrastructureSessionError()
+                    from apps.access_manager.application.services.infrastructure_reads import read
+                    logging.getLogger(__name__).info('infrastructure_read vendor=%s feature=%s transport=%s',manager.provider.vendor,method,getattr(manager.session,'protocol_family',None))
+                    return read(manager.provider,method,config)
                 finally:operation.reset(token)
         finally:
             elapsed=(time.perf_counter()-started)*1000
             wait=(locals().get('acquired',time.perf_counter())-started)*1000
-            logging.getLogger(__name__).info('juniper.operation request_id=%s feature=%s elapsed_ms=%.2f lock_wait_ms=%.2f',request_id,feature,elapsed,wait)
+            logging.getLogger(__name__).info('infrastructure.operation request_id=%s feature=%s elapsed_ms=%.2f lock_wait_ms=%.2f',request_id,feature,elapsed,wait)

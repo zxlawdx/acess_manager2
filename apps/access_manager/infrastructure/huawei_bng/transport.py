@@ -65,7 +65,7 @@ class HuaweiBngTransport:
             endpoint_socket = None
             try:
                 client.load_system_host_keys()
-                from apps.access_manager.infrastructure.juniper.trust import HostTrust, EndpointTrustPolicy
+                from apps.access_manager.infrastructure.common.ssh_trust import HostTrust, EndpointTrustPolicy
                 client.set_missing_host_key_policy(EndpointTrustPolicy(HostTrust(), host, port))
                 endpoint_socket = socket.create_connection((host, port), timeout=8)
                 self._mark('ssh_banner', 'TCP_CONNECTED')
@@ -95,8 +95,8 @@ class HuaweiBngTransport:
                 self.client = self.shell = None
                 self.prompt = None
                 if isinstance(error, BngError): raise
-                from apps.access_manager.infrastructure.juniper.errors import JuniperError
-                if isinstance(error, JuniperError): raise BngError(error.code, stage='host_key') from None
+                from apps.access_manager.domain.infrastructure_errors import SshTrustError
+                if isinstance(error, SshTrustError): raise BngError(error.code, stage='host_key') from None
                 if isinstance(error, paramiko.BadHostKeyException): code = 'HOST_KEY_CHANGED'; stage = 'host_key'
                 elif isinstance(error, paramiko.AuthenticationException):
                     stage = 'authentication'

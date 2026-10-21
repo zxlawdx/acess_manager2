@@ -1,6 +1,7 @@
 from .common import *
-from apps.access_manager.infrastructure.juniper.settings import JuniperSettings
-juniper_settings=JuniperSettings()
+from apps.access_manager.infrastructure.common.settings import ConnectionPreferences
+juniper_settings=ConnectionPreferences(vendor='juniper')
+huawei_settings=ConnectionPreferences(vendor='huawei_bng')
 @api.post("/session")
 def connect(context=None):
     d=body(context)
@@ -12,7 +13,8 @@ def connect(context=None):
                      'port':d.get('port'), 'ssh_port':d.get('ssh_port') or settings['ssh_port'],
                      'netconf_port':d.get('netconf_port') or settings['netconf_port']}
         if d.get('vendor')=='huawei_bng':
-            options={'vendor':'huawei_bng','port':d.get('port'),'ssh_port':d.get('ssh_port',22)}
+            settings=huawei_settings.read()
+            options={'vendor':'huawei_bng','port':d.get('port'),'ssh_port':d.get('ssh_port') or settings['ssh_port']}
         # There is no separate AM2 login provider yet. The authenticated device/
         # infrastructure username is therefore the current attendant identity;
         # passwords are still discarded and never persisted.
@@ -25,6 +27,9 @@ def connect(context=None):
             try:juniper_settings.save({'ssh_port':options['ssh_port'],'netconf_port':options['netconf_port'],
                                       'preferred_transport':options['transport']},successful_host=result['session']['host'])
             except OSError:pass  # A read-only settings directory must not invalidate authentication.
+        if options.get('vendor')=='huawei_bng' and result.get('connected'):
+            try:huawei_settings.save({'ssh_port':options['ssh_port']},successful_host=result['session']['host'])
+            except OSError:pass
         return result
     return safe(attempt)
 
@@ -50,13 +55,13 @@ def save_connection_settings(context=None): return safe(lambda: juniper_settings
 
 @api.post('/infrastructure/host-key')
 def inspect_host_key(context=None):
-    from apps.access_manager.infrastructure.juniper.trust import HostTrust
+    from apps.access_manager.infrastructure.common.ssh_trust import HostTrust
     d=body(context)
     return safe(lambda: HostTrust().inspect(d.get('host'),d.get('port')))
 
 @api.post('/infrastructure/host-key/trust')
 def trust_host_key(context=None):
-    from apps.access_manager.infrastructure.juniper.trust import HostTrust
+    from apps.access_manager.infrastructure.common.ssh_trust import HostTrust
     return safe(lambda: HostTrust().accept(body(context)))
 
 @api.post('/infrastructure/subscribers/cpe-port')
@@ -87,3 +92,16 @@ def infrastructure_endpoints(context=None):
 def save_infrastructure_endpoints(context=None):
     from apps.access_manager.infrastructure.settings import InfrastructureSettings
     return safe(lambda:InfrastructureSettings().save(body(context).get('endpoints')))
+
+
+@api.get('/infrastructure/settings/huawei_bng')
+def huawei_connection_settings(context=None): return safe(huawei_settings.read)
+
+@api.post('/infrastructure/settings/huawei_bng')
+def save_huawei_connection_settings(context=None): return safe(lambda:huawei_settings.save(body(context)))
+
+@api.get('/infrastructure/settings/juniper')
+def juniper_connection_settings(context=None): return safe(juniper_settings.read)
+
+@api.post('/infrastructure/settings/juniper')
+def save_juniper_connection_settings(context=None): return safe(lambda:juniper_settings.save(body(context)))

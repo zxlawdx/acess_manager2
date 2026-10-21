@@ -17,6 +17,8 @@ logger=logging.getLogger(__name__)
 
 class JuniperProvider:
     vendor='juniper'
+    neutral_capabilities={'juniper_interfaces':'interfaces','juniper_interface':'interface_detail',
+        'juniper_health':'health','juniper_chassis':'chassis','juniper_resources':'resources'}
     def __init__(self,transport_factory=JuniperTransport):
         self.transport_factory=transport_factory;self.transport=None;self.host=None;self.model=None;self.firmware=None
         self._facts={};self._caps=CapabilitySet();self._evidence={};self._operations=deque(maxlen=100);self._last_read=None;self._port=None;self._scheme=None
@@ -27,6 +29,9 @@ class JuniperProvider:
     def _set_cap(self,name,status,*,source=None):
         caps={key:self._caps.get(key) for key in self._caps.public()}
         caps[name]=Capability(name,status,S.UNKNOWN,E.FIXTURE_VALIDATED if status==S.SUPPORTED else E.RESEARCH_ONLY,source=source or 'junos_runtime_shape')
+        if name in self.neutral_capabilities:
+            alias=self.neutral_capabilities[name]
+            caps[alias]=Capability(alias,status,S.UNKNOWN,E.FIXTURE_VALIDATED if status==S.SUPPORTED else E.RESEARCH_ONLY,source=source or 'junos_runtime_shape')
         self._caps=CapabilitySet(caps.values())
     def _read(self,feature,parser,*,value=None,timeout=None):
         item=request(feature,value=value)
@@ -72,21 +77,8 @@ class JuniperProvider:
         return list(self._operations)
     @staticmethod
     def target(host,port):
-        text=str(host or '').strip()
-        if not text or len(text)>253 or any(c in text for c in '\r\n /@;|&<>`$'):raise ValueError('Host Juniper inválido.')
-        try:ipaddress.ip_address(text);hostname=text
-        except ValueError:
-            parsed=urlsplit('ssh://'+text)
-            hostname=parsed.hostname
-            if not hostname:raise ValueError('Host Juniper inválido.')
-            if parsed.port is not None:
-                if port not in (None,''):raise ValueError('Informe a porta em apenas um campo.')
-                port=parsed.port
-        if port not in (None,''):
-            try:port=int(port)
-            except (TypeError,ValueError):raise ValueError('Porta inválida.') from None
-            if not 1<=port<=65535:raise ValueError('Porta inválida.')
-        return hostname,port or None
+        from apps.access_manager.infrastructure.common.endpoint import normalize_ssh_target
+        return normalize_ssh_target(host,port)
     def connect(self,host,username,password,*,transport='netconf',port=None,ssh_port=None,netconf_port=None,**_):
         self.disconnect();host,port=self.target(host,port)
         client=self.transport_factory()
@@ -102,6 +94,8 @@ class JuniperProvider:
             self.model=self._facts['model'];self.firmware=self._facts['firmware']
             for name in ('device','juniper_uptime','juniper_interfaces','juniper_interface','juniper_chassis','juniper_aaa','juniper_pppoe','juniper_ping','juniper_traceroute','juniper_resources','juniper_accounting','juniper_route','juniper_fib','juniper_filter','juniper_lockout','juniper_health','juniper_lacp','juniper_optics','subscriber_lookup','subscriber_detail','subscriber_count'):
                 self._set_cap(name,S.SUPPORTED if name=='device' else S.PARTIAL)
+            for name in ('subscriber_context','diagnostics','link'):
+                self._set_cap(name,S.PARTIAL)
             for name in ('subscriber_disconnect','subscriber_reconnect'):
                 self._set_cap(name,S.UNKNOWN,source='mutation_not_validated')
             try:self._facts['uptime_seconds']=self._read('uptime',parsers.uptime);self._set_cap('juniper_uptime',S.SUPPORTED)
@@ -170,6 +164,9 @@ class JuniperProvider:
     def subscriber_context(self,config):
         # Re-read the selected session before enriching; never apply an old
         # interface/AAA identifier to a replacement subscriber session.
+        kind=config.get('kind')
+        if kind not in {'pppoe','aaa','accounting','route','fib','lockout','filter'}:raise ValueError('Detalhe de assinante inválido.')
+        self.capabilities.require_read('juniper_'+kind)
         row=self.get_subscriber(config.get('session_id'))
         if config.get('username')!=row['username']:raise JuniperError('STALE_SESSION')
         kind=config.get('kind')
@@ -232,3 +229,16 @@ class JuniperProvider:
     def disconnect(self):
         if self.transport:self.transport.close()
         self.transport=None;self.host=None;self.model=None;self.firmware=None;self._facts={};self._evidence={};self._caps=CapabilitySet();self._operations.clear();self._last_read=None;self._port=None;self._scheme=None
+
+    # Vendor-specific adaptation stays here, outside neutral application code.
+    def get_interfaces(self): return self.get_juniper_interfaces()
+    def get_interface(self,name): return self.get_juniper_interface(name)
+    def get_chassis(self): return self.get_juniper_chassis()
+    def get_resources(self): return self.get_juniper_resources()
+    def get_health(self,config): return self.get_juniper_health(config)
+    def diagnostic(self,config):
+        self.capabilities.require_read('juniper_'+str(config.get('kind')))
+        return self.juniper_diagnostic(config)
+    def get_link(self,config):
+        self.capabilities.require_read('juniper_'+str(config.get('kind')))
+        return self.get_juniper_link(config)
