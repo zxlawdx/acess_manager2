@@ -1,22 +1,16 @@
-# Draft PR: Add initial read-only Huawei BNG diagnostic orchestration
+# Huawei/Juniper provider isolation
 
-Base: `feat/configuration-ux-wifi-standard`
-Head: `feat/diagnostic-orchestrator-huawei-bng`
+Huawei BNG is not implemented as a Juniper mode.
 
-An attendant can start a focused subscriber diagnosis from the existing subscriber screen. The new experimental Huawei NetEngine SSH provider collects system and label-based subscriber data through a closed command grammar; unknown output and permission failures do not become offline conclusions. One bounded orchestration job combines verified subscriber/CPE evidence with the existing triage engine and exposes progressive partial results, cancellation and attendance copy actions.
+- Huawei BNG no longer reuses Juniper routes/views as its runtime identity.
+- Common SSH trust and endpoint validation were moved to neutral infrastructure modules.
+- Huawei reads dispatch exclusively through HuaweiNetEngineBngProvider.
+- Juniper-only readers no longer act as fallback for Huawei.
+- Frontend renders provider-specific infrastructure workspaces.
+- Cross-provider command execution is covered by regression tests.
 
-The change preserves independent Juniper/CPE sessions and existing Junos implementations behind a neutral read-intent adapter. It adds address-scope classification, evidence-backed CGNAT/offline/QoS comparisons, bounded local session observations, tentative S-VLAN incident correlation, nonsecret endpoint preferences and optional in-memory AD reuse through the API.
+The existing interactive VRP shell, SPACE continuation, learned prompt, response/deadline limits and granular failures remain intact. Trust storage migrates prior fingerprints without accepting unknown keys. Settings are separated per provider, and stale session errors belong to the application/domain boundary.
 
-## Validation
+Advanced Huawei AAA, QoS counters, health readers and application playbooks remain pending. No production device was accessed. Physical validation of the automated integration remains pending.
 
-- `python -m pytest -q`: 635 passed, 30 subtests passed.
-- `npm test`: 127 passed.
-- `python tools/sync_frontend.py --check`: passed.
-- `git diff --check`: passed.
-- No physical device or production account was accessed.
-
-## Deliberate limits
-
-This is an initial vertical slice, not completion of the six-phase roadmap. All Huawei fixtures are synthetic and physical validation is pending. AAA failure readers, QoS counters, routing/pool/LAG health, advanced DNS/MTU/IPv6 tests and application playbooks are not enabled. The global collection budget exposes partial results but cannot forcibly cancel in-flight legacy CPE requests. Reuse of AD credentials and endpoint profile management currently have API flows only. Per-node diagnostic drilldowns and visual responsive QA remain pending.
-
-Review the five diagnostic/security documents for exact command support, compatibility mapping and remaining work. Keep this PR in draft until the intended scope and physical-validation plan are reviewed. Do not merge automatically.
+PR #36 and its later pagination successor #38 were already merged when this follow-up began. Continue on the existing feature branch and submit these new changes as a draft against main; do not merge automatically.

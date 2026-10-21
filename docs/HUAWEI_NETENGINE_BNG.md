@@ -35,3 +35,9 @@ The new sequence is TCP → verified SSH/AD → interactive shell → detected V
 Command reads use an absolute deadline including lock wait, shell recovery and sending. TCP, banner, AD authentication and shell negotiation have independent 8-second limits. The shell watchdog also bounds PTY/shell negotiation. Command/prompt/pagination failures report their own static code and stage. The provider and SessionManager log only safe metadata, never the raw output, password or exception string.
 
 The fixture `tests/fixtures/huawei_bng/version_paginated.txt` is based on the user's supplied output format, with a redacted hostname and an explicit placeholder for omitted lines. It is not a complete physical capture or proof of successful automated operation on production.
+
+## Provider isolation
+
+Huawei BNG is not implemented as a Juniper mode. Its workspace is `huaweiBngOverview` / `huaweiBngSubscribers` / `huaweiBngDiagnostics`, with Huawei/VRP labels. Endpoint validation, SSH trust and request context use neutral common modules. Stale application-session errors are neutral. Unvalidated chassis/resources/health/subscriber-context methods return PHYSICAL_VALIDATION_PENDING directly. They never call Junos methods or command builders.
+
+Huawei SSH preferences are isolated at `/infrastructure/settings/huawei_bng`. Junos NETCONF choices and saved endpoints are not inherited. The existing interactive VRP transport, pagination continuations and staged failure diagnostics are retained.
