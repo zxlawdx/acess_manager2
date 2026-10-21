@@ -18,9 +18,9 @@ def labels(text):
 
 def system(text):
     firmware = re.search(r'V\d{3}R\d{3}C\d{2}(?:SPC\d+)?', text)
-    model = re.search(r'NetEngine\s*8000\s*M8\b', text, re.I)
+    model = re.search(r'NetEngine\s*8000\s*M8\b', text, re.I) or re.search(r'NetEngine\s*8000\b', text, re.I)
     if not firmware or not model: raise BngError('PARSE_UNKNOWN')
-    return {'manufacturer': 'Huawei', 'model': 'NetEngine 8000 M8',
+    return {'manufacturer': 'Huawei', 'model': 'NetEngine 8000 M8' if re.search(r'M8\b',model[0],re.I) else 'NetEngine 8000',
             'firmware': firmware[0], 'validation': 'PHYSICAL_VALIDATION_PENDING'}
 
 
@@ -58,3 +58,9 @@ def subscriber(text):
         ipv4_address=v4[0] if v4 else None,gateway_ipv4=gw[0] if gw else None,
         dns_v4=[a for a in dns if ':' not in a],dns_v6=[a for a in dns if ':' in a],
         ipv6_addresses=addresses('ipv6address')).public()
+
+
+def clock(text):
+    if not re.search(r'\b[0-2][0-9]:[0-5][0-9]:[0-5][0-9]\b',text):
+        raise BngError('PARSE_UNKNOWN',stage='health_check')
+    return {'command_ok':True}

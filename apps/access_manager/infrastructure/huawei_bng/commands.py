@@ -11,6 +11,8 @@ class ReadCommand:
 
 
 def request(feature, value=None):
+    if feature == 'health' and value is None:
+        return ReadCommand(feature, 'display clock')
     if feature == 'system' and value is None:
         return ReadCommand(feature, 'display version')
     if feature == 'subscriber_detail':
@@ -27,7 +29,7 @@ def request(feature, value=None):
 
 def validate(item):
     if not isinstance(item, ReadCommand): raise ValueError('Consulta não permitida.')
-    if item.feature == 'system': expected = request('system')
+    if item.feature in {'system','health'}: expected = request(item.feature)
     else:
         prefix = 'display access-user user-id ' if item.feature == 'subscriber_detail' else 'display access-user username '
         if not item.command.startswith(prefix): raise ValueError('Consulta não permitida.')

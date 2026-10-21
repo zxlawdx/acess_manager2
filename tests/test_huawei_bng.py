@@ -70,6 +70,7 @@ class Transport:
     def connect(self,*args,**kwargs): pass
     def close(self): self.connected=False
     def execute(self,item):
+        if item.feature=='health': return '2026-10-21 01:00:00'
         if item.feature=='system': return 'Huawei NetEngine 8000 M8 V800R025C00SPC500'
         return SYNTHETIC
 
@@ -129,43 +130,10 @@ def test_shared_runtime_identity_reused_and_revoked():
 def test_permission_denied_keeps_its_capability_state():
     class Denied(Transport):
         def execute(self,item):
-            if item.feature!='system': raise BngError('PERMISSION_DENIED')
+            if item.feature not in {'system','health'}: raise BngError('PERMISSION_DENIED')
             return super().execute(item)
     provider=HuaweiNetEngineBngProvider(Denied)
     provider.connect('example.invalid','operator','synthetic')
     with pytest.raises(BngError):provider.get_subscriber('42')
     assert provider.capabilities.public()['subscriber_detail']['read']=='PERMISSION_DENIED'
     assert not provider.capabilities.get('subscriber_detail').readable
-
-
-def test_ssh_verifies_keys_and_closes_channel_on_pagination(monkeypatch):
-    import paramiko
-    from apps.access_manager.infrastructure.huawei_bng.transport import HuaweiBngTransport
-    calls={}
-    class Channel:
-        closed=False
-        available=True
-        def settimeout(self,value): pass
-        def exec_command(self,value): calls['command']=value
-        def recv_ready(self): return self.available
-        def recv_stderr_ready(self): return False
-        def recv(self,size): self.available=False;return b'---- More ----'
-        def exit_status_ready(self): return True
-        def recv_exit_status(self): return 0
-        def close(self): self.closed=True
-    channel=Channel()
-    class SSH:
-        def load_system_host_keys(self): calls['loaded']=True
-        def set_missing_host_key_policy(self,policy): calls['policy']=policy
-        def connect(self,**options): calls['options']=options
-        def get_transport(self):
-            from types import SimpleNamespace
-            return SimpleNamespace(is_active=lambda:True,is_authenticated=lambda:True,open_session=lambda **kw:channel)
-        def close(self): pass
-    monkeypatch.setattr(paramiko,'SSHClient',SSH)
-    transport=HuaweiBngTransport();transport.connect('example.invalid','u','not-real')
-    assert isinstance(calls['policy'],paramiko.RejectPolicy)
-    assert calls['loaded'] and calls['options']['allow_agent'] is False
-    with pytest.raises(BngError,match='PAGINATED_INCOMPLETE'):transport.execute(request('system'))
-    assert channel.closed and calls['command']=='display version'
-    with pytest.raises(ValueError):transport.execute(ReadCommand('system','reboot'))

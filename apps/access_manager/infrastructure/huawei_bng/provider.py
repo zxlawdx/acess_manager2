@@ -31,11 +31,13 @@ class HuaweiNetEngineBngProvider:
         if not self.connected: raise BngError('SSH_UNAVAILABLE')
         started=time.monotonic()
         status='UNKNOWN'
+        failure=None
         try:
             result=parser(self.transport.execute(request(feature,value)))
             status='SUPPORTED'
             return result
         except BngError as error:
+            failure=error
             status=error.code
             raise
         finally:
@@ -46,7 +48,8 @@ class HuaweiNetEngineBngProvider:
                 caps[capname]=Capability(capname,S(status),S.UNSUPPORTED,E.FIXTURE_VALIDATED,source='runtime_result')
                 self._caps=CapabilitySet(caps.values())
             self._operations.append({'feature':feature,'status':status,
-                'elapsed_ms':round((time.monotonic()-started)*1000,2),'timestamp':time.time()})
+                'elapsed_ms':round((time.monotonic()-started)*1000,2),'timestamp':time.time(),
+                'stage':getattr(failure,'stage',None)})
 
     def connect(self, host, username, password, *, port=None, ssh_port=22, **options):
         from apps.access_manager.infrastructure.providers.juniper import JuniperProvider
@@ -56,14 +59,26 @@ class HuaweiNetEngineBngProvider:
         try:
             self.transport.connect(host,username,password,port=port)
             self.host=host
-            self._facts=self._read('system',parsers.system)
-            self.model=self._facts['model'];self.firmware=self._facts['firmware']
+            self._read('health',parsers.clock)
+            if hasattr(self.transport,'states'): self.transport.states.append('CONNECTED')
+            try:
+                self._facts=self._read('system',parsers.system)
+            except BngError:
+                if not self.connected: raise
+                self._facts={'validation':'PHYSICAL_VALIDATION_PENDING'}
+            self.model=self._facts.get('model');self.firmware=self._facts.get('firmware')
             self._caps=CapabilitySet(Capability(name,S.PARTIAL,S.UNSUPPORTED,E.FIXTURE_VALIDATED,
                 source='PHYSICAL_VALIDATION_PENDING') for name in ('device','subscriber_lookup','subscriber_detail'))
             return {**self._facts,'protocol_family':'vrp_ssh','mode':'partial'}
         except Exception:
             self.disconnect()
             raise
+
+    def connection_metadata(self):
+        return {'device_role':'infrastructure','scheme':'ssh',
+                'connection_states':list(getattr(self.transport,'states',[])),
+                'facts_status':self.feature_states.get('system','UNKNOWN'),
+                'transport_active':self.connected}
 
     def get_system(self): return {**self._facts,'feature_states':dict(self.feature_states)}
     def get_device_info(self): return self.get_system()

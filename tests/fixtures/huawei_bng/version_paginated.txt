@@ -1,0 +1,6 @@
+display version
+Huawei Versatile Routing Platform Software
+VRP (R) software, Version 8.250 (NetEngine 8000 V800R025C00SPC500)
+---- More ----
+Hardware details omitted from the user-provided excerpt.
+<BNG-REDACTED>

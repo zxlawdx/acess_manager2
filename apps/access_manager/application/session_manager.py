@@ -62,8 +62,8 @@ class SessionManager:
                 result=provider.connect(host, username, password, https=https, model_hint=model_hint, **kwargs)
             except Exception as exc:
                 logger.warning(
-                    "device_connect_failed vendor=%s exception=%s",
-                    decision.vendor, type(exc).__name__,
+                    "device_connect_failed vendor=%s exception=%s code=%s stage=%s",
+                    decision.vendor, type(exc).__name__, getattr(exc,"code",None), getattr(exc,"stage",None),
                 )
                 raise
             caps=provider.capabilities.public()

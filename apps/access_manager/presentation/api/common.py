@@ -14,6 +14,7 @@ def safe(fn):
         failure=public_error(exc)
         from apps.access_manager.infrastructure.juniper.errors import JuniperError
         extra={'request_id':exc.request_id,'health':getattr(exc,'health',None)} if isinstance(exc,JuniperError) else {}
+        if failure.get('stage'): extra['stage']=failure['stage']
         return {'success':False,'error':{'code':failure['code'],'message':failure['error'],'type':failure['type'],'retryable':failure['retryable'],**extra}}
 
 
