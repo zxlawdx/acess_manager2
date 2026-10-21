@@ -4832,7 +4832,7 @@
       syncContext();
       const password = form.querySelector('[name="password"]');
       if (password) password.value = "";
-      toast(`Conectado via ${payload.vendor === "juniper" ? s.session.protocol_family || "SSH" : payload.https ? "HTTPS" : "HTTP"} em ${s.session.model || s.session.vendor || payload.host}.`);
+      toast(`Conectado via ${["juniper", "huawei_bng"].includes(payload.vendor) ? s.session.protocol_family || "SSH" : payload.https ? "HTTPS" : "HTTP"} em ${s.session.model || s.session.vendor || payload.host}.`);
       await render9("overview");
       await loginExperience?.afterConnect(worldBridge);
     } catch (err) {
@@ -4896,6 +4896,9 @@
       const juniper = ["juniper", "huawei_bng"].includes(form.elements.vendor.value);
       const huawei = form.elements.vendor.value === "huawei_bng";
       form.elements.transport.disabled = huawei;
+      form.elements.transport.querySelector("[value=ssh]").textContent = huawei ? "SSH / CLI (Huawei VRP)" : "SSH / XML";
+      form.elements.netconf_port.disabled = huawei;
+      document.querySelector("#netconf-port-field").hidden = huawei;
       if (huawei) form.elements.transport.value = "ssh";
       document.querySelector("#juniper-connection").hidden = !juniper;
       form.querySelector(".https-toggle").hidden = juniper;
@@ -4907,8 +4910,8 @@
       form.querySelector("[for=connection-user]").textContent = juniper ? "Usuário AD" : "Usuário";
       form.querySelector("[for=connection-password]").textContent = juniper ? "Senha AD" : "Senha";
       if (juniper) {
-        if (event?.type === "change" || !form.elements.host.value) form.elements.host.value = infrastructureSettings.last_successful_host || infrastructureSettings.default_host || "";
-        form.elements.ssh_port.value = infrastructureSettings.ssh_port || 22;
+        if (event?.type === "change" || !form.elements.host.value) form.elements.host.value = huawei ? "" : infrastructureSettings.last_successful_host || infrastructureSettings.default_host || "";
+        form.elements.ssh_port.value = huawei ? 22 : infrastructureSettings.ssh_port || 22;
         form.elements.netconf_port.value = infrastructureSettings.netconf_port || 830;
         form.elements.transport.value = huawei ? "ssh" : infrastructureSettings.preferred_transport || "ssh";
       }

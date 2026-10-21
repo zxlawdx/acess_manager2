@@ -157,7 +157,7 @@ async function connectFromForm(event) {
     const password = form.querySelector('[name="password"]');
     if (password) password.value = '';
 
-    toast(`Conectado via ${payload.vendor==='juniper'?(s.session.protocol_family||'SSH'):(payload.https ? 'HTTPS' : 'HTTP')} em ${s.session.model || s.session.vendor || payload.host}.`);
+    toast(`Conectado via ${['juniper','huawei_bng'].includes(payload.vendor)?(s.session.protocol_family||'SSH'):(payload.https ? 'HTTPS' : 'HTTP')} em ${s.session.model || s.session.vendor || payload.host}.`);
     await render('overview');
     await loginExperience?.afterConnect(worldBridge);
   } catch (err) {
@@ -211,12 +211,12 @@ export async function mountApp() {
   if (!form) throw new Error('Formulário de conexão não foi encontrado.');
   form.addEventListener('submit', connectFromForm);
   try{infrastructureSettings=await request('/api/infrastructure/settings')}catch{}
-  const syncVendor=event=>{const juniper=['juniper','huawei_bng'].includes(form.elements.vendor.value);const huawei=form.elements.vendor.value==='huawei_bng';form.elements.transport.disabled=huawei;if(huawei)form.elements.transport.value='ssh';document.querySelector('#juniper-connection').hidden=!juniper;form.querySelector('.https-toggle').hidden=juniper;
+  const syncVendor=event=>{const juniper=['juniper','huawei_bng'].includes(form.elements.vendor.value);const huawei=form.elements.vendor.value==='huawei_bng';form.elements.transport.disabled=huawei;form.elements.transport.querySelector('[value=ssh]').textContent=huawei?'SSH / CLI (Huawei VRP)':'SSH / XML';form.elements.netconf_port.disabled=huawei;document.querySelector('#netconf-port-field').hidden=huawei;if(huawei)form.elements.transport.value='ssh';document.querySelector('#juniper-connection').hidden=!juniper;form.querySelector('.https-toggle').hidden=juniper;
    document.querySelector('#login-page').classList.toggle('infrastructure-login',juniper);document.querySelector('#action-dialog').classList.toggle('juniper-surface',juniper);
    form.elements.password.autocomplete=juniper?'off':'current-password';form.elements.username.autocomplete=juniper?'off':'username';
    form.querySelector('[for=connection-host]').textContent=juniper?'Servidor':'IP ou IP:porta';
    form.querySelector('[for=connection-user]').textContent=juniper?'Usuário AD':'Usuário';form.querySelector('[for=connection-password]').textContent=juniper?'Senha AD':'Senha';
-   if(juniper){if(event?.type==='change'||!form.elements.host.value)form.elements.host.value=infrastructureSettings.last_successful_host||infrastructureSettings.default_host||'';form.elements.ssh_port.value=infrastructureSettings.ssh_port||22;form.elements.netconf_port.value=infrastructureSettings.netconf_port||830;form.elements.transport.value=huawei?'ssh':infrastructureSettings.preferred_transport||'ssh'}
+   if(juniper){if(event?.type==='change'||!form.elements.host.value)form.elements.host.value=huawei?'':infrastructureSettings.last_successful_host||infrastructureSettings.default_host||'';form.elements.ssh_port.value=huawei?22:infrastructureSettings.ssh_port||22;form.elements.netconf_port.value=infrastructureSettings.netconf_port||830;form.elements.transport.value=huawei?'ssh':infrastructureSettings.preferred_transport||'ssh'}
    document.querySelector('.connection-security').textContent=juniper?'Use sua conta corporativa no concentrador. A senha é descartada após cada tentativa.':'As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.'};
   form.elements.vendor.onchange=syncVendor;syncVendor();
   document.querySelector('#inspect-host-key').onclick=async()=>{

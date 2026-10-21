@@ -24,7 +24,7 @@
           <label for="connection-vendor">Equipamento</label>
           <select id="connection-vendor" name="vendor">
             <option value="auto">Huawei / ZTE (automático)</option>
-            <option value="huawei_bng">Huawei NetEngine — BNG (experimental)</option>
+            <option value="huawei_bng">Huawei NetEngine 8000 — Concentrador / BNG</option>
             <option value="juniper">Juniper / Junos — infraestrutura</option>
           </select>
         </div>
@@ -41,7 +41,7 @@
             <summary>Configurações avançadas</summary>
             <div class="form-grid">
               <div class="field"><label>Porta SSH</label><input name="ssh_port" type="number" min="1" max="65535" value="22"></div>
-              <div class="field"><label>Porta NETCONF</label><input name="netconf_port" type="number" min="1" max="65535" value="830"></div>
+              <div class="field" id="netconf-port-field"><label>Porta NETCONF</label><input name="netconf_port" type="number" min="1" max="65535" value="830"></div>
             </div>
             <small>Valide a identidade do servidor por um canal independente.</small>
             <button class="button" type="button" id="inspect-host-key">Verificar chave SSH</button>

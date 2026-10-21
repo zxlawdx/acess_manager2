@@ -263,3 +263,18 @@ test('attendance diagnosis renders progressive partial evidence and copy actions
  assert.equal(d.querySelectorAll('[data-attendance-copy]').length,2);
  x.w.close();
 });
+
+
+test('Huawei concentrator choice exposes VRP SSH without inheriting Juniper endpoint',async()=>{
+ const x=await boot({'/api/session':{connected:false,session:null},'/api/infrastructure/settings':{last_successful_host:'juniper.example.invalid',ssh_port:50022,netconf_port:830,preferred_transport:'netconf'}});
+ const d=x.w.document,f=d.querySelector('#connect-form');
+ assert.match(f.elements.vendor.querySelector('[value=huawei_bng]').textContent,/Huawei NetEngine 8000.*Concentrador/);
+ f.elements.vendor.value='huawei_bng';f.elements.vendor.dispatchEvent(new x.w.Event('change'));
+ assert.equal(f.elements.host.value,'');assert.equal(f.elements.ssh_port.value,'22');
+ assert.equal(f.elements.transport.value,'ssh');assert.match(f.elements.transport.selectedOptions[0].textContent,/Huawei VRP/);
+ assert.equal(d.querySelector('#netconf-port-field').hidden,true);assert.equal(f.elements.netconf_port.disabled,true);
+ f.elements.vendor.value='juniper';f.elements.vendor.dispatchEvent(new x.w.Event('change'));
+ assert.equal(f.elements.host.value,'juniper.example.invalid');assert.equal(f.elements.ssh_port.value,'50022');
+ assert.equal(d.querySelector('#netconf-port-field').hidden,false);assert.equal(f.elements.netconf_port.disabled,false);
+ assert.equal(f.elements.transport.value,'netconf');x.w.close();
+});
