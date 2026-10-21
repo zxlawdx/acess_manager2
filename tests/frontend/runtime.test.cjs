@@ -108,7 +108,7 @@ test('Juniper partial candidate failures never present confirmed offline',async(
 test('connection offers explicit Juniper and all three transports without HTTP routing',async()=>{
  const x=await boot({'/api/session':{connected:false,session:null},'/api/infrastructure/system':{model:'mx204'}}),d=x.w.document,f=d.querySelector('#connect-form');
  assert.equal(f.elements.vendor.options.length,3);assert.equal(f.elements.transport.options.length,3);
- f.elements.vendor.value='juniper';f.elements.vendor.dispatchEvent(new x.w.Event('change'));assert.equal(d.querySelector('#juniper-connection').hidden,false);assert.equal(f.querySelector('.https-toggle').hidden,true);
+ f.elements.vendor.value='juniper';f.elements.vendor.dispatchEvent(new x.w.Event('change'));assert.equal(d.querySelector('#infrastructure-connection').hidden,false);assert.equal(f.querySelector('.https-toggle').hidden,true);
  const original=x.w.fetch;x.w.fetch=async(url,options)=>new URL(url).pathname==='/api/session'&&options.method==='POST'?{ok:true,text:async()=>JSON.stringify({connected:true,session:{session_id:'j',vendor:'juniper',model:'mx204',protocol_family:'junos_netconf',capabilities:{}}})}:original(url,options);
  f.elements.host.value='example.invalid';f.elements.username.value='synthetic';f.elements.password.value='synthetic-only';f.elements.port.value='830';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();assert.equal(d.querySelector('#login-page').hidden,true);assert.equal(f.elements.password.value,'');assert.equal(d.querySelector('[data-view=subscribers]').hidden,false);x.w.close();
 });
@@ -277,4 +277,39 @@ test('Huawei concentrator choice exposes VRP SSH without inheriting Juniper endp
  assert.equal(f.elements.host.value,'juniper.example.invalid');assert.equal(f.elements.ssh_port.value,'50022');
  assert.equal(d.querySelector('#netconf-port-field').hidden,false);assert.equal(f.elements.netconf_port.disabled,false);
  assert.equal(f.elements.transport.value,'netconf');x.w.close();
+});
+
+
+const huaweiBngBase={
+ '/api/session':{connected:true,session:{session_id:'huawei-bng-test',vendor:'huawei_bng',model:'NetEngine 8000 M8',firmware:'V800R025C00SPC500',host:'bng.example.invalid',protocol_family:'vrp_ssh',capabilities:{device:{read:'PARTIAL'},subscriber_lookup:{read:'PARTIAL'},subscriber_detail:{read:'PARTIAL'}},metadata:{transport_active:true,connection_states:['AUTHENTICATED','PROMPT_DETECTED'],facts_status:'SUPPORTED'}}},
+ '/api/infrastructure/system':{model:'NetEngine 8000 M8',firmware:'V800R025C00SPC500'},
+ '/api/infrastructure/settings/huawei_bng':{default_host:'huawei.example.invalid',ssh_port:2200,preferred_transport:'ssh'},
+ '/api/infrastructure/subscribers/lookup':{complete:true,sessions:[{username:'brd_00042',session_id:'42',state:'ONLINE',ipv4_address:'100.64.0.42'}]},
+ '/api/infrastructure/subscribers/detail':{username:'brd_00042',user_id:'42',session_id:'42',state:'ONLINE',ipv4_address:'100.64.0.42',outer_vlan:200,inner_vlan:20,mac:'00:11:22:33:44:55'}
+};
+test('Huawei BNG has its own workspace and never requests Junos-only sections',async()=>{
+ const x=await boot(huaweiBngBase),d=x.w.document;
+ assert.ok(d.querySelector('.huawei-bng-shell'));assert.equal(d.querySelector('.app-shell').classList.contains('juniper-shell'),false);
+ assert.match(d.querySelector('#workspace').textContent,/Huawei.*NetEngine/);
+ assert.doesNotMatch(d.querySelector('#workspace').textContent,/Juniper|Junos|Routing Engine|NETCONF/);
+ assert.match(d.querySelector('#ctx-module').textContent,/Huawei.*VRP/);
+ assert.equal(x.calls.some(([path])=>/infrastructure\/(resources|chassis|interfaces|health)$/.test(path)),false);
+ await x.click('huaweiBngSubscribers');
+ const f=d.querySelector('#huawei-subscriber-search');f.elements.query.value='brd_00042';f.dispatchEvent(new x.w.Event('submit',{cancelable:true}));await x.wait();
+ assert.match(d.querySelector('#huawei-subscriber-results').textContent,/brd_00042/);
+ d.querySelector('[data-huawei-user]').click();await x.wait();
+ assert.match(d.querySelector('#huawei-subscriber-detail').textContent,/S-VLAN.*200/);
+ await x.click('huaweiBngDiagnostics');assert.match(d.querySelector('#workspace').textContent,/Diagnóstico Huawei BNG/);
+ assert.doesNotMatch(d.querySelector('#workspace').textContent,/Juniper|Junos|Routing Engine|NETCONF/);
+ assert.equal(x.calls.some(([path])=>path==='/api/infrastructure/subscribers/context'),false);
+ x.w.close();
+});
+test('Huawei preferences do not inherit Junos NETCONF or SSH port',async()=>{
+ const x=await boot({...huaweiBngBase,'/api/session':{connected:false,session:null},'/api/infrastructure/settings':{last_successful_host:'juniper.example.invalid',ssh_port:50022,netconf_port:830,preferred_transport:'netconf'}});
+ const d=x.w.document,f=d.querySelector('#connect-form');f.elements.vendor.value='huawei_bng';f.elements.vendor.dispatchEvent(new x.w.Event('change'));
+ assert.equal(f.elements.host.value,'huawei.example.invalid');assert.equal(f.elements.ssh_port.value,'2200');
+ assert.equal(f.elements.netconf_port.value,'');assert.equal(d.querySelector('#netconf-port-field').hidden,true);
+ assert.equal(f.elements.transport.closest('.field').hidden,true);
+ assert.equal(d.querySelector('#action-dialog').classList.contains('juniper-surface'),false);
+ x.w.close();
 });

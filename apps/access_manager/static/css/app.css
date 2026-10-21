@@ -122,7 +122,7 @@ dialog.drawer{position:fixed;inset:0 0 0 auto;margin:0;height:100vh;max-height:1
 .infrastructure-login .connection-content input:not([type=checkbox]) { min-height:40px; }
 .infrastructure-login .connection-security { padding-top:10px; margin-bottom:0; }
 .infrastructure-login .connection-status { padding:9px 12px; margin:10px 0; }
-.infrastructure-login #juniper-connection details { margin:10px 0; }
+.infrastructure-login #infrastructure-connection details { margin:10px 0; }
 
 /* Shared configuration editors: contain wide telemetry and keep actions reachable. */
 .field label,.kv span{overflow-wrap:anywhere}.field input:not([type=checkbox]),.field select{width:100%;max-width:100%}

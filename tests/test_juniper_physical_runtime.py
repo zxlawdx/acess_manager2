@@ -163,11 +163,11 @@ def test_bus_measures_lock_wait_and_propagates_request_context(caplog):
     lock=threading.RLock();sessions=SimpleNamespace(provider=p,operation_lock=lock,session=SimpleNamespace(session_id='test'))
     results=[];caplog.set_level(logging.INFO)
     with lock:
-        thread=threading.Thread(target=lambda:results.append(DeviceQueryBus(sessions).infrastructure('juniper_health','get_juniper_health',{'kind':'radius','app_session_id':'test'})))
+        thread=threading.Thread(target=lambda:results.append(DeviceQueryBus(sessions).infrastructure('health','get_health',{'kind':'radius','app_session_id':'test'})))
         thread.start();time.sleep(.025)
     thread.join(timeout=2);assert len(results)==1
     record=p.get_operation_log()[-1];assert record['lock_wait_ms']>=15
-    assert any(record['request_id'] in r.message and 'juniper.operation' in r.message for r in caplog.records)
+    assert any(record['request_id'] in r.message and 'infrastructure.operation' in r.message for r in caplog.records)
 
 
 def test_infrastructure_inventory_excludes_dynamic_and_never_executes_global_terse():

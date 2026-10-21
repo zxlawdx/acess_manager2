@@ -6,7 +6,7 @@ import re
 import xml.etree.ElementTree as ET
 from .output import JunosCommandResult, detect
 
-operation = ContextVar('juniper_operation', default=None)
+from apps.access_manager.infrastructure.common.observability import operation
 logger = logging.getLogger('access_manager.juniper.read')
 FIELDS = {'request_id','feature','transport','host','port','logical_command','elapsed_ms','lock_wait_ms',
           'response_bytes','output_format','xml_root','exit_status','error_code','retryable','status','timestamp'}

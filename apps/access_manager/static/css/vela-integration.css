@@ -4,7 +4,7 @@
 
 /* Complete Juniper token set. The missing --am-primary-soft in the previous
    dark integration caused the SSH trust warning to remain almost white. */
-:where(.juniper-shell,.juniper-surface){
+:where(.infrastructure-shell,.infrastructure-surface){
   --am-bg:#0a0a0a;
   --am-sidebar:#080b08;
   --am-surface:#0d0f0d;
@@ -46,8 +46,8 @@
 /* --------------------------------------------------------------------------
    Juniper shell
    -------------------------------------------------------------------------- */
-.juniper-shell{grid-template-rows:48px minmax(0,1fr)!important;background:var(--am-bg)!important}
-.juniper-shell .app-topbar.context-bar{
+.infrastructure-shell{grid-template-rows:48px minmax(0,1fr)!important;background:var(--am-bg)!important}
+.infrastructure-shell .app-topbar.context-bar{
   min-height:48px!important;
   height:48px!important;
   padding:0 13px!important;
@@ -58,19 +58,19 @@
   border-bottom:1px solid var(--am-border)!important;
   box-shadow:none!important;
 }
-.juniper-shell .app-topbar.context-bar::before{content:"junos@bng:~$";font-size:10px;color:var(--am-primary);text-shadow:var(--terminal-glow-soft)}
-.juniper-shell .app-topbar .brand{font-size:11px!important;color:var(--am-primary)!important;letter-spacing:.06em!important}
-.juniper-shell #ctx-module{color:var(--am-warning)!important;font-size:9px!important}
-.juniper-shell .vendor-badge{display:none!important}
-.juniper-shell .device-title{margin-left:auto;flex-direction:row!important;align-items:center!important;gap:10px!important}
-.juniper-shell .device-title strong{color:var(--am-text)!important;font-size:10px!important}
-.juniper-shell .device-title small,.juniper-shell .context-meta{color:var(--am-text-tertiary)!important;font-size:9px!important}
-.juniper-shell .status-badge{margin-left:0!important;color:var(--am-success)!important;border-color:var(--am-success)!important;background:transparent!important}
-.juniper-shell .app-topbar .button{min-height:27px!important;padding:4px 7px!important;color:var(--am-primary)!important;background:transparent!important;border:1px solid var(--am-border)!important}
-.juniper-shell .app-topbar .button:hover:not(:disabled){background:var(--am-primary)!important;color:#050805!important;border-color:var(--am-primary)!important}
+.infrastructure-shell .app-topbar.context-bar::before{content:"junos@bng:~$";font-size:10px;color:var(--am-primary);text-shadow:var(--terminal-glow-soft)}
+.infrastructure-shell .app-topbar .brand{font-size:11px!important;color:var(--am-primary)!important;letter-spacing:.06em!important}
+.infrastructure-shell #ctx-module{color:var(--am-warning)!important;font-size:9px!important}
+.infrastructure-shell .vendor-badge{display:none!important}
+.infrastructure-shell .device-title{margin-left:auto;flex-direction:row!important;align-items:center!important;gap:10px!important}
+.infrastructure-shell .device-title strong{color:var(--am-text)!important;font-size:10px!important}
+.infrastructure-shell .device-title small,.infrastructure-shell .context-meta{color:var(--am-text-tertiary)!important;font-size:9px!important}
+.infrastructure-shell .status-badge{margin-left:0!important;color:var(--am-success)!important;border-color:var(--am-success)!important;background:transparent!important}
+.infrastructure-shell .app-topbar .button{min-height:27px!important;padding:4px 7px!important;color:var(--am-primary)!important;background:transparent!important;border:1px solid var(--am-border)!important}
+.infrastructure-shell .app-topbar .button:hover:not(:disabled){background:var(--am-primary)!important;color:#050805!important;border-color:var(--am-primary)!important}
 
-.juniper-shell .app-sidebar{background:var(--am-sidebar)!important;border-right:1px solid var(--am-border)!important;padding:9px 7px 18px!important;color:var(--am-text-secondary)!important}
-.juniper-shell .app-sidebar::before{content:"[ INFRASTRUCTURE_NAV ]"}
+.infrastructure-shell .app-sidebar{background:var(--am-sidebar)!important;border-right:1px solid var(--am-border)!important;padding:9px 7px 18px!important;color:var(--am-text-secondary)!important}
+.infrastructure-shell .app-sidebar::before{content:"[ INFRASTRUCTURE_NAV ]"}
 .juniper-nav-group{margin:0 0 5px!important;border:0!important}
 .juniper-nav-group summary{
   padding:9px 8px!important;
@@ -85,7 +85,7 @@
 .juniper-nav-group summary::after{content:"+"!important;color:var(--am-text-tertiary);font-size:11px!important;transform:none!important}
 .juniper-nav-group[open] summary::after{content:"-"!important}
 
-.juniper-shell .nav{
+.infrastructure-shell .nav{
   min-height:31px!important;
   padding:6px 8px!important;
   margin:1px 0!important;
@@ -97,28 +97,28 @@
   font-size:10px!important;
   box-shadow:none!important;
 }
-.juniper-shell .nav::before{content:">"!important;color:var(--am-text-tertiary)!important}
-.juniper-shell .nav span{color:inherit!important;font-weight:400!important}
-.juniper-shell .nav:hover{background:var(--am-hover)!important;border-color:var(--am-border)!important;color:var(--am-primary)!important}
-.juniper-shell .nav:hover::before{color:var(--am-primary)!important}
-.juniper-shell .nav.active{background:var(--am-primary)!important;border-color:var(--am-primary)!important;color:#050805!important;font-weight:700!important}
-.juniper-shell .nav.active::before,.juniper-shell .nav.active span{color:#050805!important;font-weight:700!important}
+.infrastructure-shell .nav::before{content:">"!important;color:var(--am-text-tertiary)!important}
+.infrastructure-shell .nav span{color:inherit!important;font-weight:400!important}
+.infrastructure-shell .nav:hover{background:var(--am-hover)!important;border-color:var(--am-border)!important;color:var(--am-primary)!important}
+.infrastructure-shell .nav:hover::before{color:var(--am-primary)!important}
+.infrastructure-shell .nav.active{background:var(--am-primary)!important;border-color:var(--am-primary)!important;color:#050805!important;font-weight:700!important}
+.infrastructure-shell .nav.active::before,.infrastructure-shell .nav.active span{color:#050805!important;font-weight:700!important}
 
-.juniper-shell .app-main{background:var(--am-bg)!important}
-.juniper-shell .page-content{width:100%;max-width:none;padding:16px 18px 28px!important}
-.juniper-shell .page-heading{margin:0 0 13px!important;padding-bottom:9px!important;border-bottom:1px dashed var(--am-border)!important}
-.juniper-shell .page-heading small{color:var(--am-warning)!important;font-size:9px!important;text-transform:uppercase!important}
-.juniper-shell .page-heading h1{margin-top:3px!important;color:var(--am-primary)!important;font-size:19px!important;font-weight:700!important;letter-spacing:0!important;text-transform:uppercase!important}
+.infrastructure-shell .app-main{background:var(--am-bg)!important}
+.infrastructure-shell .page-content{width:100%;max-width:none;padding:16px 18px 28px!important}
+.infrastructure-shell .page-heading{margin:0 0 13px!important;padding-bottom:9px!important;border-bottom:1px dashed var(--am-border)!important}
+.infrastructure-shell .page-heading small{color:var(--am-warning)!important;font-size:9px!important;text-transform:uppercase!important}
+.infrastructure-shell .page-heading h1{margin-top:3px!important;color:var(--am-primary)!important;font-size:19px!important;font-weight:700!important;letter-spacing:0!important;text-transform:uppercase!important}
 
 /* Infrastructure panes/tables */
-.juniper-shell .panel,.j-panel,.j-metrics,.j-detail,.juniper-shell .kv,.j-trust-alert,.j-empty{
+.infrastructure-shell .panel,.j-panel,.j-metrics,.j-detail,.infrastructure-shell .kv,.j-trust-alert,.j-empty{
   background:var(--am-surface)!important;
   color:var(--am-text)!important;
   border-color:var(--am-border)!important;
   border-radius:0!important;
   box-shadow:none!important;
 }
-.juniper-shell .panel{border:1px solid var(--am-border)!important;padding:0!important;overflow:hidden!important;margin-top:0!important}
+.infrastructure-shell .panel{border:1px solid var(--am-border)!important;padding:0!important;overflow:hidden!important;margin-top:0!important}
 .j-panel-header{min-height:40px!important;padding:9px 11px!important;border-bottom:1px solid var(--am-border)!important;background:#0a120a!important}
 .j-panel-header h2{color:var(--am-primary)!important;font-size:10px!important;text-transform:uppercase!important}
 .j-panel-header h2::before{content:"[ ";color:var(--am-text-tertiary)}.j-panel-header h2::after{content:" ]";color:var(--am-text-tertiary)}
@@ -126,11 +126,11 @@
 .j-toolbar{padding:8px 10px!important;border-bottom:1px dashed var(--am-border)!important;gap:6px!important}
 .j-toolbar input{min-width:180px}
 
-.juniper-shell .data-table,.juniper-surface .data-table{min-width:620px!important;font-size:10px!important;white-space:nowrap!important}
-.juniper-shell .data-table th,.juniper-surface .data-table th{height:auto!important;padding:7px 9px!important;background:#0a140a!important;color:var(--am-primary)!important;border-bottom:1px solid var(--am-border)!important;font-size:8px!important;text-transform:uppercase!important}
-.juniper-shell .data-table td,.juniper-surface .data-table td{height:32px!important;padding:6px 9px!important;background:transparent!important;color:var(--am-text-secondary)!important;border-bottom:1px solid var(--am-border-soft)!important}
-.juniper-shell .data-table tr:hover td{background:var(--am-hover)!important;color:var(--am-primary)!important}
-.juniper-shell .data-table tr.is-selected td{background:var(--am-selected)!important;color:var(--am-primary)!important}
+.infrastructure-shell .data-table,.infrastructure-surface .data-table{min-width:620px!important;font-size:10px!important;white-space:nowrap!important}
+.infrastructure-shell .data-table th,.infrastructure-surface .data-table th{height:auto!important;padding:7px 9px!important;background:#0a140a!important;color:var(--am-primary)!important;border-bottom:1px solid var(--am-border)!important;font-size:8px!important;text-transform:uppercase!important}
+.infrastructure-shell .data-table td,.infrastructure-surface .data-table td{height:32px!important;padding:6px 9px!important;background:transparent!important;color:var(--am-text-secondary)!important;border-bottom:1px solid var(--am-border-soft)!important}
+.infrastructure-shell .data-table tr:hover td{background:var(--am-hover)!important;color:var(--am-primary)!important}
+.infrastructure-shell .data-table tr.is-selected td{background:var(--am-selected)!important;color:var(--am-primary)!important}
 .j-text-button{color:var(--am-primary)!important;font-weight:700!important}
 .j-status{color:var(--am-text-secondary)!important}.j-status i{background:var(--am-text-tertiary)!important}.j-status.ok{color:var(--am-success)!important}.j-status.ok i{background:var(--am-success)!important;box-shadow:var(--terminal-glow-soft)}
 
@@ -149,7 +149,7 @@
 /* --------------------------------------------------------------------------
    SSH host-key modal — isolated from global dialog rules
    -------------------------------------------------------------------------- */
-.juniper-surface{
+.infrastructure-surface{
   position:fixed!important;
   inset:50% auto auto 50%!important;
   transform:translate(-50%,-50%)!important;
@@ -165,9 +165,9 @@
   color:var(--am-text)!important;
   box-shadow:none!important;
 }
-.juniper-surface::backdrop{background:rgba(0,0,0,.9)!important}
-.juniper-surface .dialog-inner{display:flex!important;flex-direction:column!important;max-height:min(82vh,720px)!important;padding:0!important;background:#070907!important;overflow:hidden!important}
-.juniper-surface .dialog-header{
+.infrastructure-surface::backdrop{background:rgba(0,0,0,.9)!important}
+.infrastructure-surface .dialog-inner{display:flex!important;flex-direction:column!important;max-height:min(82vh,720px)!important;padding:0!important;background:#070907!important;overflow:hidden!important}
+.infrastructure-surface .dialog-header{
   flex:0 0 auto;
   margin:0!important;
   padding:10px 12px!important;
@@ -175,13 +175,13 @@
   border-bottom:1px solid var(--am-border)!important;
   background:#0a120a!important;
 }
-.juniper-surface .dialog-header h2{margin:0!important;color:var(--am-primary)!important;font-size:11px!important;line-height:1.35!important;text-transform:uppercase!important;text-shadow:var(--terminal-glow-soft)}
-.juniper-surface .dialog-header h2::before{content:"+-- ";color:var(--am-text-tertiary)!important}.juniper-surface .dialog-header h2::after{content:" --+";color:var(--am-text-tertiary)!important}
-.juniper-surface .dialog-header .icon-button{width:27px;height:27px;padding:0!important;border:1px solid var(--am-border)!important;background:transparent!important;color:var(--am-primary)!important}
-.juniper-surface .dialog-header .icon-button:hover{background:var(--am-danger)!important;border-color:var(--am-danger)!important;color:#050505!important}
+.infrastructure-surface .dialog-header h2{margin:0!important;color:var(--am-primary)!important;font-size:11px!important;line-height:1.35!important;text-transform:uppercase!important;text-shadow:var(--terminal-glow-soft)}
+.infrastructure-surface .dialog-header h2::before{content:"+-- ";color:var(--am-text-tertiary)!important}.infrastructure-surface .dialog-header h2::after{content:" --+";color:var(--am-text-tertiary)!important}
+.infrastructure-surface .dialog-header .icon-button{width:27px;height:27px;padding:0!important;border:1px solid var(--am-border)!important;background:transparent!important;color:var(--am-primary)!important}
+.infrastructure-surface .dialog-header .icon-button:hover{background:var(--am-danger)!important;border-color:var(--am-danger)!important;color:#050505!important}
 
-.juniper-surface .j-trust-body{flex:1 1 auto;min-height:0;overflow:auto;padding:13px 14px!important;background:#070907!important}
-.juniper-surface .j-trust-alert{
+.infrastructure-surface .j-trust-body{flex:1 1 auto;min-height:0;overflow:auto;padding:13px 14px!important;background:#070907!important}
+.infrastructure-surface .j-trust-alert{
   margin:0 0 12px!important;
   padding:10px 11px!important;
   border:1px solid var(--am-border-strong)!important;
@@ -191,13 +191,13 @@
   color:var(--am-text)!important;
   font-size:10px!important;
 }
-.juniper-surface .j-trust-alert::before{content:"[SSH_HOST_KEY] ";display:block;margin-bottom:5px;color:var(--am-warning)!important;font-size:8px;font-weight:700;letter-spacing:.08em}
-.juniper-surface .j-trust-alert strong{display:block;color:var(--am-primary)!important;font-size:10px!important;text-transform:uppercase!important;text-shadow:var(--terminal-glow-soft)}
-.juniper-surface .j-trust-alert p{margin:5px 0 0!important;color:var(--am-text-secondary)!important;line-height:1.55!important}
-.juniper-surface .j-trust-alert.changed{border-color:var(--am-danger)!important;border-left-color:var(--am-danger)!important;background:#180707!important}.juniper-surface .j-trust-alert.changed::before{content:"[SSH_HOST_KEY_CHANGED] ";color:var(--am-danger)!important}.juniper-surface .j-trust-alert.changed strong{color:var(--am-danger)!important;text-shadow:0 0 5px rgba(255,51,51,.3)}
+.infrastructure-surface .j-trust-alert::before{content:"[SSH_HOST_KEY] ";display:block;margin-bottom:5px;color:var(--am-warning)!important;font-size:8px;font-weight:700;letter-spacing:.08em}
+.infrastructure-surface .j-trust-alert strong{display:block;color:var(--am-primary)!important;font-size:10px!important;text-transform:uppercase!important;text-shadow:var(--terminal-glow-soft)}
+.infrastructure-surface .j-trust-alert p{margin:5px 0 0!important;color:var(--am-text-secondary)!important;line-height:1.55!important}
+.infrastructure-surface .j-trust-alert.changed{border-color:var(--am-danger)!important;border-left-color:var(--am-danger)!important;background:#180707!important}.infrastructure-surface .j-trust-alert.changed::before{content:"[SSH_HOST_KEY_CHANGED] ";color:var(--am-danger)!important}.infrastructure-surface .j-trust-alert.changed strong{color:var(--am-danger)!important;text-shadow:0 0 5px rgba(255,51,51,.3)}
 
-.juniper-surface .j-kv{display:block!important;margin:0!important;background:transparent!important;border:0!important}
-.juniper-surface .j-kv>div{
+.infrastructure-surface .j-kv{display:block!important;margin:0!important;background:transparent!important;border:0!important}
+.infrastructure-surface .j-kv>div{
   display:grid!important;
   grid-template-columns:minmax(150px,.72fr) minmax(0,1.28fr)!important;
   gap:12px!important;
@@ -205,11 +205,11 @@
   padding:8px 0!important;
   border-bottom:1px dashed var(--am-border)!important;
 }
-.juniper-surface .j-kv dt{color:var(--am-text-tertiary)!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important}
-.juniper-surface .j-kv dt::before{content:"$ ";color:var(--am-warning)!important}
-.juniper-surface .j-kv dd{min-width:0;margin:0!important;color:var(--am-primary)!important;font:10px/1.45 var(--font-mono)!important;overflow-wrap:anywhere!important;word-break:break-all!important;user-select:all}
+.infrastructure-surface .j-kv dt{color:var(--am-text-tertiary)!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important}
+.infrastructure-surface .j-kv dt::before{content:"$ ";color:var(--am-warning)!important}
+.infrastructure-surface .j-kv dd{min-width:0;margin:0!important;color:var(--am-primary)!important;font:10px/1.45 var(--font-mono)!important;overflow-wrap:anywhere!important;word-break:break-all!important;user-select:all}
 
-.juniper-surface .dialog-footer{
+.infrastructure-surface .dialog-footer{
   flex:0 0 auto;
   display:flex!important;
   justify-content:flex-end!important;
@@ -220,17 +220,17 @@
   border-top:1px solid var(--am-border)!important;
   background:#070907!important;
 }
-.juniper-surface .dialog-footer .button.primary{max-width:100%;white-space:normal;text-align:center;background:var(--am-primary)!important;border-color:var(--am-primary)!important;color:#050805!important}
-.juniper-surface .dialog-footer .button.primary:hover:not(:disabled){background:#050805!important;color:var(--am-primary)!important;outline:1px solid var(--am-primary)!important;outline-offset:-2px!important}
+.infrastructure-surface .dialog-footer .button.primary{max-width:100%;white-space:normal;text-align:center;background:var(--am-primary)!important;border-color:var(--am-primary)!important;color:#050805!important}
+.infrastructure-surface .dialog-footer .button.primary:hover:not(:disabled){background:#050805!important;color:var(--am-primary)!important;outline:1px solid var(--am-primary)!important;outline-offset:-2px!important}
 
 /* Other Juniper modal content */
-.juniper-surface .dialog-inner>p{margin:0!important;padding:10px 13px!important;color:var(--am-text-secondary)!important;font-size:10px!important;overflow-wrap:anywhere}
-.juniper-surface input,.juniper-surface select{min-height:33px!important;border:0!important;border-bottom:1px solid var(--am-border-strong)!important;border-radius:0!important;background:#080b08!important;color:var(--am-primary)!important}
-.juniper-surface .button{border-radius:0!important;background:transparent!important;color:var(--am-primary)!important;border-color:var(--am-border-strong)!important}
-.juniper-surface .button:hover:not(:disabled){background:var(--am-primary)!important;color:#050805!important;border-color:var(--am-primary)!important}
+.infrastructure-surface .dialog-inner>p{margin:0!important;padding:10px 13px!important;color:var(--am-text-secondary)!important;font-size:10px!important;overflow-wrap:anywhere}
+.infrastructure-surface input,.infrastructure-surface select{min-height:33px!important;border:0!important;border-bottom:1px solid var(--am-border-strong)!important;border-radius:0!important;background:#080b08!important;color:var(--am-primary)!important}
+.infrastructure-surface .button{border-radius:0!important;background:transparent!important;color:var(--am-primary)!important;border-color:var(--am-border-strong)!important}
+.infrastructure-surface .button:hover:not(:disabled){background:var(--am-primary)!important;color:#050805!important;border-color:var(--am-primary)!important}
 
 /* Drawers are side panes, not centered modals. */
-.juniper-surface.j-drawer{
+.infrastructure-surface.j-drawer{
   inset:48px 0 0 auto!important;
   transform:none!important;
   width:min(460px,100vw)!important;
@@ -245,16 +245,24 @@
 /* --------------------------------------------------------------------------
    Responsive infrastructure workspace
    -------------------------------------------------------------------------- */
-@media(max-width:1450px){.j-subscriber-grid{grid-template-columns:minmax(0,1fr) 300px!important}.juniper-shell .context-meta{display:none!important}.juniper-shell .page-content{padding:16px!important}.juniper-shell .device-title small{display:none!important}}
-@media(max-width:1000px){.j-subscriber-grid,.j-overview-grid{grid-template-columns:1fr!important}.j-detail{position:static!important}.j-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}.juniper-shell #ctx-module{display:none!important}.juniper-shell #juniper-diagnostic-form{grid-template-columns:1fr 1fr!important}}
+@media(max-width:1450px){.j-subscriber-grid{grid-template-columns:minmax(0,1fr) 300px!important}.infrastructure-shell .context-meta{display:none!important}.infrastructure-shell .page-content{padding:16px!important}.infrastructure-shell .device-title small{display:none!important}}
+@media(max-width:1000px){.j-subscriber-grid,.j-overview-grid{grid-template-columns:1fr!important}.j-detail{position:static!important}.j-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}.infrastructure-shell #ctx-module{display:none!important}.infrastructure-shell #juniper-diagnostic-form{grid-template-columns:1fr 1fr!important}}
 @media(max-width:780px){
-  .juniper-shell .app-sidebar{top:48px!important}
-  .juniper-shell .page-content{padding:12px!important}
+  .infrastructure-shell .app-sidebar{top:48px!important}
+  .infrastructure-shell .page-content{padding:12px!important}
   .j-metrics{grid-template-columns:1fr 1fr!important}
   .j-intro{flex-direction:column!important}
-  .juniper-shell .data-table{min-width:620px!important}
-  .juniper-shell .device-title{display:none!important}
-  .juniper-surface{width:min(94vw,680px)!important;max-height:88vh!important}
-  .juniper-surface .j-kv>div{grid-template-columns:1fr!important;gap:3px!important}
+  .infrastructure-shell .data-table{min-width:620px!important}
+  .infrastructure-shell .device-title{display:none!important}
+  .infrastructure-surface{width:min(94vw,680px)!important;max-height:88vh!important}
+  .infrastructure-surface .j-kv>div{grid-template-columns:1fr!important;gap:3px!important}
 }
-@media(max-width:520px){.j-metrics{grid-template-columns:1fr!important}.juniper-surface{width:calc(100vw - 16px)!important}.juniper-surface .dialog-footer{justify-content:stretch!important}.juniper-surface .dialog-footer .button{width:100%!important}}
+@media(max-width:520px){.j-metrics{grid-template-columns:1fr!important}.infrastructure-surface{width:calc(100vw - 16px)!important}.infrastructure-surface .dialog-footer{justify-content:stretch!important}.infrastructure-surface .dialog-footer .button{width:100%!important}}
+
+.huawei-bng-shell .app-topbar.context-bar::before{content:"vrp@bng:~$"}
+.infrastructure-nav-group summary{padding:10px;font-weight:600;cursor:pointer}
+.infrastructure-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px}
+.infrastructure-facts dt{color:var(--text-secondary)}
+.infrastructure-facts dd{margin:4px 0;overflow-wrap:anywhere}
+.huawei-bng-subscribers .form-grid{grid-template-columns:minmax(150px,1fr) auto auto;align-items:end}
+@media(max-width:700px){.huawei-bng-subscribers .form-grid{grid-template-columns:1fr}}

@@ -1,3 +1,4 @@
+from apps.access_manager.domain.infrastructure_errors import InfrastructureError
 """Public errors never contain transport exception text or router payloads."""
 MESSAGES={
  'XML_PARSE_ERROR':'O Juniper retornou XML malformado. A leitura não foi aplicada.',
@@ -25,7 +26,7 @@ MESSAGES={
  'STALE_SESSION':'A sessão mudou desde a última consulta. Atualize os dados.',
  'SUBSCRIBER_NOT_FOUND':'Nenhuma sessão ativa encontrada nesta consulta.',
 }
-class JuniperError(RuntimeError):
+class JuniperError(InfrastructureError):
     def __init__(self,code,**diagnostics):
         self.code=code
         self.diagnostics={k:v for k,v in diagnostics.items() if k in {'response_bytes','output_format','xml_root','exit_status'}}

@@ -141,7 +141,7 @@
   }
   function formatHumanService(service2, { mode = "summary", secrets = false, markdown = false } = {}) {
     const header = service2.started ? `Atendimento iniciado às ${clock(service2.started)}.` : "Nenhum atendimento iniciado.";
-    const facts = [], timeline = [], last = /* @__PURE__ */ new Map();
+    const facts2 = [], timeline = [], last = /* @__PURE__ */ new Map();
     let connectedCpeHost = "";
     for (const e of service2.entries) {
       if (e.category === "Conexão" && e.action !== "Sessão iniciada" && connectedCpeHost && e.connection?.host === connectedCpeHost) {
@@ -154,18 +154,18 @@
       const key = `${e.session || ""}:${fact.key || fact.kind}`;
       if (["read", "connection"].includes(fact.kind) && last.get(key) === (fact.fingerprint || fact.text)) continue;
       last.set(key, fact.fingerprint || fact.text);
-      facts.push(fact);
+      facts2.push(fact);
       timeline.push(`${clock(e.time)} — ${fact.text}`);
     }
     const notes = scalar(service2.notes);
     let body;
     if (mode === "timeline") body = timeline.join("\n\n");
-    else if (mode === "prose") body = facts.map((f) => f.text.replaceAll("\n", " ")).join(" ");
+    else if (mode === "prose") body = facts2.map((f) => f.text.replaceAll("\n", " ")).join(" ");
     else {
       const sections = [];
       let previous = "";
       const titles2 = { read: "Verificações realizadas:", change: "Alterações realizadas:", test: "Diagnósticos e consultas:" };
-      for (const fact of facts) {
+      for (const fact of facts2) {
         if (fact.kind !== previous && titles2[fact.kind]) sections.push(titles2[fact.kind]);
         sections.push(fact.text);
         previous = fact.kind;
@@ -463,8 +463,8 @@
     } catch {
     }
   }
-  function presentLabel(raw, navigation2 = false) {
-    if (navigation2 && /^\s*\d{2}\s*$/.test(raw)) return "";
+  function presentLabel(raw, navigation3 = false) {
+    if (navigation3 && /^\s*\d{2}\s*$/.test(raw)) return "";
     return raw.replace(/^(\s*)\[\s*(.*?)\s*\](\s*)$/, "$1$2$3").replace(/^(\s*)(?:>\s+|\/\/\s+)/, "$1");
   }
   var icons = { overview: "🌐", clients: "👥", traffic: "📈", wifi: "📶", wan: "🌍", lan: "🔌", dhcpdns: "🗂", diagnostics: "🧪", completeDiagnostics: "🩺", profiles: "🧰", management: "⚙", subscribers: "👥", juniperSubscriber: "🔗", juniperInterfaces: "🔌", juniperRouting: "🌐", juniperDiagnostics: "🔎", juniperSystem: "🏢" };
@@ -620,12 +620,12 @@
     if (!cap2) return false;
     return cap2.enabled?.read === true || ["SUPPORTED", "PARTIAL"].includes(cap2.read) || cap2.enabled?.write === true || cap2.write === "SUPPORTED";
   }
-  function createRouteRegistry(views2, juniperNavigation, actions = []) {
-    const collect = (navigation2, family) => navigation2.flatMap(([group, items]) => items.filter(([id]) => Object.hasOwn(views2, id)).map(([id, label]) => ({ id, label, group, family, kind: kinds[id] || "orb", capabilities: requirements[id] || [] })));
-    return [...collect(routerNavigation, "router"), ...collect(juniperNavigation, "juniper")].map((route) => ({ ...route, actions: actions.filter((a) => a.routeId === route.id) }));
+  function createRouteRegistry(views2, juniperNavigation, actions = [], huaweiNavigation = []) {
+    const collect = (navigation3, family) => navigation3.flatMap(([group, items]) => items.filter(([id]) => Object.hasOwn(views2, id)).map(([id, label]) => ({ id, label, group, family, kind: kinds[id] || "orb", capabilities: requirements[id] || [] })));
+    return [...collect(routerNavigation, "router"), ...collect(juniperNavigation, "juniper"), ...collect(huaweiNavigation, "huawei_bng")].map((route) => ({ ...route, actions: actions.filter((a) => a.routeId === route.id) }));
   }
   function applicableRoutes(registry, session2, capabilities) {
-    const family = session2?.vendor === "juniper" ? "juniper" : "router";
+    const family = ["juniper", "huawei_bng"].includes(session2?.vendor) ? session2.vendor : "router";
     return registry.filter((r) => r.family === family && (!r.capabilities.length || r.capabilities.some((c) => capabilityAllows(capabilities?.[c]))));
   }
 
@@ -699,8 +699,8 @@
   var palette = [1288654, 5485633, 236475, 7826651, 15115581, 2920919];
   function deriveWorldRegions(registry, session2, capabilities) {
     const layout = session2?.vendor === "juniper" ? "juniper" : "router";
-    const routes = applicableRoutes(registry, session2, capabilities);
-    const items = routes.flatMap((route) => [{ routeId: route.id, id: route.id, label: route.label, kind: route.kind, capabilities: route.capabilities, available: true }, ...(route.actions || []).filter((a) => a.available() && (!a.capability || capabilityAllows(capabilities?.[a.capability]))).map((a) => ({ routeId: route.id, id: a.id, actionId: a.id, label: a.label, kind: a.kind, available: true }))]);
+    const routes2 = applicableRoutes(registry, session2, capabilities);
+    const items = routes2.flatMap((route) => [{ routeId: route.id, id: route.id, label: route.label, kind: route.kind, capabilities: route.capabilities, available: true }, ...(route.actions || []).filter((a) => a.available() && (!a.capability || capabilityAllows(capabilities?.[a.capability]))).map((a) => ({ routeId: route.id, id: a.id, actionId: a.id, label: a.label, kind: a.kind, available: true }))]);
     return items.map((r, i) => {
       const col = i % 5, row = Math.floor(i / 5);
       return { ...r, layout, x: layout === "juniper" ? (col - 2) * 15 : (col - 2) * 17, z: layout === "juniper" ? -16 + row * 15 : -12 + row * 18, color: palette[i % palette.length] };
@@ -2473,6 +2473,102 @@
     return d;
   }
 
+  // apps/access_manager/static/js/shared/infrastructure-ui.js
+  function drawer(title, content, actions = "") {
+    const d = dialog(title, `<div class="j-drawer-content">${content}</div>`, actions);
+    d.classList.add("j-drawer");
+    return d;
+  }
+
+  // apps/access_manager/static/js/workspaces/views/infrastructure.js
+  var readInfrastructure = (path2, data = {}, scope = currentScope()) => request("/api/infrastructure/" + path2, { scope, signal: scope?.controller.signal, method: "POST", body: JSON.stringify({ ...data, app_session_id: store.session?.session?.session_id }) });
+  function mountAttendanceDiagnostic() {
+    document.querySelector("#subscriber-diagnose").onclick = async () => {
+      const scope = currentScope(), button2 = document.querySelector("#subscriber-diagnose"), host = document.querySelector("#attendance-diagnostic");
+      button2.disabled = true;
+      try {
+        let job = await readInfrastructure("diagnostics/start", { query: document.querySelector("#subscriber-query").value }, scope);
+        const cancel = document.querySelector("#attendance-cancel");
+        cancel.hidden = false;
+        cancel.onclick = () => readInfrastructure("diagnostics/cancel", { id: job.id }, scope).catch((e) => toast(e.message));
+        while (scopeActive(scope)) {
+          host.innerHTML = `<p>${esc(job.status)} · ${job.events.map((e) => esc(e.source + ": " + e.status)).join(" · ")}</p>`;
+          if (job.result) {
+            const triage = job.result.triage;
+            const stages = ["Cliente", "ONT / CPE", "GPON / PON", "VLAN / QinQ", "BNG / PPPoE", "AAA / RADIUS", "IPv4 / IPv6", "CGNAT / Core", "DNS / Internet"];
+            const observed = job.result.snapshot?.subscriber;
+            host.innerHTML += `<details><summary>Caminho do cliente e evidências</summary>${stages.map((name, index) => `<p>${esc(name)}: ${esc(index === 4 ? observed?.state || "UNKNOWN" : "UNKNOWN")}</p>`).join("")}<p>Coleta BNG: ${esc(job.result.snapshot?.subscriber_observed_at || "UNKNOWN")}</p></details>`;
+            host.innerHTML += `<h3>${esc(triage.status)}${triage.partial ? " · Parcial" : ""}</h3>` + triage.issues.map((i) => `<p><strong>${esc(i.title)}</strong> ${esc(i.suggested_action || "")}</p>`).join("") + `<p>Etapas sem evidência permanecem UNKNOWN.</p><button class="button" data-attendance-copy="technical">Copiar técnico</button> <button class="button" data-attendance-copy="customer">Copiar para cliente</button>`;
+            host.querySelectorAll("[data-attendance-copy]").forEach((b) => b.onclick = async () => {
+              try {
+                await navigator.clipboard.writeText(job.result.attendance[b.dataset.attendanceCopy]);
+                toast("Registro copiado.");
+              } catch {
+                toast("Não foi possível copiar.");
+              }
+            });
+          }
+          if (job.status !== "RUNNING") break;
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          if (!scopeActive(scope)) break;
+          job = await readInfrastructure("diagnostics/progress", { id: job.id }, scope);
+        }
+      } catch (error) {
+        if (scopeActive(scope)) host.textContent = error.message;
+      } finally {
+        button2.disabled = false;
+        const cancel = document.querySelector("#attendance-cancel");
+        if (cancel) cancel.hidden = true;
+      }
+    };
+  }
+  async function accessCpe(row) {
+    try {
+      const draft = await readInfrastructure("subscribers/cpe-draft", { session_id: row.session_id, username: row.username, ipv4_address: row.ipv4_address });
+      const d = drawer("Acessar CPE", `<p><strong>${esc(draft.subscriber_username)}</strong> · via ${esc(store.session?.session?.vendor === "huawei_bng" ? "Huawei BNG" : "Juniper")}</p><p>Contrato ${esc(draft.contract || "—")} · MAC <code>${esc(row.mac_address || "—")}</code></p><p class="muted">Atualizado ${esc(new Date(draft.refreshed_at * 1e3).toLocaleTimeString())}</p><p class="muted">IP localizado no BNG. O acesso de gerenciamento parte deste computador e pode depender de rota, ACL ou porta habilitada.</p><form id="cpe-handoff" class="form-grid"><div class="field"><label>IPv4</label><input name="host" value="${esc(draft.host)}" readonly required><label><input type="checkbox" name="edit_host"> Editar endereço explicitamente</label></div><div class="field"><label>Porta</label><input name="port" type="number" min="1" max="65535" value="80" required></div><div class="field"><label>Protocolo</label><select name="protocol"><option value="auto">Automático (HTTP; HTTPS na porta 443)</option><option value="http">HTTP</option><option value="https">HTTPS</option></select></div><div class="field"><label>Fabricante</label><select name="vendor"><option value="auto">Automático</option><option value="huawei">Huawei</option><option value="zte">ZTE</option></select></div><div class="field"><label>Usuário do CPE</label><input name="username" autocomplete="off" required></div><div class="field"><label>Senha do CPE</label><input name="password" type="password" autocomplete="off" required></div><p id="cpe-feedback" role="status"></p></form>`, `<button class="button" type="button" data-probe-cpe>Verificar porta</button><button class="button primary" type="submit" form="cpe-handoff">Conectar ao CPE</button>`);
+      d.classList.add("juniper-dialog");
+      const drawerScope = d._requestScope;
+      const form = d.querySelector("form");
+      form.elements.edit_host.onchange = () => {
+        form.elements.host.readOnly = !form.elements.edit_host.checked;
+      };
+      d.querySelector("[data-probe-cpe]").onclick = async (event) => {
+        const button2 = event.currentTarget;
+        button2.disabled = true;
+        try {
+          const values = Object.fromEntries(new FormData(form));
+          delete values.password;
+          delete values.username;
+          const result = await request("/api/infrastructure/subscribers/cpe-port", { method: "POST", body: JSON.stringify({ ...draft, ...values, source_host: draft.host, edit_host: form.elements.edit_host.checked }) });
+          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = result.status === "CPE_PORT_REACHABLE" ? "Porta TCP acessível a partir deste computador. Autenticação ainda não testada." : "Porta inacessível a partir deste computador. Isso não confirma que o assinante esteja offline.";
+        } catch (e) {
+          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = e.message;
+        } finally {
+          if (d.open) button2.disabled = false;
+        }
+      };
+      form.onsubmit = async (event) => {
+        event.preventDefault();
+        const button2 = d.querySelector("[type=submit]");
+        button2.disabled = true;
+        const payload = { ...draft, ...Object.fromEntries(new FormData(form)), source_host: draft.host, edit_host: form.elements.edit_host.checked };
+        form.elements.password.value = "";
+        try {
+          const result = await request("/api/infrastructure/subscribers/connect-cpe", { method: "POST", body: JSON.stringify(payload) });
+          d.close();
+          document.dispatchEvent(new CustomEvent("session-selected", { detail: result }));
+        } catch (error) {
+          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = `Acesso de gerenciamento não confirmado: ${error.message} Isso não confirma que o assinante esteja offline.`;
+        } finally {
+          payload.password = "";
+          if (d.open) button2.disabled = false;
+        }
+      };
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+
   // apps/access_manager/static/js/shared/presentation.js
   var unavailable = "Não disponível";
   var bool = (v) => v === true ? "Ativo" : v === false ? "Inativo" : unavailable;
@@ -2504,11 +2600,6 @@
   var empty = (title, description = "") => `<div class="j-empty"><strong>${esc(title)}</strong><p>${esc(description)}</p></div>`;
   var status = (value2) => `<span class="j-status ${/^(active|ativo|up|online|session up)$/i.test(value2 || "") ? "ok" : ""}"><i></i>${esc({ Active: "Ativo", Online: "Online" }[value2] || value2 || "Não disponível")}</span>`;
   var kv2 = (items) => `<dl class="j-kv">${items.map(([label, value2]) => `<div><dt>${esc(label)}</dt><dd>${esc(Array.isArray(value2) ? value2.join(", ") || "—" : value2 ?? "—")}</dd></div>`).join("")}</dl>`;
-  function drawer(title, content, actions = "") {
-    const d = dialog(title, `<div class="j-drawer-content">${content}</div>`, actions);
-    d.classList.add("j-drawer");
-    return d;
-  }
   function tabs(items, active2, attribute = "data-j-tab") {
     return `<div class="j-tabs" role="tablist">${items.map(([id, label]) => `<button type="button" role="tab" aria-selected="${id === active2}" ${attribute}="${esc(id)}" class="${id === active2 ? "active" : ""}">${esc(label)}</button>`).join("")}</div>`;
   }
@@ -2630,44 +2721,7 @@
     wireCopy(host);
   }
   function mountSubscribers() {
-    document.querySelector("#subscriber-diagnose").onclick = async () => {
-      const scope2 = currentScope(), button2 = document.querySelector("#subscriber-diagnose"), host = document.querySelector("#attendance-diagnostic");
-      button2.disabled = true;
-      try {
-        let job = await read("diagnostics/start", { query: document.querySelector("#subscriber-query").value }, scope2);
-        const cancel2 = document.querySelector("#attendance-cancel");
-        cancel2.hidden = false;
-        cancel2.onclick = () => read("diagnostics/cancel", { id: job.id }, scope2).catch((e) => toast(e.message));
-        while (scopeActive(scope2)) {
-          host.innerHTML = `<p>${esc(job.status)} · ${job.events.map((e) => esc(e.source + ": " + e.status)).join(" · ")}</p>`;
-          if (job.result) {
-            const triage = job.result.triage;
-            const stages = ["Cliente", "ONT / CPE", "GPON / PON", "VLAN / QinQ", "BNG / PPPoE", "AAA / RADIUS", "IPv4 / IPv6", "CGNAT / Core", "DNS / Internet"];
-            const observed = job.result.snapshot?.subscriber;
-            host.innerHTML += `<details><summary>Caminho do cliente e evidências</summary>${stages.map((name, index) => `<p>${esc(name)}: ${esc(index === 4 ? observed?.state || "UNKNOWN" : "UNKNOWN")}</p>`).join("")}<p>Coleta BNG: ${esc(job.result.snapshot?.subscriber_observed_at || "UNKNOWN")}</p></details>`;
-            host.innerHTML += `<h3>${esc(triage.status)}${triage.partial ? " · Parcial" : ""}</h3>` + triage.issues.map((i) => `<p><strong>${esc(i.title)}</strong> ${esc(i.suggested_action || "")}</p>`).join("") + `<p>Etapas sem evidência permanecem UNKNOWN.</p><button class="button" data-attendance-copy="technical">Copiar técnico</button> <button class="button" data-attendance-copy="customer">Copiar para cliente</button>`;
-            host.querySelectorAll("[data-attendance-copy]").forEach((b) => b.onclick = async () => {
-              try {
-                await navigator.clipboard.writeText(job.result.attendance[b.dataset.attendanceCopy]);
-                toast("Registro copiado.");
-              } catch {
-                toast("Não foi possível copiar.");
-              }
-            });
-          }
-          if (job.status !== "RUNNING") break;
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          if (!scopeActive(scope2)) break;
-          job = await read("diagnostics/progress", { id: job.id }, scope2);
-        }
-      } catch (error) {
-        if (scopeActive(scope2)) host.textContent = error.message;
-      } finally {
-        button2.disabled = false;
-        const cancel2 = document.querySelector("#attendance-cancel");
-        if (cancel2) cancel2.hidden = true;
-      }
-    };
+    mountAttendanceDiagnostic();
     const form = document.querySelector("#subscriber-search"), scope = currentScope(), cancel = document.querySelector("#subscriber-cancel"), message = document.querySelector("#subscriber-status");
     drawResults();
     document.querySelector("[data-toggle-filters]").onclick = (e) => {
@@ -2933,53 +2987,70 @@
       }
     };
   }
-  async function accessCpe(row) {
-    try {
-      const draft = await read("subscribers/cpe-draft", { session_id: row.session_id, username: row.username, ipv4_address: row.ipv4_address });
-      const d = drawer("Acessar CPE", `<p><strong>${esc(draft.subscriber_username)}</strong> · via Juniper</p><p>Contrato ${esc(draft.contract || "—")} · MAC <code>${esc(row.mac_address || "—")}</code></p><p class="muted">Atualizado ${esc(new Date(draft.refreshed_at * 1e3).toLocaleTimeString())}</p><p class="muted">IP localizado no BNG. O acesso de gerenciamento parte deste computador e pode depender de rota, ACL ou porta habilitada.</p><form id="cpe-handoff" class="form-grid"><div class="field"><label>IPv4</label><input name="host" value="${esc(draft.host)}" readonly required><label><input type="checkbox" name="edit_host"> Editar endereço explicitamente</label></div><div class="field"><label>Porta</label><input name="port" type="number" min="1" max="65535" value="80" required></div><div class="field"><label>Protocolo</label><select name="protocol"><option value="auto">Automático (HTTP; HTTPS na porta 443)</option><option value="http">HTTP</option><option value="https">HTTPS</option></select></div><div class="field"><label>Fabricante</label><select name="vendor"><option value="auto">Automático</option><option value="huawei">Huawei</option><option value="zte">ZTE</option></select></div><div class="field"><label>Usuário do CPE</label><input name="username" autocomplete="off" required></div><div class="field"><label>Senha do CPE</label><input name="password" type="password" autocomplete="off" required></div><p id="cpe-feedback" role="status"></p></form>`, `<button class="button" type="button" data-probe-cpe>Verificar porta</button><button class="button primary" type="submit" form="cpe-handoff">Conectar ao CPE</button>`);
-      d.classList.add("juniper-dialog");
-      const drawerScope = d._requestScope;
-      const form = d.querySelector("form");
-      form.elements.edit_host.onchange = () => {
-        form.elements.host.readOnly = !form.elements.edit_host.checked;
-      };
-      d.querySelector("[data-probe-cpe]").onclick = async (event) => {
-        const button2 = event.currentTarget;
-        button2.disabled = true;
-        try {
-          const values = Object.fromEntries(new FormData(form));
-          delete values.password;
-          delete values.username;
-          const result = await request("/api/infrastructure/subscribers/cpe-port", { method: "POST", body: JSON.stringify({ ...draft, ...values, source_host: draft.host, edit_host: form.elements.edit_host.checked }) });
-          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = result.status === "CPE_PORT_REACHABLE" ? "Porta TCP acessível a partir deste computador. Autenticação ainda não testada." : "Porta inacessível a partir deste computador. Isso não confirma que o assinante esteja offline.";
-        } catch (e) {
-          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = e.message;
-        } finally {
-          if (d.open) button2.disabled = false;
-        }
-      };
-      form.onsubmit = async (event) => {
-        event.preventDefault();
-        const button2 = d.querySelector("[type=submit]");
-        button2.disabled = true;
-        const payload = { ...draft, ...Object.fromEntries(new FormData(form)), source_host: draft.host, edit_host: form.elements.edit_host.checked };
-        form.elements.password.value = "";
-        try {
-          const result = await request("/api/infrastructure/subscribers/connect-cpe", { method: "POST", body: JSON.stringify(payload) });
-          d.close();
-          document.dispatchEvent(new CustomEvent("session-selected", { detail: result }));
-        } catch (error) {
-          if (d.open && d._requestScope === drawerScope) d.querySelector("#cpe-feedback").textContent = `Acesso de gerenciamento não confirmado: ${error.message} Isso não confirma que o assinante esteja offline.`;
-        } finally {
-          payload.password = "";
-          if (d.open) button2.disabled = false;
-        }
-      };
-    } catch (error) {
-      toast(error.message);
-    }
-  }
   var worldActions = [{ id: "access-cpe", routeId: "juniperSubscriber", label: "Acessar CPE", kind: "cpe", capability: "subscriber_detail", available: () => Boolean(selected?.ipv4_address), run: () => selected && accessCpe(selected) }];
+
+  // apps/access_manager/static/js/workspaces/views/huaweiBng.js
+  var navigation2 = [["HUAWEI BNG", [
+    ["huaweiBngOverview", "Visão geral"],
+    ["huaweiBngSubscribers", "Assinantes PPPoE"],
+    ["huaweiBngDiagnostics", "Diagnóstico completo"]
+  ]]];
+  var queryField = () => `<form id="huawei-subscriber-search" class="form-grid"><div class="field"><label for="subscriber-query">Contrato / usuário PPPoE / User ID</label><input id="subscriber-query" name="query" required maxlength="128" placeholder="Contrato, usuário ou user-id:42"></div><button class="button primary" type="submit">Buscar assinante</button><button class="button" type="button" id="subscriber-diagnose">Diagnóstico completo</button></form><button class="button" type="button" id="attendance-cancel" hidden>Cancelar diagnóstico</button><div id="attendance-diagnostic" role="status" aria-live="polite"></div>`;
+  var facts = (entries) => `<dl class="infrastructure-facts">${entries.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(Array.isArray(v) ? v.join(", ") : v ?? "UNKNOWN")}</dd></div>`).join("")}</dl>`;
+  async function overview2() {
+    const scope = currentScope(), data = await readInfrastructure("system", {}, scope), session2 = store.session?.session;
+    const states = session2?.metadata?.connection_states || [];
+    return `<section class="panel huawei-bng-overview"><h2>Huawei ${esc(data.model || session2?.model || "BNG")}</h2><p>VRP ${esc(data.firmware || session2?.firmware || "UNKNOWN")} · ${esc(session2?.host)}</p>${facts([["Transporte", "VRP SSH"], ["SSH", session2?.metadata?.transport_active === false ? "UNKNOWN" : store.session?.connected ? "Conectado" : "UNKNOWN"], ["Autenticação", states.includes("AUTHENTICATED") ? "Confirmada" : "UNKNOWN"], ["Prompt VRP", states.includes("PROMPT_DETECTED") ? "Detectado" : "UNKNOWN"], ["Facts", session2?.metadata?.facts_status || data.feature_states?.system || "UNKNOWN"]])}<p>Leituras avançadas sem validação física permanecem indisponíveis.</p><button class="button primary" data-view="huaweiBngSubscribers">Buscar assinante</button></section>`;
+  }
+  function subscribers2() {
+    return `<section class="panel huawei-bng-subscribers"><h2>Assinantes Huawei BNG</h2>${queryField()}<p id="huawei-search-status" role="status"></p><div id="huawei-subscriber-results"></div><div id="huawei-subscriber-detail"></div></section>`;
+  }
+  function mountSubscribers2() {
+    mountAttendanceDiagnostic();
+    const form = document.querySelector("#huawei-subscriber-search"), scope = currentScope();
+    const message = document.querySelector("#huawei-search-status"), host = document.querySelector("#huawei-subscriber-results");
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      form.querySelector("[type=submit]").disabled = true;
+      message.textContent = "Consultando Huawei BNG…";
+      try {
+        const result = await readInfrastructure("subscribers/lookup", { query: form.elements.query.value }, scope);
+        if (!scopeActive(scope)) return;
+        const rows3 = result.sessions || [];
+        message.textContent = (result.complete ? "Consulta concluída." : "Consulta parcial: ausência de sessão não confirmada.") + ` ${rows3.length} sessão(ões).`;
+        host.innerHTML = table([{ label: "Usuário PPPoE", render: (r) => esc(r.username) }, { label: "Estado", render: (r) => esc(r.state || "UNKNOWN") }, { label: "IPv4", render: (r) => esc(r.ipv4_address || "UNKNOWN") }, { label: "Detalhes", render: (r) => `<button class="button" data-huawei-user="${esc(r.session_id)}">Abrir</button>` }], rows3);
+        host.querySelectorAll("[data-huawei-user]").forEach((button2) => button2.onclick = async () => {
+          button2.disabled = true;
+          try {
+            const row = await readInfrastructure("subscribers/detail", { session_id: button2.dataset.huaweiUser }, scope);
+            if (scopeActive(scope)) document.querySelector("#huawei-subscriber-detail").innerHTML = `<h3>${esc(row.username)}</h3>` + facts([["User ID", row.user_id], ["Estado", row.state], ["Interface", row.interface], ["Interface física", row.physical_interface], ["S-VLAN / PeVlan", row.outer_vlan], ["C-VLAN / CeVlan", row.inner_vlan], ["IPv4", row.ipv4_address], ["IPv6", row.ipv6_addresses], ["Gateway", row.gateway_ipv4], ["DNS", row.dns_v4], ["MAC", row.mac]]) + `<button class="button" data-huawei-cpe ${row.ipv4_address ? "" : "disabled"}>Acessar CPE</button>`;
+            if (scopeActive(scope)) document.querySelector("[data-huawei-cpe]").onclick = () => accessCpe(row);
+          } catch (e) {
+            if (scopeActive(scope)) message.textContent = e.message;
+          } finally {
+            button2.disabled = false;
+          }
+        });
+      } catch (e) {
+        if (scopeActive(scope)) message.textContent = e.message;
+      } finally {
+        form.querySelector("[type=submit]").disabled = false;
+      }
+    };
+  }
+  function diagnostics2() {
+    return `<section class="panel"><h2>Diagnóstico Huawei BNG</h2>${queryField()}<p>Somente dados observados; recursos sem suporte permanecem UNKNOWN.</p></section>`;
+  }
+  function mountDiagnostics2() {
+    mountAttendanceDiagnostic();
+    document.querySelector("#huawei-subscriber-search").onsubmit = (e) => {
+      e.preventDefault();
+      document.querySelector("#subscriber-diagnose").click();
+    };
+  }
+  var routes = { huaweiBngOverview: { render: overview2, mount: () => {
+    document.querySelector(".huawei-bng-overview [data-view=huaweiBngSubscribers]").onclick = () => document.dispatchEvent(new CustomEvent("infrastructure-navigate", { detail: "huaweiBngSubscribers" }));
+  } }, huaweiBngSubscribers: { render: subscribers2, mount: mountSubscribers2 }, huaweiBngDiagnostics: { render: diagnostics2, mount: mountDiagnostics2 } };
 
   // apps/access_manager/static/js/workspaces/views/overview.js
   var overview_exports = {};
@@ -4308,7 +4379,7 @@
   }
 
   // apps/access_manager/static/js/workspaces/views/misc.js
-  async function diagnostics2() {
+  async function diagnostics3() {
     const c = cap("diagnostics");
     const enabled = Boolean(c.enabled?.write);
     return `<section class="panel"><div class="panel-header"><div><h2>Diagnóstico</h2><span class="muted">Execute testes a partir do equipamento conectado.</span></div></div>
@@ -4319,7 +4390,7 @@
     <div id="diagnostic-result" class="panel"><span class="muted">${enabled ? "Pronto para executar." : `Capability diagnostics.write = ${esc(c.write)}.`}</span></div>
   </section>`;
   }
-  function mountDiagnostics2() {
+  function mountDiagnostics3() {
     const out = document.querySelector("#diagnostic-result");
     const wire3 = (selector, path2) => {
       const form = document.querySelector(selector);
@@ -4632,6 +4703,7 @@
   var worldBridge;
   var loginExperience;
   var infrastructureSettings = {};
+  var huaweiConnectionSettings = {};
   var viewStates = /* @__PURE__ */ new Map();
   var meta = {
     juniperOverview: ["JUNIPER", "Visão geral"],
@@ -4656,8 +4728,11 @@
   Object.assign(meta, Object.fromEntries(Object.entries(titles).map(([key, [group, title]]) => [key, [`Infraestrutura / Juniper / ${group}`, title]])));
   meta.subscribers[1] = "Assinantes PPPoE";
   var juniperRoutes = Object.fromEntries(Object.keys(titles).map((key) => [key, routeView(key)]));
+  var huaweiBngRoutes = routes;
+  Object.assign(meta, Object.fromEntries(navigation2.flatMap(([group, items]) => items.map(([id, label]) => [id, [group, label]]))));
   var views = {
     ...juniperRoutes,
+    ...huaweiBngRoutes,
     overview: overview_exports,
     clients: clients_exports,
     wifi: wifi_exports,
@@ -4666,7 +4741,7 @@
     capabilities: capabilities_exports,
     completeDiagnostics: complete_diagnostics_exports,
     traffic: traffic_exports,
-    diagnostics: { render: diagnostics2, mount: mountDiagnostics2 },
+    diagnostics: { render: diagnostics3, mount: mountDiagnostics3 },
     deployment: { render: deployment },
     wan: { render: wan, mount: mountWan },
     lan: { render: lan },
@@ -4675,11 +4750,17 @@
   function syncContext() {
     const s = store.session?.session;
     const connected = Boolean(store.session?.connected);
-    const infrastructure = ["juniper", "huawei_bng"].includes(s?.vendor);
-    document.querySelector(".app-shell").classList.toggle("juniper-shell", infrastructure);
-    document.querySelector("#action-dialog").classList.toggle("juniper-surface", infrastructure);
-    document.querySelectorAll("#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group").forEach((element) => {
-      element.hidden = infrastructure ? !element.hasAttribute("data-juniper-nav") : element.hasAttribute("data-juniper-nav");
+    const isJuniper = s?.vendor === "juniper", isHuaweiBng = s?.vendor === "huawei_bng";
+    const infrastructureVendor = isJuniper || isHuaweiBng;
+    document.querySelector(".app-shell").classList.toggle("infrastructure-shell", infrastructureVendor);
+    document.querySelector(".app-shell").classList.toggle("juniper-shell", isJuniper);
+    document.querySelector(".app-shell").classList.toggle("huawei-bng-shell", isHuaweiBng);
+    document.querySelector("#action-dialog").classList.toggle("infrastructure-surface", infrastructureVendor);
+    document.querySelector("#action-dialog").classList.toggle("juniper-surface", isJuniper);
+    document.querySelector("#ctx-module").textContent = isHuaweiBng ? "/ Huawei / VRP BNG" : isJuniper ? "/ Juniper / Junos BNG" : "";
+    document.querySelector("#juniper-help").hidden = !isJuniper;
+    document.querySelectorAll("#sidebar .nav,#sidebar .nav-group,#sidebar .juniper-nav-group,#sidebar .infrastructure-nav-group").forEach((element) => {
+      element.hidden = element.hasAttribute("data-huawei-bng-nav") ? !isHuaweiBng : element.hasAttribute("data-juniper-nav") ? !isJuniper : infrastructureVendor;
     });
     document.querySelector("#login-page").hidden = connected;
     document.querySelector(".app-shell").hidden = !connected;
@@ -4702,7 +4783,7 @@
         }
       };
     }
-    back.hidden = infrastructure || !store.session?.infrastructure?.connected;
+    back.hidden = infrastructureVendor || !store.session?.infrastructure?.connected;
     const disconnect = document.querySelector("#disconnect-button");
     const updated = document.querySelector("#ctx-updated");
     if (disconnect) disconnect.disabled = !s;
@@ -4710,8 +4791,10 @@
     document.dispatchEvent(new CustomEvent("app-context-ready"));
   }
   async function render9(name = store.view, background = false) {
-    if (["juniper", "huawei_bng"].includes(store.session?.session?.vendor) && !Object.hasOwn(juniperRoutes, name)) name = "juniperOverview";
-    else if (!["juniper", "huawei_bng"].includes(store.session?.session?.vendor) && Object.hasOwn(juniperRoutes, name)) name = "overview";
+    const vendor = store.session?.session?.vendor;
+    if (vendor === "huawei_bng") name = name === "subscribers" ? "huaweiBngSubscribers" : Object.hasOwn(huaweiBngRoutes, name) ? name : "huaweiBngOverview";
+    else if (vendor === "juniper" && !Object.hasOwn(juniperRoutes, name)) name = "juniperOverview";
+    else if (vendor !== "juniper" && (Object.hasOwn(juniperRoutes, name) || Object.hasOwn(huaweiBngRoutes, name))) name = "overview";
     const scope = background ? currentScope() : beginView(name);
     if (!background) {
       views[store.view]?.unmount?.();
@@ -4737,7 +4820,8 @@
     const kickerEl = document.querySelector("#page-kicker");
     const titleEl = document.querySelector("#page-title");
     if (kickerEl) {
-      if (Object.hasOwn(juniperRoutes, name)) kickerEl.innerHTML = `<button class="j-crumb" data-juniper-route="juniperOverview">Infraestrutura</button> / <button class="j-crumb" data-juniper-route="juniperOverview">Juniper</button> / ${esc(titles[name][0])}`;
+      if (Object.hasOwn(huaweiBngRoutes, name)) kickerEl.textContent = "Infraestrutura / Huawei BNG / VRP";
+      else if (Object.hasOwn(juniperRoutes, name)) kickerEl.innerHTML = `<button class="j-crumb" data-juniper-route="juniperOverview">Infraestrutura</button> / <button class="j-crumb" data-juniper-route="juniperOverview">Juniper</button> / ${esc(titles[name][0])}`;
       else kickerEl.textContent = kicker;
     }
     if (titleEl) titleEl.textContent = title;
@@ -4750,7 +4834,7 @@
     if (!background) document.querySelector(".app-main").scrollTop = 0;
     let waitTimer;
     if (!background) {
-      workspace.innerHTML = Object.hasOwn(juniperRoutes, name) ? '<section class="panel j-wait" role="status"><p data-wait-label>Consultando Juniper…</p><div class="skeleton"></div><button class="button" data-cancel-wait>Cancelar espera</button></section>' : '<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
+      workspace.innerHTML = Object.hasOwn(huaweiBngRoutes, name) ? '<section class="panel"><p>Consultando Huawei BNG…</p></section>' : Object.hasOwn(juniperRoutes, name) ? '<section class="panel j-wait" role="status"><p data-wait-label>Consultando Juniper…</p><div class="skeleton"></div><button class="button" data-cancel-wait>Cancelar espera</button></section>' : '<section class="panel" role="status"><p class="muted">Carregando dados…</p><div class="skeleton"></div><div class="skeleton"></div></section>';
       const cancel = workspace.querySelector("[data-cancel-wait]");
       if (cancel) {
         waitTimer = setTimeout(() => {
@@ -4825,6 +4909,9 @@
         throw new Error("A API não confirmou uma sessão autenticada no equipamento.");
       }
       store.setSession(s);
+      if (payload.vendor === "huawei_bng") {
+        huaweiConnectionSettings = { ...huaweiConnectionSettings, last_successful_host: payload.host, ssh_port: payload.ssh_port };
+      }
       if (payload.vendor === "juniper") {
         infrastructureSettings = { ...infrastructureSettings, last_successful_host: payload.host, ssh_port: payload.ssh_port, netconf_port: payload.netconf_port, preferred_transport: payload.transport };
       }
@@ -4861,7 +4948,7 @@
     mountServicePanel(store);
     const theme = mountThemeProvider();
     loginExperience = mountLoginExperience(theme);
-    const routeRegistry = createRouteRegistry(views, navigation, worldActions);
+    const routeRegistry = createRouteRegistry(views, navigation, worldActions, navigation2);
     worldBridge = mountWorldBridge({ store, theme, registry: routeRegistry, navigate: (name) => render9(name), suspend: () => {
       views[store.view]?.unmount?.();
       beginView("world");
@@ -4871,7 +4958,9 @@
     const oldNav = document.querySelectorAll("[data-juniper-nav]");
     oldNav.forEach((n) => n.remove());
     document.querySelector("#sidebar").insertAdjacentHTML("afterbegin", navigation.map(([group, items], index) => `<details class="juniper-nav-group" data-juniper-nav hidden ${index < 2 ? "open" : ""}><summary>${esc(group)}</summary>${items.map(([route, label]) => `<button class="nav" data-juniper-nav data-view="${route}" hidden><span>${esc(label)}</span></button>`).join("")}</details>`).join(""));
+    document.querySelector("#sidebar").insertAdjacentHTML("afterbegin", navigation2.map(([group, items]) => `<details class="infrastructure-nav-group" data-huawei-bng-nav hidden open><summary>${esc(group)}</summary>${items.map(([id, label]) => `<button class="nav" data-huawei-bng-nav data-view="${id}" hidden>${esc(label)}</button>`).join("")}</details>`).join(""));
     document.querySelector("#juniper-help").onclick = () => dialog("Ajuda · Juniper / Junos BNG", "<p>Busque o contrato, selecione uma sessão e consulte detalhes sem sair da lista. Leituras avançadas são feitas sob demanda.</p><p>O acesso ao CPE usa credenciais separadas. Voltar ao assinante mantém a sessão Juniper; portas inacessíveis não confirmam assinante offline.</p>");
+    document.addEventListener("infrastructure-navigate", (event) => render9(event.detail));
     document.addEventListener("juniper-navigate", (event) => render9(event.detail));
     document.addEventListener("click", (event) => {
       const b = event.target.closest("[data-juniper-route]");
@@ -4888,40 +4977,51 @@
     const form = document.querySelector("#connect-form");
     if (!form) throw new Error("Formulário de conexão não foi encontrado.");
     form.addEventListener("submit", connectFromForm);
+    if (store.session?.session?.vendor !== "huawei_bng") {
+      try {
+        infrastructureSettings = await request("/api/infrastructure/settings");
+      } catch {
+      }
+    }
     try {
-      infrastructureSettings = await request("/api/infrastructure/settings");
+      huaweiConnectionSettings = await request("/api/infrastructure/settings/huawei_bng");
     } catch {
     }
     const syncVendor = (event) => {
-      const juniper = ["juniper", "huawei_bng"].includes(form.elements.vendor.value);
-      const huawei = form.elements.vendor.value === "huawei_bng";
-      form.elements.transport.disabled = huawei;
-      form.elements.transport.querySelector("[value=ssh]").textContent = huawei ? "SSH / CLI (Huawei VRP)" : "SSH / XML";
-      form.elements.netconf_port.disabled = huawei;
-      document.querySelector("#netconf-port-field").hidden = huawei;
-      if (huawei) form.elements.transport.value = "ssh";
-      document.querySelector("#juniper-connection").hidden = !juniper;
-      form.querySelector(".https-toggle").hidden = juniper;
-      document.querySelector("#login-page").classList.toggle("infrastructure-login", juniper);
-      document.querySelector("#action-dialog").classList.toggle("juniper-surface", juniper);
-      form.elements.password.autocomplete = juniper ? "off" : "current-password";
-      form.elements.username.autocomplete = juniper ? "off" : "username";
-      form.querySelector("[for=connection-host]").textContent = juniper ? "Servidor" : "IP ou IP:porta";
-      form.querySelector("[for=connection-user]").textContent = juniper ? "Usuário AD" : "Usuário";
-      form.querySelector("[for=connection-password]").textContent = juniper ? "Senha AD" : "Senha";
-      if (juniper) {
-        if (event?.type === "change" || !form.elements.host.value) form.elements.host.value = huawei ? "" : infrastructureSettings.last_successful_host || infrastructureSettings.default_host || "";
-        form.elements.ssh_port.value = huawei ? 22 : infrastructureSettings.ssh_port || 22;
-        form.elements.netconf_port.value = infrastructureSettings.netconf_port || 830;
-        form.elements.transport.value = huawei ? "ssh" : infrastructureSettings.preferred_transport || "ssh";
+      const vendor = form.elements.vendor.value;
+      const isJuniper = vendor === "juniper";
+      const isHuaweiBng = vendor === "huawei_bng";
+      const infrastructureVendor = isJuniper || isHuaweiBng;
+      const settings = isHuaweiBng ? huaweiConnectionSettings : infrastructureSettings;
+      form.elements.transport.closest(".field").hidden = isHuaweiBng;
+      form.elements.transport.disabled = isHuaweiBng;
+      form.elements.transport.querySelector("[value=ssh]").textContent = isHuaweiBng ? "SSH / CLI (Huawei VRP)" : "SSH / XML";
+      form.elements.netconf_port.disabled = isHuaweiBng;
+      document.querySelector("#netconf-port-field").hidden = isHuaweiBng;
+      if (isHuaweiBng) form.elements.transport.value = "ssh";
+      document.querySelector("#infrastructure-connection").hidden = !infrastructureVendor;
+      form.querySelector(".https-toggle").hidden = infrastructureVendor;
+      document.querySelector("#login-page").classList.toggle("infrastructure-login", infrastructureVendor);
+      document.querySelector("#action-dialog").classList.toggle("infrastructure-surface", infrastructureVendor);
+      document.querySelector("#action-dialog").classList.toggle("juniper-surface", isJuniper);
+      form.elements.password.autocomplete = infrastructureVendor ? "off" : "current-password";
+      form.elements.username.autocomplete = infrastructureVendor ? "off" : "username";
+      form.querySelector("[for=connection-host]").textContent = infrastructureVendor ? "Servidor" : "IP ou IP:porta";
+      form.querySelector("[for=connection-user]").textContent = infrastructureVendor ? "Usuário AD" : "Usuário";
+      form.querySelector("[for=connection-password]").textContent = infrastructureVendor ? "Senha AD" : "Senha";
+      if (infrastructureVendor) {
+        if (event?.type === "change" || !form.elements.host.value) form.elements.host.value = settings.last_successful_host || settings.default_host || "";
+        form.elements.ssh_port.value = settings.ssh_port || 22;
+        form.elements.netconf_port.value = isJuniper ? settings.netconf_port || 830 : "";
+        form.elements.transport.value = isHuaweiBng ? "ssh" : settings.preferred_transport || "ssh";
       }
-      document.querySelector(".connection-security").textContent = juniper ? "Use sua conta corporativa no concentrador. A senha é descartada após cada tentativa." : "As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.";
+      document.querySelector(".connection-security").textContent = infrastructureVendor ? "Use sua conta corporativa no concentrador. A senha é descartada após cada tentativa." : "As credenciais são usadas na sessão com o equipamento. Selecione HTTPS quando disponível.";
     };
     form.elements.vendor.onchange = syncVendor;
     syncVendor();
     document.querySelector("#inspect-host-key").onclick = async () => {
       try {
-        const info = await request("/api/infrastructure/host-key", { method: "POST", body: JSON.stringify({ host: store.session?.connected && store.session.session?.vendor === "juniper" ? store.session.session.host : form.elements.host.value, port: form.elements.transport.value === "netconf" ? form.elements.netconf_port.value : form.elements.ssh_port.value }) });
+        const info = await request("/api/infrastructure/host-key", { method: "POST", body: JSON.stringify({ host: store.session?.connected && ["juniper", "huawei_bng"].includes(store.session.session?.vendor) ? store.session.session.host : form.elements.host.value, port: form.elements.transport.value === "netconf" ? form.elements.netconf_port.value : form.elements.ssh_port.value }) });
         const d = dialog("Identidade SSH do servidor", `<div class="j-trust-body"><div class="j-trust-alert ${info.status === "HOST_KEY_CHANGED" ? "changed" : ""}" role="alert"><strong>${info.status === "HOST_KEY_CHANGED" ? "A chave SSH apresentada pelo servidor mudou" : info.status === "HOST_KEY_TRUSTED" ? "Chave SSH reconhecida" : "Primeiro acesso a este servidor"}</strong><p>Compare a impressão digital com uma fonte confiável antes de aceitar. Uma chave alterada bloqueia a conexão.</p></div><dl class="j-kv"><div><dt>Servidor</dt><dd>${esc(info.host)}:${esc(info.port)}</dd></div><div><dt>Algoritmo</dt><dd>${esc(info.algorithm || "—")}</dd></div><div><dt>Fingerprint apresentado</dt><dd>${esc(info.fingerprint)}</dd></div>${info.previous_fingerprints.length ? `<div><dt>Fingerprints anteriores</dt><dd>${info.previous_fingerprints.map(esc).join(", ")}</dd></div>` : ""}</dl></div>`, `<button class="button primary" data-trust-key>Confirmei a identidade — confiar nesta chave</button>`);
         d.querySelector("[data-trust-key]").onclick = async (event) => {
           event.currentTarget.disabled = true;

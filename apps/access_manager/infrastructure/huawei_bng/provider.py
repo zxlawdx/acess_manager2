@@ -1,6 +1,7 @@
 """Huawei BNG provider: focused reads only; no subscriber inventory fallback."""
 from collections import deque
 import time
+import logging
 from apps.access_manager.domain.capabilities import Capability, CapabilitySet, SupportStatus as S, EvidenceLevel as E
 from apps.access_manager.domain.subscribers import SubscriberQuery
 from . import parsers
@@ -29,6 +30,7 @@ class HuaweiNetEngineBngProvider:
 
     def _read(self, feature, parser, value=None):
         if not self.connected: raise BngError('SSH_UNAVAILABLE')
+        logging.getLogger(__name__).info('infrastructure_read vendor=huawei_bng feature=%s transport=vrp_ssh',feature)
         started=time.monotonic()
         status='UNKNOWN'
         failure=None
@@ -52,8 +54,8 @@ class HuaweiNetEngineBngProvider:
                 'stage':getattr(failure,'stage',None)})
 
     def connect(self, host, username, password, *, port=None, ssh_port=22, **options):
-        from apps.access_manager.infrastructure.providers.juniper import JuniperProvider
-        host, port=JuniperProvider.target(host, port or ssh_port)
+        from apps.access_manager.infrastructure.common.endpoint import normalize_ssh_target
+        host, port=normalize_ssh_target(host, port, default_port=ssh_port)
         self.disconnect()
         self.transport=self.transport_factory()
         try:
@@ -112,3 +114,13 @@ class HuaweiNetEngineBngProvider:
         self.transport=None
         self.host=self.model=self.firmware=None
         self._facts={};self._caps=CapabilitySet();self.feature_states={};self._operations.clear()
+
+    def _pending(self): raise BngError('PHYSICAL_VALIDATION_PENDING')
+    def get_interfaces(self): return self._pending()
+    def get_interface(self,name): return self._pending()
+    def get_health(self,config): return self._pending()
+    def diagnostic(self,config): return self._pending()
+    def get_link(self,config): return self._pending()
+    def get_chassis(self): return self._pending()
+    def get_resources(self): return self._pending()
+    def subscriber_context(self,config): return self._pending()

@@ -29,3 +29,7 @@ Process-local bounded history stores explicit ONLINE/OFFLINE transitions only. R
 ## Remaining roadmap
 
 Adaptive AAA reads, configurable multi-source plans, first-class recommendation codes, persistent operational history, separate DNS UDP/TCP tests, IPv6 protocol diagnosis, DHCP/ARP/ND, QoS counters, MTU/MSS/PMTUD, pool/LAG/routing health and application playbooks are not implemented by this slice. The UI includes a compact path summary; detailed clickable per-node views and dedicated card layout remain pending.
+
+## Vendor isolation update
+
+The orchestrator remains shared by contract, while collection dispatch stays on the selected provider. Huawei and Junos now have separate route tables/workspaces. Shared diagnostic progress, attendance and verified subscriber-to-CPE handoff live in `views/infrastructure.js`; they do not create vendor-specific commands. The CPE collection still requires a verified identity/handoff, and missing advanced Huawei readers remain PHYSICAL_VALIDATION_PENDING.

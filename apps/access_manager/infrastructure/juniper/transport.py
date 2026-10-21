@@ -7,7 +7,8 @@ import paramiko
 from .errors import JuniperError
 from .requests import validate_request, native_rpc
 from .output import JunosCommandResult, normalize, detect
-from .trust import HostTrust, EndpointTrustPolicy
+from apps.access_manager.infrastructure.common.ssh_trust import HostTrust, EndpointTrustPolicy
+from apps.access_manager.domain.infrastructure_errors import SshTrustError
 
 @dataclass(frozen=True)
 class Timeouts:
@@ -17,6 +18,7 @@ class Timeouts:
 
 
 def classify(error,transport):
+    if isinstance(error,SshTrustError): return JuniperError(error.code)
     from ncclient.transport.errors import AuthenticationError,SSHUnknownHostError
     from ncclient.operations.errors import TimeoutExpiredError
     if isinstance(error,(AuthenticationError,paramiko.AuthenticationException)):return JuniperError('AUTHENTICATION_FAILED')

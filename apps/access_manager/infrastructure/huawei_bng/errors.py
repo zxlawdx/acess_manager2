@@ -1,8 +1,9 @@
+from apps.access_manager.domain.infrastructure_errors import InfrastructureError
 """Safe BNG failures: only static codes and stages cross the API boundary."""
 import re
 
 
-class BngError(RuntimeError):
+class BngError(InfrastructureError):
     def __init__(self, code, *, stage=None):
         self.code = code if isinstance(code,str) and re.fullmatch(r'[A-Z_]{1,64}',code) else 'BNG_ERROR'
         self.stage = stage if isinstance(stage,str) and re.fullmatch(r'[a-z_]{1,40}',stage) else None

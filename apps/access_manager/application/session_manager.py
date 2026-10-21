@@ -54,7 +54,7 @@ class SessionManager:
                     decision=self.router.decide(host,model_hint=model_hint,https=https)
             logger.info(
                 "device_connect_requested host=%s transport=%s model_hint=%s",
-                host, kwargs.get("transport","netconf") if vendor=="juniper" else "https" if https else "http", bool(model_hint),
+                host, kwargs.get("transport","ssh") if vendor in {"juniper","huawei_bng"} else "https" if https else "http", bool(model_hint),
             )
             logger.info("provider_selected vendor=%s reason=%s", decision.vendor, decision.reason)
             provider=self.providers[decision.vendor]

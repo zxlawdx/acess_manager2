@@ -32,13 +32,11 @@ def _safe_text(error: BaseException, fallback: str) -> str:
     return value
 
 def classify(error: BaseException) -> PublicFailure | None:
-    from apps.access_manager.infrastructure.huawei_bng.errors import BngError
-    if isinstance(error,BngError):
-        return PublicFailure(error.code,'infrastructure',error.public_message,error.code.endswith('_TIMEOUT') or error.code in {'TIMEOUT','SSH_UNAVAILABLE'}, stage=error.stage)
-    from apps.access_manager.infrastructure.juniper.errors import JuniperError
-    if isinstance(error,JuniperError):
-        category='parser' if error.code in {'XML_PARSE_ERROR','XML_SHAPE_UNSUPPORTED','EMPTY_RESPONSE'} else 'transport' if error.code in {'SSH_UNAVAILABLE','NETCONF_UNAVAILABLE','SSH_COMMAND_FAILED'} else 'authentication' if error.code=='AUTHENTICATION_FAILED' else 'timeout' if error.code=='CONNECTION_TIMEOUT' else 'permission' if error.code=='PERMISSION_DENIED' else 'unconfirmed'
-        return PublicFailure(error.code,category,error.public_message,error.code in {'CONNECTION_TIMEOUT','DEVICE_BUSY','SSH_UNAVAILABLE','NETCONF_UNAVAILABLE'})
+    from apps.access_manager.domain.infrastructure_errors import InfrastructureError
+    if isinstance(error,InfrastructureError):
+        code=error.code
+        category='parser' if code in {'XML_PARSE_ERROR','XML_SHAPE_UNSUPPORTED','EMPTY_RESPONSE','PARSE_UNKNOWN'} else 'transport' if code in {'SSH_UNAVAILABLE','NETCONF_UNAVAILABLE','SSH_COMMAND_FAILED'} else 'authentication' if code=='AUTHENTICATION_FAILED' else 'timeout' if code.endswith('_TIMEOUT') or code in {'TIMEOUT','CONNECTION_TIMEOUT'} else 'permission' if code=='PERMISSION_DENIED' else 'unconfirmed'
+        return PublicFailure(code,category,error.public_message,code.endswith('_TIMEOUT') or code in {'TIMEOUT','CONNECTION_TIMEOUT','DEVICE_BUSY','SSH_UNAVAILABLE','NETCONF_UNAVAILABLE'},stage=getattr(error,'stage',None))
     from apps.access_manager.domain.capabilities import CapabilityUnavailable
     if isinstance(error, CapabilityUnavailable):
         return PublicFailure('FEATURE_UNAVAILABLE','unconfirmed','Este recurso ainda não foi confirmado para o firmware conectado.',False)
