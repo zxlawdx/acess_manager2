@@ -12,7 +12,7 @@ POST `/infrastructure/diagnostics/start` with `query` returns a job ID and curre
 
 ## Budgets and freshness
 
-Huawei command budget: 8 seconds including lock wait; output: 1 MiB. Global orchestration collection budget: 25 seconds. Subscriber lookup cache: 4 seconds, scoped to infrastructure application session and normalized query. Cached output preserves its original `observed_at`; progress events have their own timestamps.
+Huawei command budget: 8 seconds including lock wait; output: 1 MiB and 256 pager continuations. Interactive pager handling does not reset the command deadline. Initial connectivity is confirmed using `display clock`; facts collection is optional and can degrade to PARTIAL. Global orchestration collection budget: 25 seconds. Subscriber lookup cache: 4 seconds, scoped to infrastructure application session and normalized query. Cached output preserves its original `observed_at`; progress events have their own timestamps.
 
 Cancellation is cooperative between sources and between existing CPE readers. An already-running legacy CPE request cannot be forcibly stopped by this service. On budget expiry the partial result becomes visible, but a new job remains blocked until outstanding readers finish. This preserves boundedness and prevents concurrent reads against the same ONT; it is **not a hard end-to-end timeout guarantee**. Source TTL configuration, infrastructure health caching, and comprehensive per-reader cancellation remain pending.
 
