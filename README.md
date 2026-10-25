@@ -21,6 +21,12 @@ python manage.py collectstatic --no-tailwind
 
 `runtime.js` é gerado dos módulos de `static/js`: não o edite diretamente. O template usa o helper `static()` do Vela, e as rotas Python não duplicam `/api`.
 
+## Arquitetura
+
+O composition root da aplicação fica em `apps/access_manager/composition.py`; `config/wsgi.py` monta apenas o runtime Vela. A estrutura segue `presentation -> application -> domain -> infrastructure`, com providers e sessões stateful pertencendo ao `ApplicationContext` e seleção de vendor centralizada pelo registry/router.
+
+Veja [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) para boundaries, lifecycle, nomenclatura e regras de dependência. Novos módulos de domínio não devem importar Vela/Bottle/WebView e a presentation não deve acessar implementações de fabricante diretamente.
+
 ## Validar
 
 ```bash
