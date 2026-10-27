@@ -1,5 +1,22 @@
 import {esc} from './ui.js';
-export const firewallLevels=[{value:'Low',label:'Baixo'},{value:'Middle',label:'Médio (recomendado)'},{value:'High',label:'Alto'}];
+
+export const firewallLevels=[
+ {value:'Low',label:'Baixo'},
+ {value:'Middle',label:'Médio (recomendado)'},
+ {value:'High',label:'Alto'},
+];
+
+export const firewallLevelLabel=value=>firewallLevels.find(option=>String(option.value)===String(value))?.label||String(value??'');
+
+export const firewallLevelField=value=>({
+ key:'level',
+ label:'Nível de firewall',
+ control:'select',
+ options:firewallLevels,
+ value,
+ help:'Nível global do firewall: Baixo, Médio (recomendado) ou Alto.',
+});
+
 export function fieldControl(f){
  const control=f.control||(f.secret?'password':f.options?'select':f.type==='bool'?'boolean':f.type||'text');
  const options=control==='boolean'?[{value:'true',label:'Habilitado'},{value:'false',label:'Desabilitado'}]:f.options;
