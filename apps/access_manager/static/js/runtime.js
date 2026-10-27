@@ -3464,7 +3464,20 @@
   }
 
   // apps/access_manager/static/js/shared/field-spec.js
-  var firewallLevels = [{ value: "Low", label: "Baixo" }, { value: "Middle", label: "Médio (recomendado)" }, { value: "High", label: "Alto" }];
+  var firewallLevels = [
+    { value: "Low", label: "Baixo" },
+    { value: "Middle", label: "Médio (recomendado)" },
+    { value: "High", label: "Alto" }
+  ];
+  var firewallLevelLabel = (value2) => firewallLevels.find((option) => String(option.value) === String(value2))?.label || String(value2 ?? "");
+  var firewallLevelField = (value2) => ({
+    key: "level",
+    label: "Nível de firewall",
+    control: "select",
+    options: firewallLevels,
+    value: value2,
+    help: "Nível global do firewall: Baixo, Médio (recomendado) ou Alto."
+  });
   function fieldControl(f) {
     const control = f.control || (f.secret ? "password" : f.options ? "select" : f.type === "bool" ? "boolean" : f.type || "text");
     const options = control === "boolean" ? [{ value: "true", label: "Habilitado" }, { value: "false", label: "Desabilitado" }] : f.options;
@@ -3729,6 +3742,7 @@
   }
 
   // apps/access_manager/static/js/shared/configuration-surfaces.js
+  var surfaceTitle = (feature) => feature?.id === "firewall_ip" ? "Regras avançadas IPv4 / IPv6" : feature?.id === "ipv4_filter" ? "Regras avançadas IPv4 de entrada" : feature?.title || "";
   var surfaceHost = () => `<section class="panel"><h2>Configurações de rede e serviços</h2><p class="muted">Formulários específicos do firmware, com leitura, prévia e confirmação antes de aplicar.</p><div id="configuration-surfaces" role="status">Carregando configurações disponíveis…</div></section>`;
   async function mountSurfaces() {
     const host = document.querySelector("#configuration-surfaces");
@@ -3737,7 +3751,7 @@
     try {
       const catalog = await request("/api/device/configuration/catalog", { scope });
       if (!scopeActive(scope) || !host.isConnected) return;
-      host.innerHTML = `<div class="field"><label>Configuração</label><select id="surface-feature"><option value="">Selecione…</option>${catalog.map((s) => `<option value="${esc(s.id)}">${esc(s.category)} · ${esc(s.title)}</option>`).join("")}</select></div><div id="surface-current"></div>`;
+      host.innerHTML = `<div class="field"><label>Configuração</label><select id="surface-feature"><option value="">Selecione…</option>${catalog.map((s) => `<option value="${esc(s.id)}">${esc(s.category)} · ${esc(surfaceTitle(s))}</option>`).join("")}</select></div><div id="surface-current"></div>`;
       host.querySelector("select").onchange = async (event) => {
         const feature = event.target.value, out = host.querySelector("#surface-current");
         if (!feature) {
@@ -3760,7 +3774,7 @@
     }
   }
   function editSurface(feature, row) {
-    const d = dialog(feature.title, `<div class="profile-content"><form id="surface-form"><p class="muted">Marque apenas os campos que deseja alterar. Campos não selecionados serão preservados.</p><div class="field"><label>Operação</label><select name="operation">${(row.actions || ["update"]).map((a) => `<option value="${a}">${{ update: "Editar", create: "Criar", delete: "Excluir" }[a]}</option>`).join("")}</select></div>${feature.id === "wan_crud" ? '<p><button type="button" class="button" data-wan-preset>Sugerir configuração padrão</button></p><p class="muted">Sugestão editável: internet_tr069, Routing, INTERNET_TR069, PPP/PPPoE, Auto, sempre ligado, MTU 1492, NAT, VLAN 2000/0. IPv6 mantém as opções atuais do firmware. Revise todos os valores antes de gerar a prévia.</p>' : ""}<div class="form-grid">${row.fields.map((f) => `<div class="field"><label><input type="checkbox" data-change="${esc(f.key)}" ${f.select && !f.options?.length ? "disabled" : ""}> ${esc(f.group ? f.group + " · " : "")}${esc(f.label)}</label>${fieldControl({ ...f, control: f.options?.length || f.select ? "select" : f.control || (f.secret ? "password" : "text") })}${f.help ? `<small>${esc(f.help)}</small>` : ""}</div>`).join("")}</div></form><div id="surface-preview"></div></div>`, `<button type="submit" form="surface-form" class="button primary">Gerar prévia</button>`);
+    const d = dialog(surfaceTitle(feature), `<div class="profile-content"><form id="surface-form"><p class="muted">Marque apenas os campos que deseja alterar. Campos não selecionados serão preservados.</p><div class="field"><label>Operação</label><select name="operation">${(row.actions || ["update"]).map((a) => `<option value="${a}">${{ update: "Editar", create: "Criar", delete: "Excluir" }[a]}</option>`).join("")}</select></div>${feature.id === "wan_crud" ? '<p><button type="button" class="button" data-wan-preset>Sugerir configuração padrão</button></p><p class="muted">Sugestão editável: internet_tr069, Routing, INTERNET_TR069, PPP/PPPoE, Auto, sempre ligado, MTU 1492, NAT, VLAN 2000/0. IPv6 mantém as opções atuais do firmware. Revise todos os valores antes de gerar a prévia.</p>' : ""}<div class="form-grid">${row.fields.map((f) => `<div class="field"><label><input type="checkbox" data-change="${esc(f.key)}" ${f.select && !f.options?.length ? "disabled" : ""}> ${esc(f.group ? f.group + " · " : "")}${esc(f.label)}</label>${fieldControl({ ...f, control: f.options?.length || f.select ? "select" : f.control || (f.secret ? "password" : "text") })}${f.help ? `<small>${esc(f.help)}</small>` : ""}</div>`).join("")}</div></form><div id="surface-preview"></div></div>`, `<button type="submit" form="surface-form" class="button primary">Gerar prévia</button>`);
     d.classList.add("profile-dialog");
     const form = d.querySelector("form");
     const syncFields = () => {
@@ -4297,10 +4311,20 @@
   }
 
   // apps/access_manager/static/js/workspaces/views/management.js
-  var definitions = [{ feature: "dmz", title: "DMZ", fields: [["enabled", "Habilitado", "bool"], ["internal_client", "IP do cliente"]] }, { feature: "upnp", title: "UPnP", fields: [["enabled", "Habilitado", "bool"]] }, { feature: "tr069", title: "TR-069", fields: [["url", "URL ACS"]] }, { feature: "firewall", title: "Firewall", fields: [["enabled", "Habilitado", "bool"], ["level", "Nível"]] }];
+  var definitions = [
+    { feature: "dmz", title: "DMZ", fields: [["enabled", "Habilitado", "bool"], ["internal_client", "IP do cliente"]] },
+    { feature: "upnp", title: "UPnP", fields: [["enabled", "Habilitado", "bool"]] },
+    { feature: "tr069", title: "TR-069", fields: [["url", "URL ACS"]] },
+    { feature: "firewall", title: "Firewall", fields: [["enabled", "Habilitado", "bool"], ["level", "Nível de firewall"]] }
+  ];
   var loaded = {};
   function presentation(feature, data) {
-    const rows3 = { dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]], upnp: [["Estado", bool(data.enabled)]], tr069: [["Servidor ACS", data.url]], firewall: [["Estado", bool(data.enabled)], ["Nível", data.level]] };
+    const rows3 = {
+      dmz: [["Estado", bool(data.enabled)], ["Cliente", data.internal_client || "Não configurado"], ["WAN", data.wan]],
+      upnp: [["Estado", bool(data.enabled)]],
+      tr069: [["Servidor ACS", data.url]],
+      firewall: [["Estado", bool(data.enabled)], ["Nível", firewallLevelLabel(data.level) || "Não disponível"]]
+    };
     return fields2(rows3[feature] || []) + `<details><summary>Avançado</summary>${kv(data)}</details>`;
   }
   var featureCap = (f) => f === "firewall" && (cap("firewall_level").enabled?.read || cap("firewall_level").enabled?.write) ? cap("firewall_level") : cap(f);
@@ -4326,7 +4350,11 @@
     mountArtifacts();
     document.querySelectorAll("[data-config]").forEach((b2) => b2.onclick = () => {
       const definition = definitions.find((d) => d.feature === b2.dataset.config), data = loaded[definition.feature];
-      editConfig("Editar " + definition.title, "/api/device/" + definition.feature, definition.fields.map(([key, label, type]) => ({ key, label, type, value: data[key], ...definition.feature === "firewall" && key === "level" ? { control: "select", options: window.__amStore?.session?.session?.vendor === "zte" ? firewallLevels : [{ value: data[key], label: data[key] }], disabled: window.__amStore?.session?.session?.vendor !== "zte", help: window.__amStore?.session?.session?.vendor === "zte" ? "" : "Somente leitura neste firmware/login; níveis ZTE não são enviados a outro fabricante." } : {} })));
+      editConfig(
+        "Editar " + definition.title,
+        "/api/device/" + definition.feature,
+        definition.fields.map(([key, label, type]) => definition.feature === "firewall" && key === "level" ? firewallLevelField(data[key]) : { key, label, type, value: data[key] })
+      );
     });
     const b = document.querySelector("#reboot-button");
     if (!b || b.disabled) return;
